@@ -6,24 +6,18 @@
   <title>Capacete Seco Pro</title>
   <link rel="manifest" href="./manifest.json">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <link rel="apple-touch-icon" href="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%231b528f'/%3E%3Cpath d='M384 340c0 15-40 25-128 25s-128-10-128-25c0-80 40-160 128-160s128 80 128 160z' fill='%23ffffff'/%3E%3Cpath d='M280 300h75v25h-75z' fill='%231b528f'/%3E%3C/svg%3E">
+  <link rel="apple-touch-icon" href="./icon.svg">
   <style>
     body { font-family: sans-serif; background: #121212; color: white; text-align: center; padding: 40px 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80vh; }
-    .logo-container { width: 180px; height: 180px; margin-bottom: 20px; }
+    .logo { width: 160px; height: 160px; margin-bottom: 20px; }
     h1 { font-size: 24px; margin-bottom: 10px; color: #ffffff; }
     .btn { background: #27ae60; color: white; border: none; padding: 15px 30px; border-radius: 30px; font-weight: bold; font-size: 16px; display: none; cursor: pointer; margin: 20px auto; box-shadow: 0 4px 15px rgba(39,174,96,0.4); }
-    .status { color: #f1c40f; margin-top: 20px; font-size: 16px; max-width: 300px; line-height: 1.5; }
+    .status { color: #f1c40f; margin-top: 20px; font-size: 15px; max-width: 320px; line-height: 1.5; }
   </style>
 </head>
 <body>
 
-  <div class="logo-container">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
-      <rect width="512" height="512" rx="80" fill="#1b528f"/>
-      <path d="M384 340c0 15-40 25-128 25s-128-10-128-25c0-80 40-160 128-160s128 80 128 160z" fill="#ffffff"/>
-      <path d="M280 300h75v25h-75z" fill="#1b528f"/>
-    </svg>
-  </div>
+  <img src="./icon.svg" class="logo" alt="Logo Capacete">
 
   <h1>Capacete Seco Pro</h1>
   
@@ -33,7 +27,7 @@
 
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./service-worker.js?v=3');
+      navigator.serviceWorker.register('./service-worker.js?v=4');
     }
 
     const IP_ESP = "http://192.168.4.1";
@@ -54,7 +48,7 @@
           setTimeout(testarConexao, 3000);
         };
       } else {
-        document.getElementById('msgStatus').innerText = "Instale o aplicativo clicando no botão acima antes de conectar ao Wi-Fi do Secador.";
+        document.getElementById('msgStatus').innerText = "Instale o aplicativo clicando no botão verde acima antes de conectar ao Wi-Fi do Secador.";
       }
     }
 
@@ -65,14 +59,14 @@
       document.getElementById('btnInstalar').style.display = 'block';
     });
 
-    document.getElementById('btnInstalar').addEventListener('click', () => {
+    document.getElementById('btnInstalar').addEventListener('click', async () => {
       if (deferredPrompt) {
         deferredPrompt.prompt();
-        deferredPrompt.userChoice.then((choice) => {
-          if (choice.outcome === 'accepted') {
-            document.getElementById('btnInstalar').style.display = 'none';
-          }
-        });
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+          document.getElementById('btnInstalar').style.display = 'none';
+        }
+        deferredPrompt = null;
       }
     });
 

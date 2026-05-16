@@ -3,9 +3,9 @@
   "name": "Capacete Seco Pro",
   "icons": [
     {
-      "src": "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%231b528f'/%3E%3Cpath d='M384 340c0 15-40 25-128 25s-128-10-128-25c0-80 40-160 128-160s128 80 128 160z' fill='%23ffffff'/%3E%3Cpath d='M280 300h75v25h-75z' fill='%231b528f'/%3E%3C/svg%3E",
+      "src": "./icon.svg",
       "type": "image/svg+xml",
-      "sizes": "512x512",
+      "sizes": "any",
       "purpose": "any maskable"
     }
   ],
