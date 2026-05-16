@@ -1,0 +1,16 @@
+{
+  "short_name": "CapaceteSeco",
+  "name": "Capacete Seco Pro",
+  "icons": [
+    {
+      "src": "logo-capacete.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "./index.html",
+  "background_color": "#121212",
+  "theme_color": "#1b528f",
+  "display": "standalone",
+  "orientation": "portrait"
