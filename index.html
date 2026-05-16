@@ -1,76 +1,156 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Capacete Seco Pro</title>
-  <link rel="manifest" href="./manifest.json">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <link rel="apple-touch-icon" href="./icon.svg">
-  <style>
-    body { font-family: sans-serif; background: #121212; color: white; text-align: center; padding: 40px 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80vh; }
-    .logo { width: 160px; height: 160px; margin-bottom: 20px; }
-    h1 { font-size: 24px; margin-bottom: 10px; color: #ffffff; }
-    .btn { background: #27ae60; color: white; border: none; padding: 15px 30px; border-radius: 30px; font-weight: bold; font-size: 16px; display: none; cursor: pointer; margin: 20px auto; box-shadow: 0 4px 15px rgba(39,174,96,0.4); }
-    .status { color: #f1c40f; margin-top: 20px; font-size: 15px; max-width: 320px; line-height: 1.5; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Capacete Seco Pro</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1b528f">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #121212; color: #E0E0E0; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        h1 { font-weight: 300; color: #00E5FF; margin: 10px 0; text-transform: uppercase; letter-spacing: 2px; }
+        .status-box { background: #1E1E1E; padding: 10px 25px; border-radius: 50px; border: 1px solid #333; margin-bottom: 20px; font-size: 14px; color: #00E5FF; text-transform: uppercase; font-weight: bold; text-align: center; }
+        .container { width: 100%; max-width: 400px; }
+        .card { background: #1E1E1E; border-radius: 15px; padding: 18px; margin-bottom: 15px; border-left: 6px solid #333; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        .timer-select { background: #252525; color: white; border: 1px solid #444; padding: 10px; border-radius: 8px; width: 100%; margin-top: 8px; font-size: 14px; }
+        .btn-ligar { background: #00E5FF; color: #121212; border: none; padding: 10px; width: 100%; font-weight: bold; border-radius: 8px; margin-top: 12px; cursor: pointer; text-transform: uppercase; }
+        .c1 { border-left-color: #27ae60; } .c2 { border-left-color: #9b59b6; } .c3 { border-left-color: #3498db; } .c4 { border-left-color: #f1c40f; }
+        #btnInstalar { background: #27ae60; color: white; border: none; padding: 12px 25px; border-radius: 25px; margin-bottom: 20px; font-weight: bold; display: none; width: 100%; text-transform: uppercase; }
+        .notif { color: #ffeb3b; font-size: 12px; text-align: center; margin-top: 5px; display: none; }
+    </style>
 </head>
 <body>
 
-  <img src="./icon.svg" class="logo" alt="Logo Capacete">
+    <h1>CAPACETE SECO</h1>
+    <button id='btnInstalar'>📥 INSTALAR APLICATIVO</button>
+    <div class='status-box' id="statusText">CONECTANDO AO CAPACETE...</div>
+    <div id="notif" class="notif">Comando enviado com sucesso!</div>
 
-  <h1>Capacete Seco Pro</h1>
-  
-  <button id="btnInstalar" class="btn">📥 INSTALAR APLICATIVO</button>
-  
-  <p id="msgStatus" class="status">Verificando conexão com o secador...</p>
+    <div class='container'>
+        <div class='card c1'>
+            <h3>Ciclo 1 - Ventilador</h3>
+            <label>Tempo:</label>
+            <select id='t1' class='timer-select'></select>
+            <button class='btn-ligar' onclick='enviarComando(1, "t1")'>Iniciar</button>
+        </div>
 
-  <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./service-worker.js?v=4');
-    }
+        <div class='card c2'>
+            <h3>Ciclo 2 - Purificar</h3>
+            <label>Tempo:</label>
+            <select id='t2' class='timer-select'></select>
+            <button class='btn-ligar' onclick='enviarComando(2, "t2")'>Iniciar</button>
+        </div>
 
-    const IP_ESP = "http://192.168.4.1";
+        <div class='card c3'>
+            <h3>Ciclo 3 - Alternando</h3>
+            <p style="font-size:12px; color:#aaa;">30 min vento + 10 min ozônio</p>
+            <select id='t3' class='timer-select'></select>
+            <button class='btn-ligar' onclick='enviarComando(3, "t3")'>Iniciar</button>
+        </div>
 
-    function testarConexao() {
-      if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
-        document.getElementById('msgStatus').innerText = "Conectando ao secador...";
-        
-        const img = new Image();
-        img.src = IP_ESP + "/ping.gif?t=" + new Date().getTime();
-        
-        img.onload = function() {
-          window.location.href = IP_ESP;
-        };
-        
-        img.onerror = function() {
-          document.getElementById('msgStatus').innerHTML = "⚠️ Por favor, conecte seu celular no Wi-Fi<br><b style='color:#00E5FF;'>SecadorCapacete</b> para usar o painel.";
-          setTimeout(testarConexao, 3000);
-        };
-      } else {
-        document.getElementById('msgStatus').innerText = "Instale o aplicativo clicando no botão verde acima antes de conectar ao Wi-Fi do Secador.";
-      }
-    }
+        <div class='card c4'>
+            <h3>Ciclo 4 - Personalizado</h3>
+            <label>Ventilação:</label>
+            <select id='v4_time' class='timer-select'></select>
+            <label style="margin-top:10px; display:block;">Ozônio (Minutos):</label>
+            <select id='o4_time' class='timer-select'></select>
+            <button class='btn-ligar' onclick='enviarComando(4, null)'>Iniciar Personalizado</button>
+        </div>
+    </div>
 
-    let deferredPrompt;
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferredPrompt = e;
-      document.getElementById('btnInstalar').style.display = 'block';
-    });
+    <script>
+        const ESP_IP = "http://192.168.4.1"; // Endereço do ESP32
 
-    document.getElementById('btnInstalar').addEventListener('click', async () => {
-      if (deferredPrompt) {
-        deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-        if (outcome === 'accepted') {
-          document.getElementById('btnInstalar').style.display = 'none';
+        // Preenche os selects de horas automaticamente (1 a 12 horas)
+        function popularSelects() {
+            const selects = ['t1', 't2', 't3', 'v4_time'];
+            selects.forEach(id => {
+                const el = document.getElementById(id);
+                for(let i=1; i<=12; i++) {
+                    let opt = document.createElement('option');
+                    opt.value = i; opt.innerText = i + " Horas";
+                    if(i===9 && id!=='v4_time') opt.selected = true;
+                    el.appendChild(opt);
+                }
+            });
+            // Select de minutos do ozônio (10 a 120)
+            const o4 = document.getElementById('o4_time');
+            for(let i=10; i<=120; i+=10) {
+                let opt = document.createElement('option');
+                opt.value = i; opt.innerText = i + " Minutos";
+                if(i===30) opt.selected = true;
+                o4.appendChild(opt);
+            }
         }
-        deferredPrompt = null;
-      }
-    });
+        popularSelects();
 
-    testarConexao();
-  </script>
+        // FUNÇÃO CHAVE: Envia os dados para o ESP32 via Fetch API em segundo plano
+        function enviarComando(ciclo, idTimer) {
+            const t = idTimer ? document.getElementById(idTimer).value : 9;
+            const v4 = document.getElementById('v4_time').value;
+            const o4 = document.getElementById('o4_time').value;
+            
+            const url = `${ESP_IP}/set?c=${ciclo}&t=${t}&v4=${v4}&o4=${o4}`;
+            
+            // Exibe aviso visual de envio
+            document.getElementById('notif').style.display = 'block';
+            document.getElementById('notif').innerText = "Enviando comando para o secador...";
+
+            fetch(url, { method: 'GET', mode: 'cors' })
+            .then(response => {
+                document.getElementById('notif').innerText = "Comando aceito pelo capacete!";
+                setTimeout(() => { document.getElementById('notif').style.display = 'none'; }, 3000);
+                atualizarStatus();
+            })
+            .catch(err => {
+                // Como estamos em redes mistas (HTTPS -> HTTP), o navegador às vezes processa o comando mas gera um erro de bloco estético.
+                // Se o ESP32 receber, ele vai ligar. Avisamos o usuário para checar a conexão.
+                document.getElementById('notif').innerText = "Verifique se está conectado no Wi-Fi do Secador!";
+                console.log("Requisição enviada. Se houver erro de CORS, certifique-se de estar conectado no AP do ESP32.");
+            });
+        }
+
+        // Busca o estado atual do ESP32 para atualizar a tela
+        function atualizarStatus() {
+            fetch(`${ESP_IP}/status`, { method: 'GET', mode: 'cors' })
+            .then(res => res.json())
+            .then(data => {
+                if(data.ligado) {
+                    document.getElementById('statusText').innerText = `ATIVO: MODO ${data.ciclo}`;
+                } else {
+                    document.getElementById('statusText').innerText = "CICLO FINALIZADO / PRONTO";
+                }
+            })
+            .catch(() => {
+                document.getElementById('statusText').innerText = "DESCONECTADO DO WI-FI DO SECADOR";
+            });
+        }
+        // Tenta atualizar o status a cada 5 segundos se estiver no Wi-Fi dele
+        setInterval(atualizarStatus, 5000);
+        window.onload = atualizarStatus;
+
+        // Lógica de instalação do PWA (Funciona 100% no GitHub por ter HTTPS)
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('btnInstalar').style.display = 'block';
+        });
+        document.getElementById('btnInstalar').addEventListener('click', () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((res) => {
+                    if (res.outcome === 'accepted') document.getElementById('btnInstalar').style.display = 'none';
+                    deferredPrompt = null;
+                });
+            }
+        });
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('service-worker.js');
+        }
+    </script>
 </body>
 </html>
