@@ -3,12 +3,17 @@
   "name": "Capacete Seco Pro",
   "icons": [
     {
-      "src": "https://googlechrome.github.io/samples/service-worker/basic/chrome.png",
+      "src": "/icons/icon-192.png",
       "type": "image/png",
       "sizes": "192x192"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
     }
   ],
-  "start_url": ".",
+  "start_url": "/",
   "background_color": "#121212",
   "theme_color": "#1b528f",
   "display": "standalone",
