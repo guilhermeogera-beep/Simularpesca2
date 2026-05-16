@@ -3,13 +3,13 @@
   "name": "Capacete Seco Pro",
   "icons": [
     {
-      "src": "./icon.svg",
-      "type": "image/svg+xml",
-      "sizes": "any",
+      "src": "https://images.rawpixel.com/image_png_800/cHJpdmF0ZS9sci9pbWFnZXMvd2Vic2l0ZS8yMDIzLTAxL3JtNjEzLWVsZWN0cm9uaWNzLWljb24tMDYucG5n.png",
+      "type": "image/png",
+      "sizes": "512x512",
       "purpose": "any maskable"
     }
   ],
-  "index.html"./index.html",
+  "start_url": "index.html",
   "background_color": "#121212",
   "theme_color": "#1b528f",
   "display": "standalone",

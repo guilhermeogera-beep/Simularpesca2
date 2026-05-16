@@ -8,146 +8,52 @@
     <meta name="theme-color" content="#1b528f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #121212; color: #E0E0E0; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        h1 { font-weight: 300; color: #00E5FF; margin: 10px 0; text-transform: uppercase; letter-spacing: 2px; }
-        .status-box { background: #1E1E1E; padding: 10px 25px; border-radius: 50px; border: 1px solid #333; margin-bottom: 20px; font-size: 14px; color: #00E5FF; text-transform: uppercase; font-weight: bold; text-align: center; }
-        .container { width: 100%; max-width: 400px; }
-        .card { background: #1E1E1E; border-radius: 15px; padding: 18px; margin-bottom: 15px; border-left: 6px solid #333; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-        .timer-select { background: #252525; color: white; border: 1px solid #444; padding: 10px; border-radius: 8px; width: 100%; margin-top: 8px; font-size: 14px; }
-        .btn-ligar { background: #00E5FF; color: #121212; border: none; padding: 10px; width: 100%; font-weight: bold; border-radius: 8px; margin-top: 12px; cursor: pointer; text-transform: uppercase; }
-        .c1 { border-left-color: #27ae60; } .c2 { border-left-color: #9b59b6; } .c3 { border-left-color: #3498db; } .c4 { border-left-color: #f1c40f; }
-        #btnInstalar { background: #27ae60; color: white; border: none; padding: 12px 25px; border-radius: 25px; margin-bottom: 20px; font-weight: bold; display: none; width: 100%; text-transform: uppercase; }
-        .notif { color: #ffeb3b; font-size: 12px; text-align: center; margin-top: 5px; display: none; }
+        body { font-family: 'Segoe UI', sans-serif; background: #121212; color: #E0E0E0; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 80vh; text-align: center; }
+        h1 { font-weight: 300; color: #00E5FF; letter-spacing: 2px; margin-bottom: 5px; }
+        p { color: #aaa; font-size: 14px; margin-bottom: 30px; max-width: 300px; }
+        .btn { background: #00E5FF; color: #121212; border: none; padding: 15px 30px; font-weight: bold; border-radius: 30px; cursor: pointer; text-transform: uppercase; font-size: 14px; width: 80%; max-width: 300px; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(0,229,255,0.3); }
+        #btnInstalar { background: #27ae60; color: white; display: none; box-shadow: 0 4px 15px rgba(39,174,96,0.4); }
     </style>
 </head>
 <body>
 
     <h1>CAPACETE SECO</h1>
-    <button id='btnInstalar'>📥 INSTALAR APLICATIVO</button>
-    <div class='status-box' id="statusText">CONECTANDO AO CAPACETE...</div>
-    <div id="notif" class="notif">Comando enviado com sucesso!</div>
+    <p>Conecte no Wi-Fi do secador antes de acessar o painel de controle.</p>
 
-    <div class='container'>
-        <div class='card c1'>
-            <h3>Ciclo 1 - Ventilador</h3>
-            <label>Tempo:</label>
-            <select id='t1' class='timer-select'></select>
-            <button class='btn-ligar' onclick='enviarComando(1, "t1")'>Iniciar</button>
-        </div>
-
-        <div class='card c2'>
-            <h3>Ciclo 2 - Purificar</h3>
-            <label>Tempo:</label>
-            <select id='t2' class='timer-select'></select>
-            <button class='btn-ligar' onclick='enviarComando(2, "t2")'>Iniciar</button>
-        </div>
-
-        <div class='card c3'>
-            <h3>Ciclo 3 - Alternando</h3>
-            <p style="font-size:12px; color:#aaa;">30 min vento + 10 min ozônio</p>
-            <select id='t3' class='timer-select'></select>
-            <button class='btn-ligar' onclick='enviarComando(3, "t3")'>Iniciar</button>
-        </div>
-
-        <div class='card c4'>
-            <h3>Ciclo 4 - Personalizado</h3>
-            <label>Ventilação:</label>
-            <select id='v4_time' class='timer-select'></select>
-            <label style="margin-top:10px; display:block;">Ozônio (Minutos):</label>
-            <select id='o4_time' class='timer-select'></select>
-            <button class='btn-ligar' onclick='enviarComando(4, null)'>Iniciar Personalizado</button>
-        </div>
-    </div>
+    <button id='btnInstalar' class="btn">📥 INSTALAR APLICATIVO</button>
+    
+    <button class="btn" onclick="entrarNoSecador()">🔌 CONECTAR AO SECADOR</button>
 
     <script>
-        const ESP_IP = "http://192.168.4.1"; // Endereço do ESP32
-
-        // Preenche os selects de horas automaticamente (1 a 12 horas)
-        function popularSelects() {
-            const selects = ['t1', 't2', 't3', 'v4_time'];
-            selects.forEach(id => {
-                const el = document.getElementById(id);
-                for(let i=1; i<=12; i++) {
-                    let opt = document.createElement('option');
-                    opt.value = i; opt.innerText = i + " Horas";
-                    if(i===9 && id!=='v4_time') opt.selected = true;
-                    el.appendChild(opt);
-                }
-            });
-            // Select de minutos do ozônio (10 a 120)
-            const o4 = document.getElementById('o4_time');
-            for(let i=10; i<=120; i+=10) {
-                let opt = document.createElement('option');
-                opt.value = i; opt.innerText = i + " Minutos";
-                if(i===30) opt.selected = true;
-                o4.appendChild(opt);
-            }
-        }
-        popularSelects();
-
-        // FUNÇÃO CHAVE: Envia os dados para o ESP32 via Fetch API em segundo plano
-        function enviarComando(ciclo, idTimer) {
-            const t = idTimer ? document.getElementById(idTimer).value : 9;
-            const v4 = document.getElementById('v4_time').value;
-            const o4 = document.getElementById('o4_time').value;
-            
-            const url = `${ESP_IP}/set?c=${ciclo}&t=${t}&v4=${v4}&o4=${o4}`;
-            
-            // Exibe aviso visual de envio
-            document.getElementById('notif').style.display = 'block';
-            document.getElementById('notif').innerText = "Enviando comando para o secador...";
-
-            fetch(url, { method: 'GET', mode: 'cors' })
-            .then(response => {
-                document.getElementById('notif').innerText = "Comando aceito pelo capacete!";
-                setTimeout(() => { document.getElementById('notif').style.display = 'none'; }, 3000);
-                atualizarStatus();
-            })
-            .catch(err => {
-                // Como estamos em redes mistas (HTTPS -> HTTP), o navegador às vezes processa o comando mas gera um erro de bloco estético.
-                // Se o ESP32 receber, ele vai ligar. Avisamos o usuário para checar a conexão.
-                document.getElementById('notif').innerText = "Verifique se está conectado no Wi-Fi do Secador!";
-                console.log("Requisição enviada. Se houver erro de CORS, certifique-se de estar conectado no AP do ESP32.");
-            });
+        function entrarNoSecador() {
+            // Abre o painel do ESP32 mantendo o modo standalone (tela cheia do PWA)
+            window.location.href = "http://192.168.4.1/";
         }
 
-        // Busca o estado atual do ESP32 para atualizar a tela
-        function atualizarStatus() {
-            fetch(`${ESP_IP}/status`, { method: 'GET', mode: 'cors' })
-            .then(res => res.json())
-            .then(data => {
-                if(data.ligado) {
-                    document.getElementById('statusText').innerText = `ATIVO: MODO ${data.ciclo}`;
-                } else {
-                    document.getElementById('statusText').innerText = "CICLO FINALIZADO / PRONTO";
-                }
-            })
-            .catch(() => {
-                document.getElementById('statusText').innerText = "DESCONECTADO DO WI-FI DO SECADOR";
-            });
-        }
-        // Tenta atualizar o status a cada 5 segundos se estiver no Wi-Fi dele
-        setInterval(atualizarStatus, 5000);
-        window.onload = atualizarStatus;
-
-        // Lógica de instalação do PWA (Funciona 100% no GitHub por ter HTTPS)
+        // Lógica nativa de instalação do PWA
         let deferredPrompt;
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
             document.getElementById('btnInstalar').style.display = 'block';
         });
+
         document.getElementById('btnInstalar').addEventListener('click', () => {
             if (deferredPrompt) {
                 deferredPrompt.prompt();
                 deferredPrompt.userChoice.then((res) => {
-                    if (res.outcome === 'accepted') document.getElementById('btnInstalar').style.display = 'none';
+                    if (res.outcome === 'accepted') {
+                        document.getElementById('btnInstalar').style.display = 'none';
+                    }
                     deferredPrompt = null;
                 });
             }
         });
+
+        // Registra o Service Worker obrigatoriamente
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('service-worker.js');
         }
