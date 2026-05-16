@@ -6,7 +6,7 @@
       "src": "logo-capacete.png",
       "type": "image/png",
       "sizes": "512x512",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ],
   "start_url": "./index.html",
@@ -14,3 +14,4 @@
   "theme_color": "#1b528f",
   "display": "standalone",
   "orientation": "portrait"
+}
