@@ -9,7 +9,7 @@
       "purpose": "any maskable"
     }
   ],
-  "start_url": "http://192.168.4.1/"./index.html",
+  "index.html"./index.html",
   "background_color": "#121212",
   "theme_color": "#1b528f",
   "display": "standalone",
