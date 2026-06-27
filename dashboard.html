@@ -56,6 +56,10 @@ input[type="range"]::-webkit-slider-thumb{height:24px;width:24px;border-radius:5
 .gen-row input:focus{border-color:var(--accent);}
 .btn-colapso{background:none;border:none;color:var(--text-dim);font-size:0.85rem;cursor:pointer;padding:0 6px 0 0;line-height:1;}
 .btn-colapso:hover{color:var(--accent);}
+.recolhivel{cursor:pointer;user-select:none;}
+.card.card-colapsado > :not(:first-child){display:none !important;}
+.card-chevron{display:inline-block;transition:transform 0.15s;font-size:0.8rem;margin-right:3px;}
+.card-colapsado .card-chevron{transform:rotate(-90deg);}
 .timeline-wrap{position:relative;height:130px;background:#03070b;border:1px solid var(--border);border-radius:8px;overflow:hidden;}
 .curve-area{position:absolute;top:0;left:0;right:0;bottom:20px;z-index:2;cursor:crosshair;}
 .curve-svg{position:absolute;inset:0;width:100%;height:100%;}
@@ -133,7 +137,7 @@ select{background:var(--surface);border:1px solid var(--border);color:var(--text
 <button type="button" id="btnSairFS" onclick="voltarNormal()">↩ Voltar ao normal</button>
 
 <div class="card" id="gaugeArea">
-  <div id="gaugeLabel">Tensão do Motor</div>
+  <div id="gaugeLabel" class="recolhivel" data-cardkey="motor" onclick="toggleCard(this)"><span class="card-chevron">▾</span>Tensão do Motor</div>
   <div id="gaugePct">0%</div>
   <div id="gaugeBar"><div id="gaugeBarFill"></div></div>
   <div id="gaugeVolt">1.00 V</div>
@@ -145,7 +149,7 @@ select{background:var(--surface);border:1px solid var(--border);color:var(--text
 
 <!-- CALIBRAÇÃO DO ENCODER -->
 <div class="card">
-  <div class="secao-titulo"><span>📏</span> Calibração da Linha (tacômetro do VESC)</div>
+  <div class="secao-titulo recolhivel" data-cardkey="calibracao" onclick="toggleCard(this)"><span class="card-chevron">▾</span><span>📏</span> Calibração da Linha (tacômetro do VESC)</div>
   <div class="cal-grid">
     <div class="cal-campo"><label>Metros por volta</label><input type="number" id="calMpv" step="0.0001" min="0" value="0.0854"></div>
     <div class="cal-campo"><label>Vel. motor a 100% (m/s)</label><input type="number" id="calVel" step="0.01" min="0" value="2.5"></div>
@@ -184,7 +188,7 @@ select{background:var(--surface);border:1px solid var(--border);color:var(--text
 
 <!-- CONTADORES DE LINHA (teste) -->
 <div class="card">
-  <div class="secao-titulo"><span>🎣</span> Linha — Ganhos / Perdidos (teste)</div>
+  <div class="secao-titulo recolhivel" data-cardkey="linha" onclick="toggleCard(this)"><span class="card-chevron">▾</span><span>🎣</span> Linha — Ganhos / Perdidos (teste)</div>
   <div class="cont3" style="display:flex;gap:14px;flex-wrap:wrap;">
     <div style="flex:1;min-width:120px;background:rgba(0,230,118,0.06);border:1px solid rgba(0,230,118,0.35);border-radius:10px;padding:14px;text-align:center;">
       <div class="cal-sub">⬆ Ganhos (recolheu)</div>
@@ -392,6 +396,9 @@ function montarBlocosSims(){
   });
 }
 function toggleColapso(i){ const corpo=document.getElementById('corpo'+i), btn=document.getElementById('colBtn'+i); if(!corpo) return; const recolher = corpo.style.display!=='none'; corpo.style.display = recolher ? 'none' : ''; if(btn) btn.textContent = recolher ? '▸' : '▾'; localStorage.setItem('simpesca2_colapso_'+LETRAS[i], recolher?'1':'0'); }
+// Recolhe/expande um CARD de config inteiro (esconde tudo menos o cabeçalho). Estado salvo por data-cardkey.
+function toggleCard(el){ const card=el.closest('.card'); if(!card) return; const rec=!card.classList.contains('card-colapsado'); card.classList.toggle('card-colapsado',rec); const k=el.dataset.cardkey; if(k) localStorage.setItem('simpesca2_cardcol_'+k, rec?'1':'0'); }
+function aplicarCardCols(){ document.querySelectorAll('[data-cardkey]').forEach(el=>{ if(localStorage.getItem('simpesca2_cardcol_'+el.dataset.cardkey)==='1'){ const c=el.closest('.card'); if(c) c.classList.add('card-colapsado'); } }); }
 function gatilhosParaPontos(gatilhos){
   const p=[];
   gatilhos.slice().sort((a,b)=>a.t-b.t).forEach(g=>{ let t=g.t; p.push({t,pot:g.potIni||0}); t+=(g.sub||0)/1000; p.push({t,pot:g.pot||0}); t+=(g.pico||0)/1000; p.push({t,pot:g.pot||0}); if((g.trans||0)>0){ t+=g.trans/1000; p.push({t,pot:g.pot2||0}); } if((g.pico2||0)>0){ t+=g.pico2/1000; p.push({t,pot:g.pot2||0}); } t+=(g.desc||0)/1000; p.push({t,pot:g.potFim||0}); });
@@ -1061,6 +1068,7 @@ window.addEventListener('load',async()=>{
   carregarGenCfg();            // carrega os ajustes salvos de cada peixe
   for(let i=0;i<NSIMS;i++){ carregarSim(i); setupArea(i); }
   atualizarInterfaceTempo(); renderTodas(); atualizarGauge(0); atualizarCalLive(); atualizarContadores(); atualizarEstimativas();
+  aplicarCardCols();           // recolhe os cards de config que estavam recolhidos
   reconectar();
   // auto-save GitHub: preenche o token salvo, mostra o status e retoma pendências
   const tk=localStorage.getItem('simpesca2_github_token'); const f=document.getElementById('githubToken'); if(tk&&f) f.value=tk;
