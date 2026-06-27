@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SimPesca — Ranking</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#050a0f">
+<style>
+:root{--bg:#050a0f;--card:#0d151d;--surface:#121d28;--border:#1a2736;--accent:#00d4ff;--green:#00e676;--gold:#ffd700;--silver:#c0c8d0;--bronze:#cd7f32;--red:#ff1744;--text:#e0e6ed;--dim:#7b8d9e;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;min-height:100vh;padding:20px;max-width:720px;margin:0 auto;}
+header{display:flex;align-items:center;gap:12px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:16px;flex-wrap:wrap;}
+header h1{font-size:1.4rem;font-weight:800;color:var(--gold);letter-spacing:1px;text-transform:uppercase;}
+.btn-link{font-size:0.7rem;padding:8px 14px;border:1px solid var(--dim);border-radius:8px;color:var(--dim);text-decoration:none;letter-spacing:1px;cursor:pointer;background:transparent;font-family:inherit;}
+.spacer{margin-left:auto;}
+.filtros{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+.filtro{padding:8px 16px;border:1px solid #3d5d7e;border-radius:20px;background:rgba(20,40,64,0.45);color:#b9d2e6;cursor:pointer;font-size:0.85rem;font-family:inherit;}
+.filtro.ativo{border-color:var(--accent);color:#fff;background:rgba(0,212,255,0.18);font-weight:700;}
+.lista{display:flex;flex-direction:column;gap:8px;}
+.linha-rank{display:flex;align-items:center;gap:14px;background:#0c1722;border:1px solid #1c344e;border-radius:12px;padding:14px 16px;}
+.pos{font-size:1.35rem;font-weight:800;min-width:44px;text-align:center;color:#9fb6cc;}
+.linha-rank.top1{border-color:var(--gold);box-shadow:0 0 18px rgba(255,215,0,0.15);} .top1 .pos{color:var(--gold);}
+.linha-rank.top2{border-color:var(--silver);} .top2 .pos{color:#dde4ea;}
+.linha-rank.top3{border-color:var(--bronze);} .top3 .pos{color:#e89c50;}
+.info{flex:1;min-width:0;}
+.nome{font-size:1.1rem;font-weight:700;color:#eef6ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.meta{font-size:0.78rem;color:#8fb0cc;margin-top:2px;}
+.metros{font-size:1.35rem;font-weight:800;color:var(--green);font-family:monospace;white-space:nowrap;text-shadow:0 0 10px rgba(0,230,118,0.3);}
+.vazio{text-align:center;color:#9fb6cc;padding:40px 20px;font-size:0.95rem;}
+.acoes{display:flex;gap:8px;margin-top:20px;flex-wrap:wrap;}
+.btn{padding:10px 18px;border:1px solid;border-radius:8px;font-family:inherit;font-size:0.8rem;font-weight:600;cursor:pointer;text-transform:uppercase;letter-spacing:1px;background:transparent;}
+.btn-green{border-color:var(--green);color:var(--green);} .btn-red{border-color:var(--red);color:var(--red);}
+</style>
+</head>
+<body>
+<header>
+  <span style="font-size:1.6rem">🏆</span>
+  <h1>Ranking</h1>
+  <a href="player.html" class="btn-link spacer">▶ Player</a>
+</header>
+
+<div class="filtros" id="filtros">
+  <button class="filtro ativo" data-sim="todos" onclick="filtrar('todos',this)">Todas</button>
+</div>
+
+<div class="lista" id="lista"></div>
+
+<div class="acoes">
+  <button class="btn btn-green" onclick="exportar()">⬇ Exportar ranking</button>
+  <button class="btn btn-red" onclick="limpar()">🗑 Limpar ranking</button>
+</div>
+
+<script>
+let filtroAtual='todos';
+const ESPECIES=[
+  {id:'pirarara', nome:'Pirarara'},
+  {id:'tambaqui', nome:'Tambacu'},
+  {id:'tucunare', nome:'Tucunaré'},
+  {id:'dourado',  nome:'Dourado'},
+  {id:'trairao',  nome:'Trairão'},
+  {id:'jau',      nome:'Jaú'}
+];
+function nomePeixe(id){ const e=ESPECIES.find(x=>x.id===id); return e?e.nome:('Sim '+id); }
+function carregar(){ try{ return JSON.parse(localStorage.getItem('simpesca_ranking'))||[]; }catch(e){ return []; } }
+function nomeValido(n){ n=(n||'').trim().toLowerCase(); return n!=='' && n!=='jogador'; }   // jogada sem nome não conta
+function fmtData(iso){ const d=new Date(iso); return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
+function render(){
+  const todos=carregar().filter(r=>nomeValido(r.nome));   // esconde jogadas sem nome / "Jogador"
+  let lista = filtroAtual==='todos' ? todos : todos.filter(r=>r.sim===filtroAtual);
+  lista.sort((a,b)=>b.metros-a.metros);
+  const el=document.getElementById('lista');
+  if(!lista.length){ el.innerHTML='<div class="vazio">Nenhuma jogada registrada ainda.<br>Jogue uma simulação para aparecer aqui! 🎣</div>'; return; }
+  el.innerHTML = lista.map((r,i)=>{
+    const cls = i===0?'top1':i===1?'top2':i===2?'top3':'';
+    const medalha = i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'º';
+    return `<div class="linha-rank ${cls}">
+      <div class="pos">${medalha}</div>
+      <div class="info"><div class="nome">${escapeHtml(r.nome)}</div><div class="meta">🐟 ${nomePeixe(r.sim)} · ${fmtData(r.data)}</div></div>
+      <div class="metros">${r.metros.toFixed(1)} m</div>
+    </div>`;
+  }).join('');
+}
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function filtrar(sim,btn){ filtroAtual=sim; document.querySelectorAll('.filtro').forEach(b=>b.classList.remove('ativo')); btn.classList.add('ativo'); render(); }
+function exportar(){
+  const blob=new Blob([JSON.stringify(carregar(),null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='ranking_simpesca.json'; a.click(); URL.revokeObjectURL(a.href);
+}
+function limpar(){ if(confirm('Apagar TODO o ranking? Não dá para desfazer.')){ localStorage.removeItem('simpesca_ranking'); render(); } }
+window.addEventListener('load',()=>{
+  const f=document.getElementById('filtros');
+  ESPECIES.forEach(e=>{ const b=document.createElement('button'); b.className='filtro'; b.dataset.sim=e.id; b.textContent=e.nome; b.onclick=()=>filtrar(e.id,b); f.appendChild(b); });
+  if('serviceWorker' in navigator) navigator.serviceWorker.register('service-worker.js').catch(()=>{});
+  render();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>SimPesca — Player</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#040810">
+<style>
+:root{--bg:#040810;--card:#080f18;--border:#0e1e30;--accent:#00d4ff;--green:#00e676;--red:#ff1744;--text:#c8d8e8;--dim:#2a4060;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Courier New',monospace;min-height:100dvh;display:flex;flex-direction:column;padding:16px;gap:14px;overflow-x:hidden;}
+header{display:flex;align-items:center;justify-content:space-between;padding-bottom:12px;border-bottom:1px solid var(--border);gap:8px;flex-wrap:wrap;}
+header h1{font-size:1rem;letter-spacing:4px;color:var(--accent);text-transform:uppercase;}
+.header-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.badge{font-size:0.7rem;padding:4px 10px;border-radius:20px;border:1px solid var(--dim);color:var(--dim);}
+#motorBadge.ativo{color:var(--accent);border-color:var(--accent);} #motorBadge.alto{color:var(--red);border-color:var(--red);}
+#linhaBadge{color:var(--green);border-color:var(--green);}
+#btnBT{font-size:0.7rem;padding:6px 14px;border:1px solid var(--accent);border-radius:20px;background:rgba(0,212,255,0.08);color:var(--accent);cursor:pointer;font-family:inherit;letter-spacing:1px;}
+#btnBT.conectado{border-color:var(--green);color:var(--green);background:rgba(0,230,118,0.1);}
+#btnBT.erro{border-color:var(--red);color:var(--red);}
+.btn-dash{font-size:0.65rem;padding:6px 10px;border:1px solid #3d5d7e;border-radius:6px;background:rgba(20,40,64,0.4);color:#b9d2e6;cursor:pointer;font-family:inherit;text-decoration:none;letter-spacing:1px;}
+.btn-dash:hover{color:#fff;border-color:var(--accent);}
+.sims-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;align-content:start;}
+.sim-bloco{display:flex;flex-direction:column;gap:8px;}
+.sim-titulo{display:flex;align-items:center;gap:10px;font-size:0.65rem;letter-spacing:3px;text-transform:uppercase;color:var(--dim);}
+.sim-badge{padding:2px 8px;border-radius:4px;font-size:0.6rem;font-weight:700;letter-spacing:1px;}
+.sim-badge-a{background:rgba(0,212,255,0.1);color:var(--accent);border:1px solid rgba(0,212,255,0.25);}
+.sim-badge-b{background:rgba(255,214,0,0.08);color:#ffd600;border:1px solid rgba(255,214,0,0.2);}
+.sim-badge-c{background:rgba(0,230,118,0.08);color:#00e676;border:1px solid rgba(0,230,118,0.25);}
+.video-wrapper{position:relative;background:#000;border-radius:10px;overflow:hidden;border:1px solid var(--border);aspect-ratio:16/9;cursor:pointer;transition:border-color .2s, box-shadow .2s;}
+.video-wrapper:hover{border-color:var(--accent);box-shadow:0 0 14px rgba(0,212,255,0.25);}
+video{width:100%;height:100%;object-fit:cover;display:block;}
+.video-progress{position:absolute;bottom:0;left:0;right:0;height:4px;background:rgba(0,212,255,0.2);z-index:20;}
+.video-progress-bar{height:100%;width:0%;background:linear-gradient(90deg,var(--accent),#00a8cc);transition:width .1s linear;}
+.overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:rgba(4,8,16,0.7);backdrop-filter:blur(3px);transition:opacity .3s;}
+.overlay.oculto{opacity:0;pointer-events:none;}
+.btn-play{width:48px;height:48px;border-radius:50%;background:var(--accent);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 0 24px rgba(0,212,255,0.5);}
+.btn-play:active{transform:scale(0.95);} .btn-play svg{fill:#040810;margin-left:4px;}
+.sim-nome-overlay{font-size:0.7rem;letter-spacing:2px;color:var(--text);text-transform:uppercase;opacity:0.7;}
+.fs-overlay{display:none;position:fixed;inset:0;background:rgba(4,8,16,0.92);backdrop-filter:blur(8px);z-index:100;align-items:center;justify-content:center;flex-direction:column;gap:18px;text-align:center;padding:20px;}
+.fs-overlay.visivel{display:flex;}
+.countdown-num{font-size:min(18rem,34vh);font-weight:900;color:var(--accent);text-shadow:0 0 60px rgba(0,212,255,0.6);line-height:1;animation:pulse 1s ease-in-out;will-change:transform,opacity;transform:translateZ(0);backface-visibility:hidden;}
+@keyframes pulse{0%{transform:scale(1.3);opacity:0;}50%{transform:scale(1.05);}100%{transform:scale(1);opacity:1;}}
+.lbl{font-size:0.7rem;letter-spacing:4px;color:var(--dim);text-transform:uppercase;}
+#segCountdown{width:min(620px,94%);border:2px solid rgba(255,23,68,0.65);background:rgba(255,23,68,0.1);border-radius:16px;padding:24px 30px;}
+#segCountdown .seg-tit{display:flex;align-items:center;justify-content:center;gap:10px;color:#ff5c7a;font-size:1.1rem;font-weight:800;letter-spacing:3px;text-transform:uppercase;margin-bottom:18px;}
+#segCountdown .seg-item{display:flex;align-items:center;gap:16px;color:#ffdbe2;font-size:1.8rem;font-weight:700;text-align:left;margin:15px 0;line-height:1.25;}
+#segCountdown .seg-item .ic{font-size:2.3rem;flex-shrink:0;}
+.titulo-grande{font-size:1.1rem;letter-spacing:3px;color:var(--text);text-transform:uppercase;}
+.metros-grande{font-size:3.4rem;font-weight:900;color:var(--green);text-shadow:0 0 40px rgba(0,230,118,0.4);}
+.posicao-grande{font-size:1.7rem;font-weight:800;color:var(--accent);letter-spacing:1px;}
+.recorde{font-size:0.95rem;font-weight:800;color:#ffd700;letter-spacing:2px;text-transform:uppercase;text-shadow:0 0 20px rgba(255,215,0,0.4);display:none;}
+input[type=text]{background:#0d1722;border:1px solid var(--border);color:var(--text);border-radius:10px;padding:12px 16px;font-family:inherit;font-size:1rem;text-align:center;width:min(320px,80vw);outline:none;}
+input[type=text]:focus{border-color:var(--accent);}
+.fs-btns{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;}
+.btn-fs{padding:12px 26px;border-radius:30px;border:1px solid;font-family:inherit;font-size:0.8rem;letter-spacing:2px;text-transform:uppercase;cursor:pointer;background:transparent;}
+.btn-ok{border-color:var(--green);color:var(--green);} .btn-sec{border-color:#5b7a99;color:#9fb6cc;} .btn-red{border-color:var(--red);color:var(--red);}
+.btn-fs:disabled{opacity:0.35;cursor:default;}
+#hudLinha{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:60;background:rgba(0,0,0,0.6);border:2px solid var(--green);border-radius:18px;padding:10px 28px;color:var(--green);font-size:3.2rem;font-weight:800;letter-spacing:1px;display:none;pointer-events:none;text-shadow:0 0 18px rgba(0,230,118,0.5);white-space:nowrap;}
+#hudLinha.visivel{display:block;}
+#hudEstado{position:fixed;top:12px;left:14px;z-index:62;border:2px solid;border-radius:14px;padding:8px 16px;font-size:1rem;font-weight:800;letter-spacing:1px;display:none;background:rgba(0,0,0,0.45);pointer-events:none;}
+#hudEstado.visivel{display:block;}
+#hudEstado.puxando{color:var(--red);border-color:var(--red);background:rgba(255,23,68,0.22);}
+#hudEstado.recolher{color:var(--green);border-color:var(--green);background:rgba(0,230,118,0.22);}
+#hudEstado.fisgada{color:#ffc061;border-color:#ffb84d;background:rgba(255,170,0,0.22);}
+#hudCarretel{position:fixed;top:12px;right:14px;z-index:62;border:2px solid var(--accent);border-radius:14px;padding:8px 14px;font-size:0.95rem;font-weight:800;letter-spacing:1px;display:none;background:rgba(0,0,0,0.45);color:var(--accent);pointer-events:none;}
+#hudCarretel.visivel{display:block;}
+#hudCarretel.travado{color:var(--red);border-color:var(--red);background:rgba(255,23,68,0.22);}
+#hudTimeline{position:fixed;top:58px;left:14px;z-index:61;width:280px;max-width:58vw;height:38px;background:rgba(0,0,0,0.4);border:1px solid var(--border);border-radius:9px;padding:3px;display:none;pointer-events:none;}
+#hudTimeline.visivel{display:block;}
+#tlCanvas{width:100%;height:100%;display:block;border-radius:6px;}
+#hudConfig{position:fixed;top:56px;right:14px;z-index:120;background:#0a1420;border:1px solid var(--accent);border-radius:10px;padding:10px 12px;display:none;font-size:0.78rem;color:var(--text);min-width:184px;max-width:calc(100vw - 28px);max-height:calc(100dvh - 70px);overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.5);}
+#hudConfig.visivel{display:block;}
+#hudConfig .hc-header{display:flex;align-items:center;justify-content:space-between;gap:12px;position:sticky;top:0;background:#0a1420;padding-bottom:8px;margin-bottom:4px;z-index:1;}
+#hudConfig .hc-fechar{background:rgba(0,212,255,0.12);border:1px solid var(--accent);color:var(--accent);border-radius:7px;width:30px;height:30px;font-size:1rem;line-height:1;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:inherit;}
+#hudConfig .hc-fechar:active{background:rgba(0,212,255,0.3);}
+#hudConfig .hc-tit{font-size:0.6rem;letter-spacing:1.5px;color:#7e96ad;text-transform:uppercase;margin-bottom:6px;}
+#hudConfig label{display:flex;align-items:center;gap:7px;padding:3px 0;cursor:pointer;}
+#hudConfig input{accent-color:var(--accent);cursor:pointer;width:15px;height:15px;}
+#hudSync{position:fixed;bottom:14px;right:14px;z-index:64;display:none;align-items:center;gap:8px;background:rgba(0,0,0,0.6);border:1px solid #ffb84d;border-radius:22px;padding:5px 10px 5px 13px;color:#ffc061;font-size:0.85rem;font-weight:700;}
+#hudSync.visivel{display:flex;}
+#hudSync button{background:rgba(255,170,0,0.16);border:1px solid #ffb84d;color:#ffc061;border-radius:13px;font-family:inherit;font-size:0.82rem;font-weight:800;padding:5px 11px;cursor:pointer;}
+#hudSync button:active{background:rgba(255,170,0,0.38);}
+#hudSync .hs-val{min-width:46px;text-align:center;font-family:monospace;font-weight:800;}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(0,212,255,0.15);border:1px solid rgba(0,212,255,0.4);border-radius:20px;padding:6px 18px;font-size:0.7rem;color:var(--accent);pointer-events:none;opacity:0;transition:opacity .3s;z-index:200;white-space:nowrap;}
+.toast.visivel{opacity:1;}
+.rk-filtros{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;}
+.rk-filtro{padding:7px 15px;border:1px solid #3d5d7e;border-radius:20px;background:rgba(20,40,64,0.4);color:#b9d2e6;cursor:pointer;font-family:inherit;font-size:0.78rem;letter-spacing:1px;}
+.rk-filtro.ativo{border-color:var(--accent);color:#fff;background:rgba(0,212,255,0.18);font-weight:700;}
+.rk-lista{width:min(480px,92vw);max-height:48vh;overflow-y:auto;display:flex;flex-direction:column;gap:7px;}
+.rk-linha{display:flex;align-items:center;gap:12px;background:#0c1722;border:1px solid #1c344e;border-radius:10px;padding:11px 15px;}
+.rk-pos{font-size:1.2rem;font-weight:800;min-width:40px;text-align:center;color:#9fb6cc;}
+.rk-linha.top1{border-color:#ffd700;} .rk-linha.top1 .rk-pos{color:#ffd700;}
+.rk-linha.top2{border-color:#c0c8d0;} .rk-linha.top2 .rk-pos{color:#dde4ea;}
+.rk-linha.top3{border-color:#cd7f32;} .rk-linha.top3 .rk-pos{color:#e89c50;}
+.rk-info{flex:1;min-width:0;text-align:left;}
+.rk-nome{font-size:1.05rem;font-weight:700;color:#eef6ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rk-meta{font-size:0.74rem;color:#8fb0cc;margin-top:1px;}
+.rk-metros{font-size:1.25rem;font-weight:800;color:var(--green);white-space:nowrap;text-shadow:0 0 10px rgba(0,230,118,0.3);}
+.rk-vazio{color:#9fb6cc;font-size:0.9rem;padding:30px;text-align:center;}
+</style>
+</head>
+<body>
+<header>
+  <h1>🎣 SimPesca</h1>
+  <div class="header-right">
+    <div id="linhaBadge" class="badge">LINHA 0.0 m</div>
+    <div id="motorBadge" class="badge">MOTOR 0%</div>
+    <button id="btnBT" onclick="conectarBLE()">🔵 Conectar</button>
+    <button class="btn-dash" onclick="abrirRanking()">🏆 RANKING</button>
+    <button class="btn-dash" id="btnLinha" onclick="resetarLinha()" title="Linha no carretel / limite — clique pra zerar (após re-enrolar)">⟲ LINHA</button>
+    <button class="btn-dash" onclick="toggleConfig()" title="Escolher o que aparece na tela do jogo">👁 EXIBIR</button>
+    <a href="dashboard.html" class="btn-dash">⚙ CONFIG</a>
+  </div>
+</header>
+
+<div class="sims-grid" id="simsGrid"></div>
+
+<div id="hudLinha">🎣 0.0 m</div>
+<div id="hudEstado" class="recolher">🎣 RECOLHA A LINHA</div>
+<div id="hudCarretel">📍 0.0 m</div>
+<div id="hudTimeline"><canvas id="tlCanvas" width="600" height="80"></canvas></div>
+<div id="hudSync"><span>⏱</span><button onclick="nudgeSync(-0.2)">−0.2</button><span class="hs-val" id="hudSyncVal">0.0s</span><button onclick="nudgeSync(0.2)">+0.2</button></div>
+<div id="hudConfig">
+  <div class="hc-header"><span class="hc-tit" style="margin:0;">👁 Exibir na tela</span><button class="hc-fechar" onclick="toggleConfig()" aria-label="Fechar" title="Fechar">✕</button></div>
+  <label><input type="checkbox" id="cfgLinha" checked> Linha enrolada</label>
+  <label><input type="checkbox" id="cfgEstado" checked> Estado (puxa/recolhe)</label>
+  <label><input type="checkbox" id="cfgBarra" checked> Barra de antecipação</label>
+  <label><input type="checkbox" id="cfgCarretel"> Linha no carretel / trava</label>
+  <label><input type="checkbox" id="cfgSync" checked> Ajuste de sincronia (⏱)</label>
+  <div class="hc-tit" style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);">🐟 Peixes na tela</div>
+  <div id="cfgPeixes"></div>
+</div>
+
+<div class="fs-overlay" id="nomeOverlay">
+  <div class="lbl">Quem vai pescar?</div>
+  <input type="text" id="inputNome" maxlength="20" placeholder="Nome do jogador" autocomplete="off">
+  <div class="fs-btns"><button class="btn-fs btn-ok" onclick="confirmarNome()">▶ Começar</button><button class="btn-fs btn-sec" onclick="fecharNome()">Cancelar</button></div>
+</div>
+<div class="fs-overlay" id="linhaOverlay">
+  <div class="titulo-grande">🧵 Pouca linha no carretel</div>
+  <div class="lbl" id="linhaOvlInfo">—</div>
+  <div class="metros-grande" id="linhaOvlCarretel" style="color:#ffc061;text-shadow:0 0 40px rgba(255,170,0,0.4);">0.0 m</div>
+  <div class="lbl">enrole a linha de volta no carretel até zerar</div>
+  <div class="fs-btns"><button class="btn-fs btn-ok" id="linhaOvlOk" onclick="linhaOvlContinuar()" disabled>enrole mais...</button><button class="btn-fs btn-sec" onclick="fecharLinhaOverlay()">Cancelar</button></div>
+</div>
+<div class="fs-overlay" id="countdownOverlay"><div class="countdown-num" id="countdownNum">5</div><div class="lbl">Preparando simulação</div>
+  <div id="segCountdown">
+    <div class="seg-tit">⚠️ Segurança</div>
+    <div class="seg-item"><span class="ic">✋</span> Mantenha as mãos longe da linha</div>
+    <div class="seg-item"><span class="ic">🎣</span> Segure a vara com firmeza e não solte</div>
+    <div class="seg-item"><span class="ic">🛑</span> Se precisar, peça para parar a qualquer momento</div>
+  </div>
+</div>
+<div class="fs-overlay" id="pauseOverlay"><div class="titulo-grande">⏸ Pausado</div><div class="fs-btns"><button class="btn-fs btn-ok" onclick="continuarSim()">▶ Continuar</button><button class="btn-fs btn-red" onclick="reiniciarSim()">↺ Reiniciar</button></div></div>
+<div class="fs-overlay" id="resultadoOverlay">
+  <div class="recorde" id="resultadoRecorde">🏆 Novo recorde!</div>
+  <div class="lbl">Linha recolhida</div>
+  <div class="metros-grande" id="resultadoMetros">0.0 m</div>
+  <div class="posicao-grande" id="resultadoPos">—</div>
+  <div class="lbl" id="resultadoNome">—</div>
+  <div class="fs-btns"><button class="btn-fs btn-ok" onclick="fecharResultado();abrirRanking()">🏆 Ver ranking</button><button class="btn-fs btn-sec" onclick="fecharResultado()">Fechar</button></div>
+</div>
+<div class="fs-overlay" id="rankingOverlay">
+  <div class="titulo-grande">🏆 Ranking</div>
+  <div class="rk-filtros" id="rkFiltros">
+    <button class="rk-filtro ativo" data-sim="todos" onclick="filtrarRanking('todos',this)">Todas</button>
+  </div>
+  <div class="rk-lista" id="rkLista"></div>
+  <div class="fs-btns"><button class="btn-fs btn-sec" onclick="fecharRanking()">Fechar</button></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ══ BLUETOOTH ═════════════════════════════════════════════════
+const SERVICE_UUID="a1b2c3d4-0001-4a5b-8c6d-1234567890ab";
+const CHAR_MOTOR_UUID="a1b2c3d4-0002-4a5b-8c6d-1234567890ab";
+const CHAR_LINHA_UUID="a1b2c3d4-0003-4a5b-8c6d-1234567890ab";
+const CHAR_FISGADA_UUID="a1b2c3d4-0004-4a5b-8c6d-1234567890ab";
+let bleDevice=null, motorChar=null, linhaChar=null, fisgadaChar=null, contagemEncoder=0;
+let contAnt=0, primeiraLeitura=true, metrosGanhos=0, metrosPerdidos=0, contando=false;
+function btUI(c,t){ const b=document.getElementById('btnBT'); b.className=c; b.textContent=t; }
+async function conectarBLE(){
+  if(!navigator.bluetooth){ alert('Sem Web Bluetooth. Use Chrome/Edge no PC ou Android.'); return; }
+  try{ btUI('','🔵 Procurando...'); bleDevice=await navigator.bluetooth.requestDevice({filters:[{services:[SERVICE_UUID]}]}); await ligar(bleDevice); }
+  catch(e){ btUI('erro','🔴 Falhou'); }
+}
+async function ligar(device){
+  bleDevice=device;
+  device.addEventListener('gattserverdisconnected',()=>{
+    motorChar=null; linhaChar=null; btUI('erro','🔵 Reconectar'); mostrarToast('⚠ Bluetooth caiu — motor travado');
+    // SEGURANÇA: pausa qualquer simulação em andamento ao perder a conexão
+    Object.keys(SIMS).forEach(id=>{ if(SIMS[id].estaRodando) pausarSim(id); });
+  });
+  btUI('','🔵 Conectando...');
+  const server=await device.gatt.connect();
+  const service=await server.getPrimaryService(SERVICE_UUID);
+  motorChar=await service.getCharacteristic(CHAR_MOTOR_UUID);
+  try{
+    linhaChar=await service.getCharacteristic(CHAR_LINHA_UUID);
+    await linhaChar.startNotifications();
+    linhaChar.addEventListener('characteristicvaluechanged', e=>{
+      const nova=e.target.value.getInt32(0,true);
+      if(primeiraLeitura){ contAnt=nova; primeiraLeitura=false; }
+      if(contando){ const dM=contagemParaMetros(nova-contAnt); if(dM>0) metrosGanhos+=dM; else metrosPerdidos+=-dM; checarLimiteSeguranca(); }
+      contAnt=nova; contagemEncoder=nova; atualizarLinha();
+    });
+  }catch(e){}
+  try{ fisgadaChar=await service.getCharacteristic(CHAR_FISGADA_UUID); }catch(e){ fisgadaChar=null; }
+  btUI('conectado','🟢 Conectado'); mostrarToast('Bluetooth conectado');
+}
+// ── Fisgada física (puxadas do motor no início) ───────────────
+const FISFIS_GLOBAL={fisfispot:'simpesca_fisfis_pot', fisfisvoltas:'simpesca_fisfis_voltas', fisfisdur:'simpesca_fisfis_dur'};
+function fisgadaFisicaCfg(id){   // POR PEIXE (simpesca_gen_<id>_fisfis*), com fallback do global antigo e padrões
+  const g=(key,d)=>{ let v=parseFloat(localStorage.getItem('simpesca_gen_'+id+'_'+key)); if(isFinite(v))return v; v=parseFloat(localStorage.getItem(FISFIS_GLOBAL[key])); return isFinite(v)?v:d; };
+  return { pot:Math.max(0,Math.min(100,g('fisfispot',15))), voltas:Math.max(1,Math.round(g('fisfisvoltas',1))), dur:Math.max(0,g('fisfisdur',5)) };
+}
+function enviarFisgadaFisica(c){ if(!fisgadaChar) return; const ms=Math.round(c.dur*1000); const b=new Uint8Array([Math.round(c.pot), Math.round(c.voltas), ms&0xFF, (ms>>8)&0xFF]); try{ fisgadaChar.writeValueWithoutResponse?fisgadaChar.writeValueWithoutResponse(b):fisgadaChar.writeValue(b); }catch(e){} }
+function pararFisgadaFisica(){ if(!fisgadaChar) return; try{ const b=new Uint8Array([0,0,0,0]); fisgadaChar.writeValueWithoutResponse?fisgadaChar.writeValueWithoutResponse(b):fisgadaChar.writeValue(b); }catch(e){} }
+async function tentarReconectar(){
+  if(!navigator.bluetooth||!navigator.bluetooth.getDevices) return;
+  try{ const d=await navigator.bluetooth.getDevices(); if(d.length){ btUI('','🔵 Reconectando...'); await ligar(d[0]).catch(()=>btUI('','🔵 Conectar')); } }catch(e){}
+}
+function escreverMotorBLE(pct){ if(!motorChar) return; const b=new Uint8Array([Math.max(0,Math.min(100,Math.round(pct)))]); try{ motorChar.writeValueWithoutResponse?motorChar.writeValueWithoutResponse(b):motorChar.writeValue(b); }catch(e){} }
+// Zera a LINHA do carretel (re-spool): operador usa após re-enrolar a linha na carretilha/molinete
+function zerarEncoder(){ contagemEncoder=0; contAnt=0; primeiraLeitura=true; metrosGanhos=0; metrosPerdidos=0; atualizarLinha(); if(linhaChar){ try{ linhaChar.writeValue(new Uint8Array([0])); }catch(e){} } }
+// Novo jogador: zera só a contagem DESTE jogo (HUD/ranking); a linha do carretel continua acumulada
+function novoJogoContadores(){ metrosGanhos=0; metrosPerdidos=0; contAnt=contagemEncoder; atualizarLinha(); }
+function resetarLinha(){ if(confirm('Zerar a linha acumulada do carretel?\nFaça isso só DEPOIS de re-enrolar a linha na carretilha/molinete.')){ zerarEncoder(); mostrarToast('Linha do carretel zerada'); } }
+
+// ══ CALIBRAÇÃO / LINHA ────────────────────────────────────────
+function metrosPorVolta(){ const v=parseFloat(localStorage.getItem('simpesca_cal_mpv')); return (isFinite(v)&&v>0)?v:0.0854; }
+function limiteLinha(){ const v=parseFloat(localStorage.getItem('simpesca_cal_limite')); return (isFinite(v)&&v!==0)?v:-50; }
+function inverterDir(){ return localStorage.getItem('simpesca_cal_inv')==='1'; }
+function contagemParaMetros(c){ let m=(c/4096)*metrosPorVolta(); if(inverterDir()) m=-m; return m; }
+function metrosAtuais(){ return Math.max(0, metrosGanhos); }   // só os metros recolhidos (ganhos)
+function atualizarLinha(){ const m=metrosAtuais(); document.getElementById('linhaBadge').textContent='LINHA '+m.toFixed(1)+' m'; document.getElementById('hudLinha').textContent='🧵 Enrolada: '+m.toFixed(1)+' m';
+  const car=linhaCarretel(), L=limiteLinha(), travadoLin=Math.abs(car)>=Math.abs(L);
+  const hc=document.getElementById('hudCarretel');
+  hc.textContent='📍 Carretel: '+car.toFixed(1)+' / '+L.toFixed(0)+' m'; hc.classList.toggle('travado', travadoLin);
+  const bl=document.getElementById('btnLinha'); bl.textContent='⟲ '+car.toFixed(1)+' / '+L.toFixed(0)+' m'; bl.style.color=travadoLin?'#ff5a7d':''; bl.style.borderColor=travadoLin?'#ff5a7d':'';
+  atualizarLinhaOverlay(); }
+// Linha ABSOLUTA do carretel (posição líquida do encoder) — ACUMULA entre jogadores, NÃO zera por jogo
+function linhaCarretel(){ return contagemParaMetros(contagemEncoder); }
+// Estimativa de quanto o peixe PUXA na simulação (mesma conta do dashboard: velMotor·∫pot dt/100)
+function velMotor(){ const v=parseFloat(localStorage.getItem('simpesca_cal_velmax')); return (isFinite(v)&&v>0)?v:2.5; }
+function integralPot(pts){ if(!pts||!pts.length) return 0; const seq=[{t:0,pot:pts[0].pot}].concat(pts).concat([{t:90,pot:pts[pts.length-1].pot}]); let a=0; for(let i=0;i<seq.length-1;i++){ const p=seq[i],q=seq[i+1],dt=q.t-p.t; if(dt>0) a+=(p.pot+q.pot)/2*dt; } return a; }
+function estimarLinhaPts(pts){ return velMotor()*integralPot(pts)/100; }
+function linhaDisponivel(){ return Math.abs(limiteLinha()) - Math.abs(linhaCarretel()); }   // o que ainda cabe puxar
+// SEGURANÇA: a linha do carretel atingiu o limite físico -> para o motor
+function checarLimiteSeguranca(){
+  if(!contando) return;
+  if(Math.abs(linhaCarretel()) >= Math.abs(limiteLinha())){
+    Object.keys(SIMS).forEach(id=>{ if(SIMS[id].estaRodando) pausarSim(id); });
+    mostrarToast('🛑 Limite de linha atingido — motor parado');
+  }
+}
+
+// ══ PERFIS — MODELO DE PONTOS {t, pot} ════════════════════════
+// Perfis antigos (gatilhos) embutidos só para gerar a curva inicial.
+const GATILHOS_PADRAO={
+  A:[{"t":0.23,"potIni":0,"pot":51,"sub":2600,"pico":800,"pot2":93,"trans":400,"pico2":1200,"desc":600,"potFim":67},{"t":5.83,"potIni":67,"pot":67,"sub":300,"pico":800,"pot2":40,"trans":400,"pico2":1200,"desc":600,"potFim":0},{"t":14.02,"potIni":0,"pot":22,"sub":300,"pico":800,"pot2":40,"trans":400,"pico2":1200,"desc":600,"potFim":0},{"t":17.25,"potIni":0,"pot":80,"sub":1150,"pico":800,"pot2":40,"trans":400,"pico2":1200,"desc":600,"potFim":0},{"t":25.46,"potIni":0,"pot":26,"sub":300,"pico":800,"pot2":50,"trans":400,"pico2":1900,"desc":600,"potFim":50},{"t":29.43,"potIni":50,"pot":42,"sub":300,"pico":800,"pot2":24,"trans":400,"pico2":1200,"desc":600,"potFim":0},{"t":38.51,"potIni":0,"pot":29,"sub":300,"pico":800,"pot2":47,"trans":400,"pico2":1200,"desc":600,"potFim":66},{"t":41.81,"potIni":66,"pot":80,"sub":800,"pico":2100,"pot2":36,"trans":2200,"pico2":4200,"desc":1750,"potFim":0},{"t":58.63,"potIni":0,"pot":10,"sub":0,"pico":800,"pot2":10,"trans":450,"pico2":0,"desc":0,"potFim":0}],
+  B:[{"t":1.38,"potIni":0,"pot":14,"sub":550,"pico":2200,"pot2":56,"trans":400,"pico2":100,"desc":600,"potFim":14},{"t":5.14,"potIni":14,"pot":60,"sub":550,"pico":100,"pot2":21,"trans":400,"pico2":100,"desc":600,"potFim":61},{"t":6.9,"potIni":61,"pot":20,"sub":650,"pico":3100,"pot2":90,"trans":300,"pico2":1700,"desc":4950,"potFim":0}],
+  C:[{"t":0.3,"potIni":0,"pot":14,"sub":550,"pico":2200,"pot2":56,"trans":400,"pico2":100,"desc":600,"potFim":14},{"t":4.14,"potIni":14,"pot":50,"sub":550,"pico":100,"pot2":21,"trans":400,"pico2":100,"desc":600,"potFim":61},{"t":5.89,"potIni":61,"pot":20,"sub":650,"pico":3300,"pot2":60,"trans":300,"pico2":1200,"desc":2200,"potFim":16},{"t":13.48,"potIni":16,"pot":49,"sub":650,"pico":100,"pot2":18,"trans":400,"pico2":1200,"desc":600,"potFim":0},{"t":21.34,"potIni":0,"pot":32,"sub":1800,"pico":0,"pot2":9,"trans":450,"pico2":300,"desc":700,"potFim":41},{"t":24.58,"potIni":41,"pot":17,"sub":300,"pico":800,"pot2":1,"trans":450,"pico2":1200,"desc":600,"potFim":0},{"t":34.67,"potIni":0,"pot":52,"sub":1150,"pico":300,"pot2":25,"trans":400,"pico2":100,"desc":750,"potFim":61},{"t":37.44,"potIni":61,"pot":25,"sub":300,"pico":800,"pot2":18,"trans":400,"pico2":1200,"desc":600,"potFim":0},{"t":46.57,"potIni":0,"pot":12,"sub":1000,"pico":2400,"pot2":65,"trans":350,"pico2":300,"desc":500,"potFim":19},{"t":51.16,"potIni":19,"pot":63,"sub":300,"pico":400,"pot2":28,"trans":400,"pico2":500,"desc":700,"potFim":63},{"t":53.45,"potIni":63,"pot":66,"sub":300,"pico":0,"pot2":36,"trans":550,"pico2":1000,"desc":600,"potFim":0},{"t":59.2,"potIni":0,"pot":10,"sub":0,"pico":800,"pot2":10,"trans":450,"pico2":0,"desc":0,"potFim":0}]
+};
+function gatilhosParaPontos(gatilhos){
+  const p=[];
+  gatilhos.slice().sort((a,b)=>a.t-b.t).forEach(g=>{
+    let t=g.t; p.push({t, pot:g.potIni||0});
+    t+=(g.sub||0)/1000;  p.push({t, pot:g.pot||0});
+    t+=(g.pico||0)/1000; p.push({t, pot:g.pot||0});
+    if((g.trans||0)>0){ t+=g.trans/1000; p.push({t, pot:g.pot2||0}); }
+    if((g.pico2||0)>0){ t+=g.pico2/1000; p.push({t, pot:g.pot2||0}); }
+    t+=(g.desc||0)/1000; p.push({t, pot:g.potFim||0});
+  });
+  return p.map(x=>({t:Math.round(x.t*100)/100, pot:Math.max(0,Math.min(100,Math.round(x.pot)))})).sort((a,b)=>a.t-b.t);
+}
+let curvasGitHub={};
+function carregarPontos(id){
+  // 1º: GitHub (curvas.json) — fonte de verdade entre dispositivos
+  if(curvasGitHub[id]&&Array.isArray(curvasGitHub[id])&&curvasGitHub[id].length) return curvasGitHub[id].slice().sort((a,b)=>a.t-b.t);
+  // 2º: localStorage (offline, ou editado localmente nesta máquina)
+  try{ const r=localStorage.getItem('simpesca_pontos_'+id); if(r){ const d=JSON.parse(r); if(Array.isArray(d)&&d.length) return d.slice().sort((a,b)=>a.t-b.t); } }catch(e){}
+  // fallback: curvas antigas A/B/C (cíclico) ou padrão embutido
+  const idx=Math.max(0,ESPECIES.findIndex(e=>e.id===id)), L=['A','B','C'][idx%3];
+  try{ const r=localStorage.getItem('simpesca_pontos_'+L); if(r){ const d=JSON.parse(r); if(Array.isArray(d)&&d.length) return d.slice().sort((a,b)=>a.t-b.t); } }catch(e){}
+  return gatilhosParaPontos(GATILHOS_PADRAO[L]);
+}
+function interpolarPontos(pontos, t){
+  if(!pontos.length) return 0;
+  if(t<=pontos[0].t) return pontos[0].pot;
+  const last=pontos[pontos.length-1]; if(t>=last.t) return last.pot;
+  for(let i=0;i<pontos.length-1;i++){ const a=pontos[i], b=pontos[i+1];
+    if(t>=a.t && t<=b.t){ return b.t===a.t ? b.pot : a.pot+(b.pot-a.pot)*((t-a.t)/(b.t-a.t)); } }
+  return last.pot;
+}
+
+// ══ ESTADO ════════════════════════════════════════════════════
+// UMA simulação POR PEIXE: cada espécie tem seu vídeo (video_<id>.mp4) e sua curva (simpesca_pontos_<id>)
+const ESPECIES=[
+  {id:'pirarara', nome:'Pirarara'},
+  {id:'tambaqui', nome:'Tambacu'},
+  {id:'tucunare', nome:'Tucunaré'},
+  {id:'dourado',  nome:'Dourado'},
+  {id:'trairao',  nome:'Trairão'},
+  {id:'jau',      nome:'Jaú'}
+];
+function nomePeixe(id){ const e=ESPECIES.find(x=>x.id===id); return e?e.nome:id; }
+// Sincronia POR VÍDEO: atraso (s) da simulação vs o vídeo. Positivo = motor age mais tarde (alinha com o vídeo).
+function syncVideo(id){ const v=parseFloat(localStorage.getItem('simpesca_sync_'+id)); return isFinite(v)?v:0; }
+function salvarSync(id){ const el=document.getElementById('sync_'+id); if(!el) return; let v=parseFloat(el.value); if(!isFinite(v)) v=0; v=Math.max(-30,Math.min(30,Math.round(v*10)/10)); el.value=v; localStorage.setItem('simpesca_sync_'+id,v); agendarSyncPlayer(); }
+const SIMS={};
+ESPECIES.forEach(e=>{ SIMS[e.id]={letra:e.id,nome:e.nome,video:null,wrapper:null,overlay:null,prog:null,pontos:[],intervalo:null,estaRodando:false}; });
+let simEmContagem=null, simEmPausa=null, nomeJogador='';
+
+// ── IndexedDB para vídeos locais ──────────────────────────────
+const VIDEO_DB='simpesca-videos', VIDEO_STORE='videos';
+function abrirVideoDB(){ return new Promise((res,rej)=>{ const r=indexedDB.open(VIDEO_DB,1); r.onupgradeneeded=e=>e.target.result.createObjectStore(VIDEO_STORE); r.onsuccess=e=>res(e.target.result); r.onerror=rej; }); }
+async function lerVideoDB(key){ const db=await abrirVideoDB(); return new Promise((res,rej)=>{ const r=db.transaction(VIDEO_STORE,'readonly').objectStore(VIDEO_STORE).get(key); r.onsuccess=e=>res(e.target.result||null); r.onerror=rej; }); }
+
+// ── LAZY-LOAD: 1 vídeo por vez na memória (totem trava com os 6 abertos) ──
+let videoCarregado=null;
+async function carregarVideo(id){
+  if(videoCarregado===id) return;            // já está na memória
+  liberarVideoAtual();                        // libera o anterior antes de abrir o novo
+  const sim=SIMS[id];
+  try{
+    const blob=await lerVideoDB('video_'+id);
+    if(blob){ sim._url=URL.createObjectURL(blob); sim.video.src=sim._url; }   // vídeo local (IndexedDB)
+    else    { sim._url=null; sim.video.src='video_'+id+'.mp4'; }              // fallback: rede/cache
+  }catch(e){ sim._url=null; sim.video.src='video_'+id+'.mp4'; }
+  sim.video.load();
+  videoCarregado=id;
+}
+function liberarVideoAtual(){
+  if(videoCarregado===null) return;
+  const sim=SIMS[videoCarregado];
+  try{ sim.video.pause(); }catch(e){}
+  sim.video.removeAttribute('src');
+  if(sim._url){ URL.revokeObjectURL(sim._url); sim._url=null; }   // devolve a memória do blob
+  try{ sim.video.load(); }catch(e){}                              // libera o decodificador
+  if(sim.prog) sim.prog.style.width='0%';                          // zera a barra de progresso do card
+  videoCarregado=null;
+}
+
+// Aplica calibração + sincronia vindas do config.json do GitHub (fonte de verdade entre dispositivos)
+function aplicarConfigPlayer(d){
+  if(!d) return;
+  const c=d.cal||{};
+  if(c.mpv)          localStorage.setItem('simpesca_cal_mpv', c.mpv);
+  if(c.limite)       localStorage.setItem('simpesca_cal_limite', c.limite);
+  if(c.velmax)       localStorage.setItem('simpesca_cal_velmax', c.velmax);
+  if(c.offset!=null) localStorage.setItem('simpesca_cal_offset', c.offset);
+  if(c.inv!=null)    localStorage.setItem('simpesca_cal_inv', c.inv);
+  const s=d.sync||{};
+  ESPECIES.forEach(e=>{ if(s[e.id]!=null) localStorage.setItem('simpesca_sync_'+e.id, s[e.id]); });
+}
+
+// ── AUTO-SAVE da sincronia no GitHub (só num PC com token; o totem não tem token → só lê) ──
+const GH_REPO='guilhermeogera-beep/Simularpesca2', GH_CONFIG='config.json';
+function ghToken(){ return (localStorage.getItem('simpesca_github_token')||'').trim(); }
+let ghSyncTimer=null, ghSyncEnviando=false;
+function agendarSyncPlayer(){
+  if(!ghToken()) return;                                  // sem token (totem): não publica
+  localStorage.setItem('simpesca_sync_pend','1');
+  clearTimeout(ghSyncTimer); ghSyncTimer=setTimeout(enviarSyncPlayer, 2500);
+}
+async function enviarSyncPlayer(){
+  if(ghSyncEnviando || !ghToken()) return;
+  if(!navigator.onLine) return;                           // sobe quando a internet voltar
+  ghSyncEnviando=true;
+  const headers={'Authorization':'token '+ghToken(),'Accept':'application/vnd.github+json'};
+  const url='https://api.github.com/repos/'+GH_REPO+'/contents/'+GH_CONFIG;
+  let cfg={versao:1,tipo:'config',cal:{},gen:{},sync:{}}, sha=null, getOk=false, is404=false;
+  try{ const g=await fetch(url,{headers,cache:'no-store'});
+    if(g.ok){ const j=await g.json(); sha=j.sha; try{ cfg=JSON.parse(decodeURIComponent(escape(atob((j.content||'').replace(/\s/g,''))))); }catch(e){} getOk=true; }
+    else if(g.status===404){ is404=true; }                // arquivo ainda não existe: vai criar
+  }catch(e){ ghSyncEnviando=false; return; }               // offline/erro de rede: tenta depois
+  if(!getOk && !is404){ ghSyncEnviando=false; return; }     // erro (rate limit/token): NÃO arrisca sobrescrever cal/gen
+  cfg.sync=cfg.sync||{}; ESPECIES.forEach(e=>{ cfg.sync[e.id]=localStorage.getItem('simpesca_sync_'+e.id)||'0'; });
+  cfg.criado=new Date().toISOString();
+  const content=btoa(unescape(encodeURIComponent(JSON.stringify(cfg,null,2))));
+  const body={message:'auto: sincronia',content}; if(sha) body.sha=sha;
+  let ok=false; try{ const r=await fetch(url,{method:'PUT',headers,body:JSON.stringify(body)}); ok=r.ok; }catch(e){}
+  ghSyncEnviando=false;
+  if(ok){ localStorage.removeItem('simpesca_sync_pend'); mostrarToast('☁️ sincronia salva na nuvem'); }
+  else mostrarToast('⏳ sincronia: sobe quando tiver internet');
+}
+window.addEventListener('online',()=>{ if(ghToken() && localStorage.getItem('simpesca_sync_pend')) enviarSyncPlayer(); });
+
+window.addEventListener('load',async()=>{
+  // GitHub é a fonte de verdade: curvas (curvas.json) + calibração/sincronia (config.json)
+  try{
+    const [rc,rg]=await Promise.all([
+      fetch('curvas.json',{cache:'no-store'}).catch(()=>null),   // online: fresco · offline: SW serve o cacheado
+      fetch('config.json',{cache:'no-store'}).catch(()=>null)
+    ]);
+    if(rc&&rc.ok){ const d=await rc.json(); curvasGitHub=d.curvas||{}; }
+    if(rg&&rg.ok){ const d=await rg.json(); aplicarConfigPlayer(d); }
+  }catch(e){}
+  // monta os cards (1 por peixe)
+  const grid=document.getElementById('simsGrid');
+  ESPECIES.forEach((e,i)=>{
+    const cls=['a','b','c'][i%3];
+    const bloco=document.createElement('div'); bloco.className='sim-bloco'; bloco.id='bloco_'+e.id;
+    bloco.innerHTML=
+      '<div class="sim-titulo"><span class="sim-badge sim-badge-'+cls+'">🐟 '+e.nome.toUpperCase()+'</span></div>'+
+      '<div class="video-wrapper" id="wrapper_'+e.id+'">'+
+        '<video id="video_'+e.id+'" preload="none" playsinline></video>'+
+        '<div class="video-progress"><div class="video-progress-bar" id="prog_'+e.id+'"></div></div>'+
+        '<div class="overlay" id="overlay_'+e.id+'"><button class="btn-play" onclick="pedirNome(\''+e.id+'\')"><svg width="26" height="26" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button><span class="sim-nome-overlay">'+e.nome+'</span></div>'+
+      '</div>'+
+      '<div class="card-sync" style="text-align:center;margin-top:6px;font-size:0.72rem;color:#7b8d9e;"><label title="Atraso da simulação em relação ao vídeo (s). Positivo = as ações do motor acontecem mais tarde. Ajuste pra casar a briga com o vídeo.">⏱ sincronia <input type="number" id="sync_'+e.id+'" step="0.1" value="0" onchange="salvarSync(\''+e.id+'\')" style="width:62px;text-align:center;background:#0d151d;border:1px solid #1a2736;border-radius:5px;color:#e0e6ed;font-family:monospace;padding:3px 4px;outline:none;"> s</label></div>';
+    grid.appendChild(bloco);
+  });
+  ESPECIES.forEach(e=>{
+    const id=e.id, s=SIMS[id];
+    s.video=document.getElementById('video_'+id); s.wrapper=document.getElementById('wrapper_'+id);
+    s.overlay=document.getElementById('overlay_'+id); s.prog=document.getElementById('prog_'+id);
+    s.pontos=carregarPontos(id);
+    const sy=document.getElementById('sync_'+id); if(sy) sy.value=syncVideo(id);   // carrega a sincronia salva
+    s.video.addEventListener('click',()=>{ if(s.estaRodando) pausarSim(id); });
+    s.video.addEventListener('timeupdate',()=>{ s.prog.style.width=((s.video.currentTime/s.video.duration)*100||0)+'%'; });
+    s.video.addEventListener('ended',()=>encerrarSim(id,true,true));
+  });
+  // OBS: os vídeos NÃO são carregados aqui. Pra economizar memória do totem (que trava com 6
+  // vídeos abertos ao mesmo tempo), cada vídeo só entra na memória quando o peixe é escolhido
+  // (carregarVideo) e é liberado ao terminar (liberarVideoAtual).
+  // filtros do ranking (1 por peixe)
+  const rkF=document.getElementById('rkFiltros');
+  ESPECIES.forEach(e=>{ const b=document.createElement('button'); b.className='rk-filtro'; b.dataset.sim=e.id; b.textContent=e.nome; b.onclick=()=>filtrarRanking(e.id,b); rkF.appendChild(b); });
+  document.getElementById('inputNome').value=localStorage.getItem('simpesca_ultimo_nome')||'';
+  carregarHudCfg();
+  if('serviceWorker' in navigator) navigator.serviceWorker.register('service-worker.js').catch(()=>{});
+  if(ghToken() && navigator.onLine && localStorage.getItem('simpesca_sync_pend')) enviarSyncPlayer();   // retoma sincronia pendente
+  tentarReconectar();
+});
+
+// ══ MOTOR ═════════════════════════════════════════════════════
+let ultimoToastTrava=0;
+function travado(){ return Math.abs(linhaCarretel()) >= Math.abs(limiteLinha()); }
+function offsetMotor(){ const v=parseFloat(localStorage.getItem('simpesca_cal_offset')); return (isFinite(v)&&v>=0&&v<100)?v:15; }
+function comOffset(pct){ return pct>0 ? Math.min(100, offsetMotor()+(100-offsetMotor())*pct/100) : 0; }  // 0=desligado; >0 começa no offset (mín. pra girar)
+function aplicarMotor(pct){ pct=Math.max(0,Math.min(100,pct));
+  if(travado()){ if(pct>0 && Date.now()-ultimoToastTrava>2500){ ultimoToastTrava=Date.now(); mostrarToast('🛑 Motor travado pelo limite de linha'); } pct=0; }
+  pct=comOffset(pct);
+  escreverMotorBLE(pct); const b=document.getElementById('motorBadge'); b.textContent='MOTOR '+pct.toFixed(0)+'%'; b.className='badge '+(pct>70?'alto':pct>0?'ativo':'');
+  const est=document.getElementById('hudEstado'); const puxando=pct>=1;
+  est.classList.remove('fisgada');
+  est.classList.toggle('puxando',puxando); est.classList.toggle('recolher',!puxando);
+  est.textContent=puxando?'🐟 PEIXE PUXANDO — segure!':'🎣 RECOLHA A LINHA!'; }
+
+// ── BARRA DE ANTECIPAÇÃO (estilo waveform) + visibilidade configurável dos HUDs ──
+let simTocando=null, tlRAF=null, emJogo=false;
+const TL_PASSADO=1.4, TL_FUTURO=6.0;   // segundos à esquerda (passado) e à direita (futuro) do "AGORA"
+const hudCfg={linha:true, estado:true, barra:true, carretel:false, sync:true};
+function loopTimeline(){ tlRAF=requestAnimationFrame(loopTimeline); if(simTocando!=null) desenharTimeline(SIMS[simTocando]); }
+function desenharTimeline(sim){
+  const cv=document.getElementById('tlCanvas'); if(!cv) return;
+  const ctx=cv.getContext('2d'), W=cv.width, H=cv.height, P=sim.pontos;
+  const now=(sim.video.currentTime-syncVideo(simTocando))||0, t0=now-TL_PASSADO, span=TL_PASSADO+TL_FUTURO, N=140;   // tempo EFETIVO (com a sincronia), igual ao motor
+  const yOf=t=>H-(interpolarPontos(P,t)/100)*(H-4)-2;
+  const durFis=fisgadaFisicaCfg(simTocando).dur;
+  const xFis=durFis>0 ? ((durFis-t0)/span)*W : 0;        // borda direita da fisgada
+  const xStart=Math.min(W, Math.max(0, xFis));           // a CURVA só começa aqui (depois da fisgada)
+  ctx.clearRect(0,0,W,H);
+  // área preenchida (degradê) — só a partir do fim da fisgada
+  ctx.beginPath(); ctx.moveTo(xStart,H);
+  for(let i=0;i<=N;i++){ const x=(i/N)*W; if(x<xStart) continue; ctx.lineTo(x, yOf(t0+(x/W)*span)); }
+  ctx.lineTo(W,H); ctx.closePath();
+  const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,'rgba(0,212,255,0.40)'); g.addColorStop(1,'rgba(0,212,255,0.02)'); ctx.fillStyle=g; ctx.fill();
+  // linha brilhante, cor pelo estado — só a partir do fim da fisgada
+  ctx.lineWidth=3; ctx.lineJoin='round'; ctx.save(); ctx.shadowBlur=8;
+  let started=false, px=0, py=0;
+  for(let i=0;i<=N;i++){ const x=(i/N)*W; if(x<xStart) continue; const t=t0+(x/W)*span, pot=interpolarPontos(P,t), y=yOf(t);
+    if(!started){ px=x; py=y; started=true; continue; }
+    const c=pot>=1?'#ff6184':'#1bffa0'; ctx.strokeStyle=c; ctx.shadowColor=c; ctx.beginPath(); ctx.moveTo(px,py); ctx.lineTo(x,y); ctx.stroke(); px=x; py=y; }
+  ctx.restore();
+  // zona da FISGADA FÍSICA (0..durFis) — só a faixa laranja
+  if(durFis>0){
+    const xa=Math.max(0,((0-t0)/span)*W), xb=Math.min(W,xFis);
+    if(xb>xa){
+      ctx.fillStyle='rgba(255,170,0,0.28)'; ctx.fillRect(xa,0,xb-xa,H);
+      ctx.fillStyle='rgba(255,170,0,0.85)'; ctx.fillRect(xb-1.5,0,3,H);
+      if(xb-xa>46){ ctx.fillStyle='#ffd089'; ctx.font='bold 15px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('🎣 fisgada',(xa+xb)/2,H/2); }
+    }
+  }
+  // marcador losango "AGORA"
+  const xn=(TL_PASSADO/span)*W; ctx.fillStyle='rgba(255,255,255,0.45)'; ctx.fillRect(xn-0.5,0,1,H);
+  ctx.save(); ctx.translate(xn,H/2); ctx.rotate(Math.PI/4); ctx.shadowBlur=10; ctx.shadowColor='#fff'; ctx.fillStyle='#fff'; ctx.fillRect(-6,-6,12,12); ctx.restore();
+}
+// Mostra/oculta cada HUD conforme as caixas + se está em jogo; controla o loop da barra
+function atualizarVisibilidadeHUD(){
+  document.getElementById('hudLinha').classList.toggle('visivel', emJogo && hudCfg.linha);
+  document.getElementById('hudEstado').classList.toggle('visivel', emJogo && hudCfg.estado);
+  document.getElementById('hudTimeline').classList.toggle('visivel', emJogo && hudCfg.barra);
+  document.getElementById('hudCarretel').classList.toggle('visivel', emJogo && hudCfg.carretel);
+  document.getElementById('hudSync').classList.toggle('visivel', emJogo && hudCfg.sync);
+  if(emJogo && hudCfg.sync) atualizarHudSync();
+  const rodar = simTocando!=null && hudCfg.barra;
+  if(rodar){ if(!tlRAF) tlRAF=requestAnimationFrame(loopTimeline); }
+  else if(tlRAF){ cancelAnimationFrame(tlRAF); tlRAF=null; }
+}
+function toggleConfig(){ document.getElementById('hudConfig').classList.toggle('visivel'); }
+// Ajuste de sincronia AO VIVO durante o jogo (nudge ∓0,2s no peixe tocando)
+function atualizarHudSync(){ const el=document.getElementById('hudSyncVal'); if(el && simTocando!=null) el.textContent=syncVideo(simTocando).toFixed(1)+'s'; }
+function nudgeSync(delta){
+  if(simTocando==null) return;
+  let v=Math.max(-30,Math.min(30,Math.round((syncVideo(simTocando)+delta)*10)/10));
+  localStorage.setItem('simpesca_sync_'+simTocando, v);
+  const card=document.getElementById('sync_'+simTocando); if(card) card.value=v;   // mantém o card alinhado
+  atualizarHudSync();
+  agendarSyncPlayer();
+}
+// mostra/esconde o campo ⏱ sincronia nos cards (tela de seleção) conforme o toggle do EXIBIR
+function atualizarSyncCards(){ document.querySelectorAll('.card-sync').forEach(el=>{ el.style.display = hudCfg.sync ? '' : 'none'; }); }
+function salvarHudCfg(){ localStorage.setItem('simpesca_hud_linha',hudCfg.linha?'1':'0'); localStorage.setItem('simpesca_hud_estado',hudCfg.estado?'1':'0'); localStorage.setItem('simpesca_hud_barra',hudCfg.barra?'1':'0'); localStorage.setItem('simpesca_hud_carretel',hudCfg.carretel?'1':'0'); localStorage.setItem('simpesca_hud_sync',hudCfg.sync?'1':'0'); }
+function carregarHudCfg(){
+  const g=(k,d)=>{ const v=localStorage.getItem(k); return v===null?d:v==='1'; };
+  hudCfg.linha=g('simpesca_hud_linha',true); hudCfg.estado=g('simpesca_hud_estado',true); hudCfg.barra=g('simpesca_hud_barra',true); hudCfg.carretel=g('simpesca_hud_carretel',false); hudCfg.sync=g('simpesca_hud_sync',true);
+  const cl=document.getElementById('cfgLinha'), ce=document.getElementById('cfgEstado'), cb=document.getElementById('cfgBarra'), cc=document.getElementById('cfgCarretel'), cs=document.getElementById('cfgSync');
+  cl.checked=hudCfg.linha; ce.checked=hudCfg.estado; cb.checked=hudCfg.barra; cc.checked=hudCfg.carretel; cs.checked=hudCfg.sync;
+  cl.addEventListener('change',()=>{ hudCfg.linha=cl.checked; salvarHudCfg(); atualizarVisibilidadeHUD(); });
+  ce.addEventListener('change',()=>{ hudCfg.estado=ce.checked; salvarHudCfg(); atualizarVisibilidadeHUD(); });
+  cb.addEventListener('change',()=>{ hudCfg.barra=cb.checked; salvarHudCfg(); atualizarVisibilidadeHUD(); });
+  cc.addEventListener('change',()=>{ hudCfg.carretel=cc.checked; salvarHudCfg(); atualizarVisibilidadeHUD(); });
+  cs.addEventListener('change',()=>{ hudCfg.sync=cs.checked; salvarHudCfg(); atualizarVisibilidadeHUD(); atualizarSyncCards(); });
+  atualizarSyncCards();   // aplica o estado salvo aos campos dos cards no load
+  montarCfgPeixes();      // checkboxes de "peixes na tela"
+  aplicarVisibilidadePeixes();
+}
+
+// ── Mostrar/ocultar peixes na tela de seleção (painel EXIBIR) ──
+function peixeVisivel(id){ return localStorage.getItem('simpesca_peixe_'+id)!=='0'; }   // padrão: visível
+function aplicarVisibilidadePeixes(){
+  ESPECIES.forEach(e=>{
+    const vis=peixeVisivel(e.id);
+    const b=document.getElementById('bloco_'+e.id); if(b) b.style.display=vis?'':'none';                 // card na seleção
+    const f=document.querySelector('.rk-filtro[data-sim="'+e.id+'"]'); if(f) f.style.display=vis?'':'none'; // botão de filtro do ranking
+  });
+  if(rkFiltro!=='todos' && !peixeVisivel(rkFiltro)){     // o filtro ativo virou um peixe oculto -> volta pra Todas
+    rkFiltro='todos';
+    document.querySelectorAll('.rk-filtro').forEach(b=>b.classList.toggle('ativo', b.dataset.sim==='todos'));
+  }
+  if(document.getElementById('rankingOverlay').classList.contains('visivel')) renderRanking();            // atualiza a lista se estiver aberta
+}
+function montarCfgPeixes(){
+  const box=document.getElementById('cfgPeixes'); if(!box) return; box.innerHTML='';
+  ESPECIES.forEach(e=>{
+    const lab=document.createElement('label');
+    const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=peixeVisivel(e.id);
+    cb.addEventListener('change',()=>{ localStorage.setItem('simpesca_peixe_'+e.id, cb.checked?'1':'0'); aplicarVisibilidadePeixes(); });
+    lab.appendChild(cb); lab.appendChild(document.createTextNode(' '+e.nome));
+    box.appendChild(lab);
+  });
+}
+
+// ══ NOME → CONTAGEM → PLAY ════════════════════════════════════
+function pedirNome(id){
+  carregarVideo(id);   // PRÉ-CARREGA o vídeo já aqui (durante a digitação do nome) -> a contagem roda sem disputar com o load
+  // valida se o carretel tem linha suficiente pra ESTA simulação (estimativa de quanto o peixe puxa)
+  const precisa=estimarLinhaPts(carregarPontos(id));
+  if(linhaDisponivel() < precisa){ abrirLinhaOverlay(id, precisa); return; }
+  simEmContagem=id; document.getElementById('nomeOverlay').classList.add('visivel'); setTimeout(()=>document.getElementById('inputNome').focus(),100);
+}
+// ── Overlay "pouca linha": pede pra enrolar até liberar; contador ao vivo ──
+let linhaOvlSim=null, linhaOvlPrecisa=0;
+function abrirLinhaOverlay(id, precisa){ linhaOvlSim=id; linhaOvlPrecisa=precisa; atualizarLinhaOverlay(); document.getElementById('linhaOverlay').classList.add('visivel'); }
+function fecharLinhaOverlay(){ linhaOvlSim=null; document.getElementById('linhaOverlay').classList.remove('visivel'); }
+function linhaOvlContinuar(){ const id=linhaOvlSim; fecharLinhaOverlay(); if(id){ simEmContagem=id; document.getElementById('nomeOverlay').classList.add('visivel'); setTimeout(()=>document.getElementById('inputNome').focus(),100); } }
+function atualizarLinhaOverlay(){
+  if(linhaOvlSim===null) return;
+  const disp=Math.max(0,linhaDisponivel());
+  document.getElementById('linhaOvlInfo').textContent='Esta simulação puxa ≈ '+linhaOvlPrecisa.toFixed(0)+' m de linha · disponível agora: '+disp.toFixed(1)+' m';
+  document.getElementById('linhaOvlCarretel').textContent='📍 '+linhaCarretel().toFixed(1)+' m';
+  const ok=document.getElementById('linhaOvlOk'), pronto=disp>=linhaOvlPrecisa;
+  ok.disabled=!pronto; ok.textContent=pronto?'▶ Continuar':'enrole mais...';
+}
+function fecharNome(){ document.getElementById('nomeOverlay').classList.remove('visivel'); simEmContagem=null; }
+function confirmarNome(){ const v=document.getElementById('inputNome').value.trim(); nomeJogador=v||'Jogador'; localStorage.setItem('simpesca_ultimo_nome',nomeJogador); document.getElementById('nomeOverlay').classList.remove('visivel'); iniciarContagem(simEmContagem); }
+document.getElementById('inputNome').addEventListener('keydown',e=>{ if(e.key==='Enter') confirmarNome(); });
+
+// Leva os overlays (contagem/pausa/resultado) pra DENTRO do vídeo (aparecerem em tela cheia) e devolve depois
+const OVERLAYS_FS=['countdownOverlay','pauseOverlay','resultadoOverlay','hudLinha','hudEstado','hudCarretel','hudTimeline','hudSync'];
+function moverOverlaysPara(parent){ OVERLAYS_FS.forEach(id=>parent.appendChild(document.getElementById(id))); }
+function devolverOverlays(){ OVERLAYS_FS.forEach(id=>document.body.appendChild(document.getElementById(id))); }
+// Chamado DIRETO do clique/Enter (gesto do usuário) -> pode entrar em tela cheia
+// Bip da contagem — UM AudioContext reaproveitado + oscilador curto descartável (sem arquivo de som, sem leak)
+let audioCtx=null;
+function bip(freq,dur){
+  try{
+    if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    if(audioCtx.state==='suspended') audioCtx.resume();
+    const o=audioCtx.createOscillator(), g=audioCtx.createGain(), now=audioCtx.currentTime, d=dur||0.12;
+    o.type='sine'; o.frequency.value=freq||760; o.connect(g); g.connect(audioCtx.destination);
+    g.gain.setValueAtTime(0.0001, now);
+    g.gain.exponentialRampToValueAtTime(0.35, now+0.012);   // ataque rápido (sem clique)
+    g.gain.exponentialRampToValueAtTime(0.0001, now+d);     // decaimento
+    o.start(now); o.stop(now+d+0.02);                        // para sozinho; é coletado depois
+  }catch(e){}
+}
+function iniciarContagem(id){
+  const sim=SIMS[id], w=sim.wrapper;
+  carregarVideo(id);                                                  // carrega SÓ este vídeo (5s da contagem dão tempo de bufferizar)
+  document.getElementById('hudConfig').classList.remove('visivel');   // fecha o painel de exibição
+  moverOverlaysPara(w);
+  const req=w.requestFullscreen||w.webkitRequestFullscreen;      // tela cheia JÁ no gesto do usuário
+  if(req) req.call(w).catch(()=>{});
+  const onFS=()=>{ if(!document.fullscreenElement&&!document.webkitFullscreenElement){ document.removeEventListener('fullscreenchange',onFS); document.removeEventListener('webkitfullscreenchange',onFS); if(sim.estaRodando) pausarSim(id); } };
+  document.addEventListener('fullscreenchange',onFS); document.addEventListener('webkitfullscreenchange',onFS);
+  const ov=document.getElementById('countdownOverlay'), num=document.getElementById('countdownNum');
+  ov.classList.add('visivel'); let n=5; num.textContent=n;
+  const tick=()=>{ num.style.animation='none'; void num.offsetWidth; num.style.animation='pulse 0.9s ease-in-out'; num.textContent=n; bip(760,0.12); }; tick();   // bip a cada número
+  const t=setInterval(()=>{ n--; if(n<=0){ clearInterval(t); bip(1180,0.26); ov.classList.remove('visivel'); iniciarSim(id); } else tick(); },1000);   // bip diferente no "já"
+}
+function loopSim(sim){
+  // A potência segue a CURVA DE PONTOS, no tempo do vídeo deslocado pela SINCRONIA do peixe
+  return setInterval(()=>{ aplicarMotor(interpolarPontos(sim.pontos, sim.video.currentTime - syncVideo(sim.letra))); },100);
+}
+function iniciarSim(id){
+  const sim=SIMS[id];
+  sim.pontos=carregarPontos(id);          // recarrega a curva (GitHub manda; pega a versão publicada)
+  sim.estaRodando=true;
+  sim.overlay.classList.add('oculto');
+  novoJogoContadores();                    // novo jogador: zera só a contagem do jogo; a linha do carretel acumula
+  emJogo=true; simTocando=id; atualizarVisibilidadeHUD();
+  sim.video.currentTime=0; sim.video.play().catch(()=>{});
+  contando=false;                          // durante o atraso de sincronia (intro do vídeo) não conta
+  const fis=fisgadaFisicaCfg(id);
+  const sync=Math.max(0, syncVideo(id));   // atraso (s): a sim só começa quando o vídeo chega aqui
+  const comecar=()=>{
+    if(fisgadaChar && fis.dur>0 && fis.pot>0){
+      contando=false;                      // não conta as puxadinhas da fisgada física
+      enviarFisgadaFisica(fis);            // ESP dá as puxadas (rampa-voltas-rampa-pausa)
+      const est=document.getElementById('hudEstado'); est.classList.remove('puxando','recolher'); est.classList.add('fisgada'); est.textContent='🎣 FISGADA! segure...';
+      sim.fisgadaTimer=setTimeout(()=>{ contando=true; sim.intervalo=loopSim(sim); }, fis.dur*1000);  // depois entra a curva
+    } else {
+      contando=true;                       // sem fisgada física: curva já começa
+      sim.intervalo=loopSim(sim);
+    }
+  };
+  if(sync>0) sim.syncTimer=setTimeout(comecar, sync*1000); else comecar();   // espera o intro do vídeo antes de fisgar
+}
+function pausarSim(id){ const sim=SIMS[id]; sim.estaRodando=false; contando=false; clearInterval(sim.intervalo); clearTimeout(sim.fisgadaTimer); clearTimeout(sim.syncTimer); pararFisgadaFisica(); simTocando=null; atualizarVisibilidadeHUD(); sim.video.pause(); aplicarMotor(0); simEmPausa=id; document.getElementById('pauseOverlay').classList.add('visivel'); }
+function continuarSim(){ document.getElementById('pauseOverlay').classList.remove('visivel'); if(!simEmPausa) return; const sim=SIMS[simEmPausa]; sim.estaRodando=true; contando=true; simTocando=simEmPausa; atualizarVisibilidadeHUD(); sim.video.play().catch(()=>{}); sim.intervalo=loopSim(sim); simEmPausa=null; }
+function reiniciarSim(){ document.getElementById('pauseOverlay').classList.remove('visivel'); if(!simEmPausa) return; encerrarSim(simEmPausa,true,false); simEmPausa=null; }
+function encerrarSim(id, sairFS, salvar){
+  const sim=SIMS[id]; clearInterval(sim.intervalo); clearTimeout(sim.fisgadaTimer); clearTimeout(sim.syncTimer); pararFisgadaFisica();
+  sim.estaRodando=false; contando=false; emJogo=false; simTocando=null; atualizarVisibilidadeHUD(); sim.video.pause(); aplicarMotor(0);  // fim dos 90s
+  const metros=metrosAtuais();
+  if(sairFS){ if(document.exitFullscreen) document.exitFullscreen(); else if(document.webkitExitFullscreen) document.webkitExitFullscreen(); }
+  devolverOverlays();
+  sim.overlay.classList.remove('oculto');
+  liberarVideoAtual();                       // tira o vídeo da memória ao voltar pra seleção
+  if(salvar){ const ok=nomeValido(nomeJogador); if(ok) salvarRanking(nomeJogador, metros, id); mostrarResultado(nomeJogador, metros, id, ok); }
+}
+
+// ══ RANKING ───────────────────────────────────────────────────
+// nome "de verdade": não vazio e diferente de "Jogador" (placeholder). Jogada sem nome não entra no ranking.
+function nomeValido(n){ n=(n||'').trim().toLowerCase(); return n!=='' && n!=='jogador'; }
+function salvarRanking(nome, metros, sim){ let lista=[]; try{ lista=JSON.parse(localStorage.getItem('simpesca_ranking'))||[]; }catch(e){} lista.push({nome, metros:Math.round(metros*10)/10, sim, data:new Date().toISOString()}); localStorage.setItem('simpesca_ranking', JSON.stringify(lista)); }
+function mostrarResultado(nome, metros, sim, salvou){
+  document.getElementById('resultadoMetros').textContent=metros.toFixed(1)+' m';
+  const posEl=document.getElementById('resultadoPos'), nomeEl=document.getElementById('resultadoNome'), rec=document.getElementById('resultadoRecorde');
+  if(salvou===false){                                    // jogada sem nome: mostra os metros, mas não salva nem posiciona
+    nomeEl.textContent='Jogada de teste';
+    posEl.textContent='Não salvo no ranking (sem nome)';
+    rec.style.display='none';
+    document.getElementById('resultadoOverlay').classList.add('visivel');
+    return;
+  }
+  const m=Math.round(metros*10)/10;
+  let lista=[]; try{ lista=JSON.parse(localStorage.getItem('simpesca_ranking'))||[]; }catch(e){}
+  const naSim=lista.filter(r=>r.sim===sim); const total=naSim.length;
+  const pos=naSim.filter(r=>r.metros>m).length + 1;
+  const medalha = pos===1?'🥇':pos===2?'🥈':pos===3?'🥉':'';
+  posEl.textContent=(medalha?medalha+' ':'')+pos+'º lugar · de '+total+' no '+nomePeixe(sim);
+  nomeEl.textContent=nome;
+  if(total===1){ rec.textContent='🎣 Primeira jogada desta simulação!'; rec.style.display='block'; }
+  else if(pos===1){ rec.textContent='🏆 Novo recorde!'; rec.style.display='block'; }
+  else rec.style.display='none';
+  document.getElementById('resultadoOverlay').classList.add('visivel');
+}
+function fecharResultado(){ document.getElementById('resultadoOverlay').classList.remove('visivel'); }
+
+// ══ RANKING — painel sobreposto (NÃO navega, mantém Bluetooth) ─
+let rkFiltro='todos';
+function abrirRanking(){ renderRanking(); document.getElementById('rankingOverlay').classList.add('visivel'); }
+function fecharRanking(){ document.getElementById('rankingOverlay').classList.remove('visivel'); }
+function filtrarRanking(sim,btn){ rkFiltro=sim; document.querySelectorAll('.rk-filtro').forEach(b=>b.classList.remove('ativo')); btn.classList.add('ativo'); renderRanking(); }
+function escHtml(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function renderRanking(){
+  let lista=[]; try{ lista=JSON.parse(localStorage.getItem('simpesca_ranking'))||[]; }catch(e){}
+  lista=lista.filter(r=>nomeValido(r.nome));         // não mostra jogadas sem nome / "Jogador"
+  if(rkFiltro!=='todos') lista=lista.filter(r=>r.sim===rkFiltro);
+  else lista=lista.filter(r=>peixeVisivel(r.sim));   // "Todas" esconde os peixes desmarcados no EXIBIR
+  lista.sort((a,b)=>b.metros-a.metros);
+  const el=document.getElementById('rkLista');
+  if(!lista.length){ el.innerHTML='<div class="rk-vazio">Nenhuma jogada registrada ainda. 🎣</div>'; return; }
+  el.innerHTML=lista.map((r,i)=>{
+    const cls=i===0?'top1':i===1?'top2':i===2?'top3':'';
+    const medalha=i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'º';
+    const d=new Date(r.data); const data=d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    return `<div class="rk-linha ${cls}"><div class="rk-pos">${medalha}</div><div class="rk-info"><div class="rk-nome">${escHtml(r.nome)}</div><div class="rk-meta">🐟 ${nomePeixe(r.sim)} · ${data}</div></div><div class="rk-metros">${r.metros.toFixed(1)} m</div></div>`;
+  }).join('');
+}
+
+// ══ TOAST ═════════════════════════════════════════════════════
+let toastTimeout=null;
+function mostrarToast(msg){ const el=document.getElementById('toast'); el.textContent=msg; el.classList.add('visivel'); clearTimeout(toastTimeout); toastTimeout=setTimeout(()=>el.classList.remove('visivel'),1500); }
+</script>
+</body>
+</html>

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Simulador de Pesca</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="icons/icon-192.png">
+    <meta name="theme-color" content="#050a0f">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="SimPesca">
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family:'Segoe UI',sans-serif; background:#050a0f; color:#e0e6ed; margin:0; padding:20px; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; text-align:center; background-image:linear-gradient(rgba(0,180,216,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,180,216,0.03) 1px,transparent 1px); background-size:40px 40px; }
+        .logo { width:100px; height:100px; margin-bottom:20px; }
+        h1 { font-weight:800; color:#00d4ff; letter-spacing:4px; margin:0 0 6px 0; font-size:24px; text-transform:uppercase; }
+        .subtitulo { color:#7b8d9e; font-size:13px; margin-bottom:24px; letter-spacing:1px; }
+        .instrucao { background:#0d151d; border:1px solid #1a2736; border-radius:12px; padding:15px 20px; font-size:13px; color:#7b8d9e; max-width:340px; margin-bottom:16px; line-height:1.9; text-align:left; }
+        .instrucao strong { color:#e0e6ed; display:block; margin-bottom:4px; }
+        .instrucao span { color:#00d4ff; font-weight:bold; }
+        .btn { border:none; padding:15px 30px; font-weight:bold; border-radius:30px; cursor:pointer; text-transform:uppercase; font-size:14px; width:85%; max-width:320px; margin-bottom:14px; letter-spacing:1px; }
+        .btn:active { opacity:0.8; } .btn:disabled { opacity:0.5; cursor:default; }
+        #btnInstalar { background:linear-gradient(135deg,#0077b6,#00d4ff); color:white; display:none; box-shadow:0 4px 20px rgba(0,180,216,0.4); }
+        #btnConectar { background:#00d4ff; color:#050a0f; font-weight:900; box-shadow:0 4px 20px rgba(0,212,255,0.35); }
+        #dicaIOS { display:none; background:rgba(0,180,216,0.07); border:1px solid rgba(0,180,216,0.2); border-radius:12px; padding:14px 18px; font-size:12px; color:#7b8d9e; max-width:300px; margin-bottom:16px; line-height:1.7; }
+        #dicaIOS span { color:#00d4ff; font-weight:bold; }
+        .status { font-size:12px; color:#555; margin-top:20px; }
+        .status.ok { color:#00e676; } .status.err { color:#ff1744; }
+        .local-sec { width:85%; max-width:320px; background:#0d151d; border:1px solid #1a2736; border-radius:12px; padding:14px 16px; margin-bottom:14px; text-align:left; }
+        .local-sec-titulo { font-size:11px; letter-spacing:2px; color:#7b8d9e; text-transform:uppercase; margin-bottom:4px; }
+        .local-sec-dica { font-size:11px; color:#3d5d7e; margin-bottom:10px; line-height:1.5; }
+        .local-grid { display:grid; grid-template-columns:1fr 1fr; gap:5px 12px; }
+        .local-item { font-size:12px; color:#7b8d9e; }
+        .local-item .dot { width:9px; height:9px; border-radius:50%; background:#1a2736; flex-shrink:0; }
+        .local-item .dot.ok { background:#00e676; }
+    </style>
+</head>
+<body>
+    <img src="icons/icon-192.png" class="logo" alt="SimPesca">
+    <h1>SimPesca</h1>
+    <p class="subtitulo">Simulador de Pesca · Bluetooth</p>
+
+    <div class="instrucao">
+        <strong>Configuração (uma vez):</strong>
+        1. <span>Instale</span> o app no aparelho<br>
+        2. <span>Importe os vídeos</span> do dispositivo (abaixo)<br>
+        <strong style="margin-top:10px;">Para jogar:</strong>
+        3. Toque em <span>Abrir Painel</span><br>
+        4. Toque em <span>Conectar</span> (Bluetooth)
+    </div>
+
+    <div id="dicaIOS">
+        ⚠️ No iPhone o controle por Bluetooth não é suportado pelo navegador.<br>
+        Use um <span>computador (Chrome/Edge)</span> ou <span>Android</span>.
+    </div>
+
+    <button id="btnInstalar" class="btn">📥 Instalar Aplicativo</button>
+
+    <div class="local-sec">
+        <div class="local-sec-titulo">📂 Vídeos do dispositivo</div>
+        <div class="local-sec-dica">Toque em cada peixe e escolha o vídeo (.mp4) salvo no aparelho. Fica guardado offline.</div>
+        <div class="local-grid" id="localGrid"></div>
+        <input type="file" accept=".mp4" id="fi_pirarara" style="display:none" onchange="salvarArquivo('pirarara',this)">
+        <input type="file" accept=".mp4" id="fi_tambaqui"  style="display:none" onchange="salvarArquivo('tambaqui',this)">
+        <input type="file" accept=".mp4" id="fi_tucunare"  style="display:none" onchange="salvarArquivo('tucunare',this)">
+        <input type="file" accept=".mp4" id="fi_dourado"   style="display:none" onchange="salvarArquivo('dourado',this)">
+        <input type="file" accept=".mp4" id="fi_trairao"   style="display:none" onchange="salvarArquivo('trairao',this)">
+        <input type="file" accept=".mp4" id="fi_jau"       style="display:none" onchange="salvarArquivo('jau',this)">
+    </div>
+
+    <button id="btnConectar" class="btn" onclick="abrirPainel()">🎣 Abrir Painel</button>
+    <p class="status" id="statusSW">Carregando...</p>
+
+    <script>
+        const ESPECIES_IDS = ['pirarara','tambaqui','tucunare','dourado','trairao','jau'];
+        const ESPECIES_NOMES = {pirarara:'Pirarara',tambaqui:'Tambacu',tucunare:'Tucunaré',dourado:'Dourado',trairao:'Trairão',jau:'Jaú'};
+
+        // ── IndexedDB para vídeos locais ──────────────────────────
+        const VIDEO_DB='simpesca-videos', VIDEO_STORE='videos';
+        function abrirVideoDB(){ return new Promise((res,rej)=>{ const r=indexedDB.open(VIDEO_DB,1); r.onupgradeneeded=e=>e.target.result.createObjectStore(VIDEO_STORE); r.onsuccess=e=>res(e.target.result); r.onerror=rej; }); }
+        async function salvarVideoDB(key,blob){ const db=await abrirVideoDB(); return new Promise((res,rej)=>{ const tx=db.transaction(VIDEO_STORE,'readwrite'); tx.objectStore(VIDEO_STORE).put(blob,key); tx.oncomplete=res; tx.onerror=rej; }); }
+        async function temVideoDB(key){ const db=await abrirVideoDB(); return new Promise((res,rej)=>{ const r=db.transaction(VIDEO_STORE,'readonly').objectStore(VIDEO_STORE).getKey(key); r.onsuccess=e=>res(!!e.target.result); r.onerror=rej; }); }
+
+        async function atualizarStatusLocais(){
+            const grid=document.getElementById('localGrid'); grid.innerHTML='';
+            for(const id of ESPECIES_IDS){
+                let tem=false; try{ tem=await temVideoDB('video_'+id); }catch(e){}
+                const div=document.createElement('div'); div.className='local-item';
+                div.innerHTML=
+                    '<label for="fi_'+id+'" style="cursor:pointer;display:flex;align-items:center;gap:6px;width:100%;padding:4px 0;">'+
+                    '<span class="dot'+(tem?' ok':'')+'" id="dot_'+id+'"></span>'+
+                    '<span id="lbl_'+id+'" style="'+(tem?'color:#00e676;font-weight:bold':'')+'">'+(tem?'✅ ':'')+ESPECIES_NOMES[id]+'</span>'+
+                    '</label>';
+                grid.appendChild(div);
+            }
+        }
+
+        async function salvarArquivo(id, input){
+            const f=input.files[0]; if(!f) return;
+            try{
+                await salvarVideoDB('video_'+id,f);
+                document.getElementById('dot_'+id).className='dot ok';
+                const lbl=document.getElementById('lbl_'+id); lbl.style.color='#00e676'; lbl.style.fontWeight='bold'; lbl.textContent='✅ '+ESPECIES_NOMES[id];
+            }catch(e){ alert('Erro ao salvar: '+e); }
+            input.value='';
+        }
+
+        function abrirPainel(){ window.location.href = 'player.html'; }
+        const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+        if (isIOS) document.getElementById('dicaIOS').style.display = 'block';
+
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt',(e)=>{ e.preventDefault(); deferredPrompt=e; document.getElementById('btnInstalar').style.display='block'; });
+        document.getElementById('btnInstalar').addEventListener('click', async ()=>{
+            if(!deferredPrompt) return; deferredPrompt.prompt();
+            const {outcome}=await deferredPrompt.userChoice;
+            if(outcome==='accepted') document.getElementById('btnInstalar').style.display='none';
+            deferredPrompt=null;
+        });
+        window.addEventListener('appinstalled',()=>{ document.getElementById('btnInstalar').style.display='none'; deferredPrompt=null; });
+
+        if('serviceWorker' in navigator){
+            navigator.serviceWorker.register('/Simularpesca2/service-worker.js')
+                .then(()=>{ const s=document.getElementById('statusSW'); s.textContent='✅ App pronto para uso offline'; s.className='status ok'; })
+                .catch(()=>{ const s=document.getElementById('statusSW'); s.textContent='⚠️ Erro ao registrar service worker'; s.className='status err'; });
+        }
+        atualizarStatusLocais();
+    </script>
+</body>
+</html>
