@@ -1,7 +1,7 @@
 {
   "versao": 1,
   "tipo": "config",
-  "criado": "2026-06-27T19:11:27.533Z",
+  "criado": "2026-06-27T19:15:54.200Z",
   "cal": {
     "mpv": 0.0854,
     "limite": -152,
@@ -11,10 +11,10 @@
   },
   "gen": {
     "pirarara": {
-      "teto": "15",
+      "corrida": "1.8",
       "fadiga": "100",
       "puxada": "55",
-      "fispico": "20",
+      "saque": "2.2",
       "fisdur": "3.2",
       "intens": "50",
       "espaco": "23",
@@ -22,10 +22,10 @@
       "fisfisdur": "0"
     },
     "tambaqui": {
-      "teto": "30",
+      "corrida": "1.8",
       "fadiga": "100",
       "puxada": "55",
-      "fispico": "40",
+      "saque": "2.2",
       "fisdur": "2.1",
       "intens": "50",
       "espaco": "65",
@@ -33,10 +33,10 @@
       "fisfisdur": "5"
     },
     "tucunare": {
-      "teto": "15",
+      "corrida": "1.8",
       "fadiga": "50",
       "puxada": "55",
-      "fispico": "20",
+      "saque": "2.2",
       "fisdur": "2",
       "intens": "40",
       "espaco": "40",
@@ -44,10 +44,10 @@
       "fisfisdur": "5"
     },
     "dourado": {
-      "teto": "30",
+      "corrida": "1.8",
       "fadiga": "52",
       "puxada": "55",
-      "fispico": "40",
+      "saque": "2.2",
       "fisdur": "2",
       "intens": "50",
       "espaco": "48",
@@ -55,10 +55,10 @@
       "fisfisdur": "0"
     },
     "trairao": {
-      "teto": "29",
+      "corrida": "1.8",
       "fadiga": "60",
       "puxada": "55",
-      "fispico": "40",
+      "saque": "2.2",
       "fisdur": "4",
       "intens": "100",
       "espaco": "45",
@@ -66,10 +66,10 @@
       "fisfisdur": "0"
     },
     "jau": {
-      "teto": "25",
+      "corrida": "1.8",
       "fadiga": "100",
       "puxada": "55",
-      "fispico": "30",
+      "saque": "2.2",
       "fisdur": "3",
       "intens": "50",
       "espaco": "51",
