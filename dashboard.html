@@ -60,7 +60,11 @@ input[type="range"]::-webkit-slider-thumb{height:24px;width:24px;border-radius:5
 .card.card-colapsado > :not(:first-child){display:none !important;}
 .card-chevron{display:inline-block;transition:transform 0.15s;font-size:0.8rem;margin-right:3px;}
 .card-colapsado .card-chevron{transform:rotate(-90deg);}
-.timeline-wrap{position:relative;height:130px;background:#03070b;border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+.sim-bloco.colapsado .sim-corpo,
+.sim-bloco.colapsado .cal-sub,
+.sim-bloco.colapsado .sim-mini-gauge,
+.sim-bloco.colapsado .sim-controls{display:none;}   /* recolhido = só a setinha + nome do peixe */
+.timeline-wrap{position:relative;height:260px;background:#03070b;border:1px solid var(--border);border-radius:8px;overflow:hidden;}
 .curve-area{position:absolute;top:0;left:0;right:0;bottom:20px;z-index:2;cursor:crosshair;}
 .curve-svg{position:absolute;inset:0;width:100%;height:100%;}
 .ponto-handle{position:absolute;width:7px;height:7px;border-radius:50%;background:var(--accent);border:1.5px solid #fff;transform:translate(-50%,-50%);cursor:grab;z-index:12;box-shadow:0 0 3px rgba(0,212,255,0.6);}
@@ -114,7 +118,7 @@ select{background:var(--surface);border:1px solid var(--border);color:var(--text
   .cont3>div{flex:1 1 100% !important;min-width:0 !important;}
   .gen-row{font-size:0.56rem;gap:6px 9px;}
   .gen-row input{width:46px;font-size:0.72rem;}
-  .timeline-wrap{height:160px;}
+  .timeline-wrap{height:320px;}
   .ponto-handle{width:9px;height:9px;}
   .ponto-handle.sel,.ponto-handle.multi{width:12px;height:12px;}
   .sim-controls{gap:5px;}
@@ -364,7 +368,7 @@ function montarBlocosSims(){
     const cls=['a','b','c'][i%3];
     const pmx=pesoMaxDash(e.id); const pwv=(function(){ const v=parseFloat(localStorage.getItem('simpesca2_peso_'+e.id)); return isFinite(v)?Math.max(PESO_MIN,Math.min(pmx,v)):pmx; })();
     const col=localStorage.getItem('simpesca2_colapso_'+e.id)==='1';   // estado recolhido salvo
-    const d=document.createElement('div'); d.className='sim-bloco';
+    const d=document.createElement('div'); d.className='sim-bloco'+(col?' colapsado':'');
     d.innerHTML=
       '<div class="sim-header">'+
         '<button class="btn-colapso" id="colBtn'+i+'" onclick="toggleColapso('+i+')" title="Recolher/expandir este peixe">'+(col?'▸':'▾')+'</button>'+
@@ -382,7 +386,7 @@ function montarBlocosSims(){
           '<div id="tsDisplay'+i+'" class="ts-badge">0:00 / 1:30</div>'+
         '</div>'+
       '</div>'+
-      '<div class="sim-corpo" id="corpo'+i+'"'+(col?' style="display:none"':'')+'>'+
+      '<div class="sim-corpo" id="corpo'+i+'">'+
       '<div class="gen-row">'+
         '<label title="Intensidade da ASSINATURA do peixe: 50% = padrão · abaixo de 50 = briga mais plana/genérica · acima de 50 = caráter exagerado (vales mais fundos)">assinatura <input type="number" id="intens'+i+'" min="0" max="100" value="50">%</label>'+
         '<label title="Pico da FISGADA (saque inicial), independente do teto">fisgada <input type="number" id="fisPico'+i+'" min="0" max="100" value="50">%</label>'+
@@ -401,7 +405,7 @@ function montarBlocosSims(){
     cont.appendChild(d);
   });
 }
-function toggleColapso(i){ const corpo=document.getElementById('corpo'+i), btn=document.getElementById('colBtn'+i); if(!corpo) return; const recolher = corpo.style.display!=='none'; corpo.style.display = recolher ? 'none' : ''; if(btn) btn.textContent = recolher ? '▸' : '▾'; localStorage.setItem('simpesca2_colapso_'+LETRAS[i], recolher?'1':'0'); }
+function toggleColapso(i){ const corpo=document.getElementById('corpo'+i); if(!corpo) return; const bloco=corpo.closest('.sim-bloco'), btn=document.getElementById('colBtn'+i); const recolher=!bloco.classList.contains('colapsado'); bloco.classList.toggle('colapsado',recolher); if(btn) btn.textContent = recolher ? '▸' : '▾'; localStorage.setItem('simpesca2_colapso_'+LETRAS[i], recolher?'1':'0'); }
 // Recolhe/expande um CARD de config inteiro (esconde tudo menos o cabeçalho). Estado salvo por data-cardkey.
 function toggleCard(el){ const card=el.closest('.card'); if(!card) return; const rec=!card.classList.contains('card-colapsado'); card.classList.toggle('card-colapsado',rec); const k=el.dataset.cardkey; if(k) localStorage.setItem('simpesca2_cardcol_'+k, rec?'1':'0'); }
 function aplicarCardCols(){ document.querySelectorAll('[data-cardkey]').forEach(el=>{ if(localStorage.getItem('simpesca2_cardcol_'+el.dataset.cardkey)==='1'){ const c=el.closest('.card'); if(c) c.classList.add('card-colapsado'); } }); }
