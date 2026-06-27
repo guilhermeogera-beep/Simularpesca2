@@ -403,7 +403,6 @@ function montarBlocosSims(){
         '<label title="Força MÁXIMA de tração SUSTENTADA que o peixe faz no FREIO (parte negativa), em kgf. É a profundidade da resistência gerada nas janelas (0 a -20 = base do gráfico). O PESO do peixe (no player) escala isso. Vira força REAL na linha após a calibração do VESC.">🛑 freio máx <input type="number" id="freioMax'+i+'" min="0" max="20" value="'+(FREIO_MAX_DEF[LETRAS[i]]||10)+'"> kgf</label>'+
         '<label title="LIGADO = freio QUADRADO (parede constante no freio máx). DESLIGADO = freio CARACTERÍSTICO (varia com a força e a fadiga do peixe).">🟥 <input type="checkbox" id="freioQuad'+i+'" onchange="togFreioQuad('+i+')" style="width:auto"> freio quadrado</label>'+
         '<label title="Onde a briga gerada pelo 🎲 começa. Antes desse tempo a curva fica livre pra você desenhar as fisgadas MANUALMENTE." style="border-left:1px solid var(--border);padding-left:8px;margin-left:2px;">🎣 início da briga <input type="number" id="fisFisDur'+i+'" min="0" max="30" step="0.5" value="5" oninput="renderCurva('+i+')">s</label>'+
-        '<span>🎲+ puxada · 🎲− freio · 🧹 apaga cada um</span>'+
       '</div>'+
       '<div class="peso-row" style="display:flex;align-items:center;gap:8px;font-size:0.62rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin:4px 0 2px;">⚖️ peso (prévia) <input type="range" id="pesoSim'+i+'" min="'+PESO_MIN+'" max="'+pmx+'" step="0.5" value="'+pwv+'" oninput="ajustarPesoSim('+i+')" style="flex:1;max-width:260px;accent-color:#ffcc66;"><span id="pesoSimLbl'+i+'" style="font-family:monospace;color:var(--text);min-width:185px;text-transform:none;letter-spacing:0;"></span></div>'+
       '<div id="tl'+i+'" class="timeline-wrap"><div class="curve-eixo">'+eixoHtml+'</div><div class="curve-area" id="curva'+i+'"></div><div id="playhead'+i+'" class="tl-playhead"></div></div>'+
@@ -941,8 +940,8 @@ function buildFight(pe, nMin, nMax, teto, fadiga, puxada, fisEstilo, fisDur, fis
   { const dUI=Math.min(7, DURACAO-2-t);
     if(dUI>=3){ t=ultimaInvestida(pts, t, dUI, rnd(0.9,1.0)); t+=Math.min(0.7, Math.max(0.2, DURACAO-t)); pts.push({t,pot:0}); } }
   // INTENSIDADE DA ASSINATURA: contrasta os trancos em torno do PICO da briga (espaço bruto, antes do teto).
-  // ig=1 (intens 50%) = padrão · <50 achata (vales sobem, mais genérico) · >50 aprofunda os vales (caráter exagerado).
-  const ig=(isFinite(intens)?Math.max(0,Math.min(100,intens)):50)/50;
+  // Escala DOBRADA (ig=intens/25): intens 25 = neutro (ig=1) · 50 ≈ o antigo 100 (ig=2) · 100 = bem exagerado (ig=4).
+  const ig=(isFinite(intens)?Math.max(0,Math.min(100,intens)):50)/25;
   if(ig!==1){
     let topo=0; pts.forEach(p=>{ if(!p.fis && p.pot>topo) topo=p.pot; });
     if(topo>0) pts.forEach(p=>{ if(!p.fis && p.pot>0) p.pot=Math.max(0.5, Math.min(100, topo-(topo-p.pot)*ig)); });
@@ -1124,6 +1123,11 @@ window.addEventListener('load',async()=>{
   document.getElementById('calVel').value=velMotor();
   document.getElementById('calOffset').value=offsetMotor();
   montarBlocosSims();          // cria os blocos (inputs por peixe, incl. fisgada física)
+  if(localStorage.getItem('simpesca2_intens_remap')!=='1'){   // remap da ASSINATURA: escala dobrou (ig=intens/25), então 100 vira 50 (mantém o efeito, com folga pra subir)
+    LETRAS.forEach(id=>{ const k='simpesca2_gen_'+id+'_intens'; const v=parseFloat(localStorage.getItem(k)); if(isFinite(v)) localStorage.setItem(k, String(Math.max(0,Math.round(v/2)))); });
+    localStorage.setItem('simpesca2_intens_remap','1');
+    try{ agendarSync('config'); }catch(e){}   // empurra os valores remapeados pro GitHub (senão o próximo load re-aplica o antigo)
+  }
   carregarGenCfg();            // carrega os ajustes salvos de cada peixe
   for(let i=0;i<NSIMS;i++){ carregarSim(i); setupArea(i); }
   atualizarInterfaceTempo(); renderTodas(); atualizarGauge(0); atualizarCalLive(); atualizarContadores(); atualizarEstimativas();
