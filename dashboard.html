@@ -60,6 +60,7 @@ input[type="range"]::-webkit-slider-thumb{height:24px;width:24px;border-radius:5
 .ponto-handle{position:absolute;width:7px;height:7px;border-radius:50%;background:var(--accent);border:1.5px solid #fff;transform:translate(-50%,-50%);cursor:grab;z-index:12;box-shadow:0 0 3px rgba(0,212,255,0.6);}
 .ponto-handle::before{content:'';position:absolute;inset:-7px;border-radius:50%;}  /* área de clique maior, invisível */
 .ponto-handle:active{cursor:grabbing;}
+.ponto-handle.freio{background:#ff5f5f;box-shadow:0 0 3px rgba(255,95,95,0.7);}
 .ponto-handle.sel{background:var(--yellow);box-shadow:0 0 6px var(--yellow);width:10px;height:10px;}
 .ponto-handle.multi{background:var(--green);box-shadow:0 0 6px var(--green);border-color:#fff;width:10px;height:10px;}
 .tl-playhead{position:absolute;top:0;bottom:20px;width:2px;background:var(--accent);left:0%;pointer-events:none;box-shadow:0 0 8px var(--accent);z-index:9;}
@@ -214,7 +215,7 @@ select{background:var(--surface);border:1px solid var(--border);color:var(--text
 
   <div id="pontoEditor">
     <div class="campo"><label>Tempo (s)</label><input type="number" id="pTempo" step="0.1" min="0"></div>
-    <div class="campo"><label>Potência (%)</label><input type="number" id="pPot" step="1" min="0" max="100"></div>
+    <div class="campo"><label>Força (puxa + / freia −)</label><input type="number" id="pPot" step="1" min="-100" max="100"></div>
     <button class="btn btn-red" onclick="removerPonto()">🗑 Remover</button>
     <button class="btn btn-green" onclick="fecharEditorPonto()">✓ Fechar</button>
   </div>
@@ -317,7 +318,7 @@ function integralPot(pts){
   if(!pts||!pts.length) return 0;
   const seq=[{t:0,pot:pts[0].pot}].concat(pts).concat([{t:DURACAO,pot:pts[pts.length-1].pot}]);
   let area=0;
-  for(let i=0;i<seq.length-1;i++){ const a=seq[i],b=seq[i+1],dt=b.t-a.t; if(dt>0) area+=(a.pot+b.pot)/2*dt; }
+  for(let i=0;i<seq.length-1;i++){ const a=seq[i],b=seq[i+1],dt=b.t-a.t; if(dt>0) area+=(Math.max(0,a.pot)+Math.max(0,b.pot))/2*dt; }   // só a PUXADA (>0) tira linha; freio não
   return area;
 }
 function estimarLinha(pts){ return velMotor()*integralPot(pts)/100; }   // metros que o peixe puxa
@@ -431,23 +432,29 @@ function renderTicks(idx){
 function renderCurva(idx){
   renderTicks(idx);
   const area=document.getElementById('curva'+idx); const pts=SIMS[idx].pontos; const durFis=fisFisDurSeg(idx);
+  const yOf=v=>50-(v/100)*50;   // força (-100..100) -> Y(0..100): +100=topo(0) · 0=centro(50) · -100=base(100)
   let inner='';
+  // zonas: PUXA (cima, azul) / FREIO (baixo, vermelho) + linha do centro — sempre desenhadas
+  inner+='<rect x="0" y="0" width="100" height="50" fill="rgba(0,212,255,0.06)"/>';
+  inner+='<rect x="0" y="50" width="100" height="50" fill="rgba(255,95,95,0.06)"/>';
+  inner+='<line x1="0" y1="50" x2="100" y2="50" stroke="rgba(255,255,255,0.28)" stroke-width="1" vector-effect="non-scaling-stroke"/>';
   if(pts.length){
-    const coords=pts.map(p=>[(p.t/DURACAO)*100, 100-p.pot]);
-    const first=coords[0], last=coords[coords.length-1];
-    const seq=[[0,first[1]]].concat(coords).concat([[100,last[1]]]);
-    const linePts=seq.map(c=>c[0].toFixed(2)+','+c[1].toFixed(2)).join(' ');
-    inner+=`<polygon points="0,100 ${linePts} 100,100" fill="rgba(0,212,255,0.12)"/><polyline points="${linePts}" fill="none" stroke="var(--accent)" stroke-width="1.5" vector-effect="non-scaling-stroke"/>`;
+    const seq=[[0,pts[0].pot]].concat(pts.map(p=>[(p.t/DURACAO)*100,p.pot])).concat([[100,pts[pts.length-1].pot]]);
+    const fill=(clamp,cor)=>{ const pp=seq.map(c=>c[0].toFixed(2)+','+yOf(clamp(c[1])).toFixed(2)).join(' '); return `<polygon points="0,50 ${pp} 100,50" fill="${cor}"/>`; };
+    inner+=fill(v=>Math.max(0,v),'rgba(0,212,255,0.20)');     // preenche PUXA (acima do centro)
+    inner+=fill(v=>Math.min(0,v),'rgba(255,95,95,0.20)');     // preenche FREIO (abaixo do centro)
+    const line=seq.map(c=>c[0].toFixed(2)+','+yOf(c[1]).toFixed(2)).join(' ');
+    inner+=`<polyline points="${line}" fill="none" stroke="#dcefff" stroke-width="1.5" vector-effect="non-scaling-stroke"/>`;
   }
-  if(durFis>0){   // FORMATO (estimado) das puxadas da fisgada física, mesmo sistema de coords da curva
+  if(durFis>0){   // FORMATO (estimado) das puxadas da fisgada física (fica na zona de puxada)
     const fp=pontosFisgadaFisica(idx);
     if(fp.length>1){
-      const lp=fp.map(p=>Math.min(100,(p.t/DURACAO)*100).toFixed(2)+','+(100-p.pot).toFixed(2)).join(' ');
+      const lp=fp.map(p=>Math.min(100,(p.t/DURACAO)*100).toFixed(2)+','+yOf(p.pot).toFixed(2)).join(' ');
       inner+=`<polyline points="${lp}" fill="none" stroke="#ffaa00" stroke-width="1.4" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>`;
     }
   }
-  area.innerHTML=inner?`<svg class="curve-svg" viewBox="0 0 100 100" preserveAspectRatio="none">${inner}</svg>`:'';
-  pts.forEach((p,i)=>{ const h=document.createElement('div'); let cls='ponto-handle'; if(idx===simAtiva){ if(multiSel.indexOf(p)>-1) cls+=' multi'; else if(i===selPonto) cls+=' sel'; } h.className=cls; h.style.left=(p.t/DURACAO*100)+'%'; h.style.top=(100-p.pot)+'%'; h.addEventListener('mousedown',e=>iniciarDragPonto(e,idx,i)); area.appendChild(h); });
+  area.innerHTML=`<svg class="curve-svg" viewBox="0 0 100 100" preserveAspectRatio="none">${inner}</svg>`;
+  pts.forEach((p,i)=>{ const h=document.createElement('div'); let cls='ponto-handle'+(p.pot<0?' freio':''); if(idx===simAtiva){ if(multiSel.indexOf(p)>-1) cls+=' multi'; else if(i===selPonto) cls+=' sel'; } h.className=cls; h.style.left=(p.t/DURACAO*100)+'%'; h.style.top=yOf(p.pot)+'%'; h.addEventListener('mousedown',e=>iniciarDragPonto(e,idx,i)); area.appendChild(h); });
   const est=document.getElementById('estLinha'+idx); if(est) est.textContent='🐟 ≈ '+estimarLinha(pts).toFixed(1)+' m';
   // faixa (fundo listrado) da FISGADA FÍSICA (0..dur)
   const wrap=document.getElementById('tl'+idx); let band=wrap.querySelector('.fisgada-band');
@@ -485,7 +492,7 @@ function setupArea(idx){
     if(e.ctrlKey||e.metaKey) return;   // Ctrl+clique no fundo não cria ponto
     const rect=area.getBoundingClientRect();
     let t=round2(Math.max(0,Math.min(DURACAO,(e.clientX-rect.left)/rect.width*DURACAO)));
-    let pot=Math.max(0,Math.min(100,Math.round(100-((e.clientY-rect.top)/rect.height*100))));
+    let pot=Math.max(-100,Math.min(100,Math.round((0.5-(e.clientY-rect.top)/rect.height)*200)));   // centro=0, cima=puxa(+), baixo=freio(-)
     const novo={t,pot}; SIMS[idx].pontos.push(novo); SIMS[idx].pontos.sort((a,b)=>a.t-b.t);
     simAtiva=idx; multiSel=[]; selPonto=SIMS[idx].pontos.indexOf(novo);
     salvarPontos(idx); renderCurva(idx); abrirEditorPonto(e);
@@ -500,7 +507,7 @@ function iniciarDragPonto(e,idx,i){
   const area=document.getElementById('curva'+idx); const rect=area.getBoundingClientRect();
   const onMove=ev=>{ arrastouPonto=true; const p=SIMS[idx].pontos[selPonto]; if(!p) return;
     p.t=round2(Math.max(0,Math.min(DURACAO,(ev.clientX-rect.left)/rect.width*DURACAO)));
-    p.pot=Math.max(0,Math.min(100,Math.round(100-((ev.clientY-rect.top)/rect.height*100))));
+    p.pot=Math.max(-100,Math.min(100,Math.round((0.5-(ev.clientY-rect.top)/rect.height)*200)));
     camposDoPonto(); renderCurva(idx);
   };
   const onUp=()=>{ document.removeEventListener('mousemove',onMove); document.removeEventListener('mouseup',onUp);
@@ -519,13 +526,13 @@ function iniciarDragGrupo(e,idx){
   const minT=Math.min.apply(null,orig.map(o=>o.t)), maxT=Math.max.apply(null,orig.map(o=>o.t));
   const minPot=Math.min.apply(null,orig.map(o=>o.pot)), maxPot=Math.max.apply(null,orig.map(o=>o.pot));
   const startT=(e.clientX-rect.left)/rect.width*DURACAO;
-  const startPot=100-((e.clientY-rect.top)/rect.height*100);
+  const startPot=(0.5-(e.clientY-rect.top)/rect.height)*200;
   const onMove=ev=>{
     arrastouPonto=true;
     let dt=((ev.clientX-rect.left)/rect.width*DURACAO)-startT;
-    let dpot=(100-((ev.clientY-rect.top)/rect.height*100))-startPot;
+    let dpot=((0.5-(ev.clientY-rect.top)/rect.height)*200)-startPot;
     dt=Math.max(-minT, Math.min(DURACAO-maxT, dt));        // trava o grupo nas bordas (0..90s)
-    dpot=Math.max(-minPot, Math.min(100-maxPot, dpot));    // e em 0..100%
+    dpot=Math.max(-100-minPot, Math.min(100-maxPot, dpot));   // e em -100..+100 (puxa/freio)
     orig.forEach(o=>{ o.p.t=round2(o.t+dt); o.p.pot=Math.round(o.pot+dpot); });
     renderCurva(idx);
   };
@@ -551,7 +558,7 @@ function fecharEditorPonto(){ pEditor.style.display='none'; selPonto=-1; renderT
 function camposDoPonto(){ const p=SIMS[simAtiva].pontos[selPonto]; if(!p) return; document.getElementById('pTempo').value=p.t; document.getElementById('pPot').value=p.pot; }
 function removerPonto(){ if(selPonto>-1){ SIMS[simAtiva].pontos.splice(selPonto,1); salvarPontos(simAtiva); fecharEditorPonto(); renderCurva(simAtiva); } }
 document.getElementById('pTempo').addEventListener('input',e=>{ const p=SIMS[simAtiva].pontos[selPonto]; if(!p) return; p.t=Math.max(0,Math.min(DURACAO,parseFloat(e.target.value)||0)); salvarPontos(simAtiva); renderCurva(simAtiva); });
-document.getElementById('pPot').addEventListener('input',e=>{ const p=SIMS[simAtiva].pontos[selPonto]; if(!p) return; p.pot=Math.max(0,Math.min(100,parseInt(e.target.value)||0)); salvarPontos(simAtiva); renderCurva(simAtiva); });
+document.getElementById('pPot').addEventListener('input',e=>{ const p=SIMS[simAtiva].pontos[selPonto]; if(!p) return; p.pot=Math.max(-100,Math.min(100,parseInt(e.target.value)||0)); salvarPontos(simAtiva); renderCurva(simAtiva); });
 
 // ══ SELEÇÃO MÚLTIPLA + COPIAR / COLAR ─────────────────────────
 function toggleMulti(idx,i){
