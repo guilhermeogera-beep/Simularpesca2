@@ -677,7 +677,7 @@ function encerrarSim(id, sairFS, salvar){
 // ══ RANKING ───────────────────────────────────────────────────
 // nome "de verdade": não vazio e diferente de "Jogador" (placeholder). Jogada sem nome não entra no ranking.
 function nomeValido(n){ n=(n||'').trim().toLowerCase(); return n!=='' && n!=='jogador'; }
-function salvarRanking(nome, metros, sim){ let lista=[]; try{ lista=JSON.parse(localStorage.getItem('simpesca2_ranking'))||[]; }catch(e){} lista.push({nome, metros:Math.round(metros*10)/10, sim, data:new Date().toISOString()}); localStorage.setItem('simpesca2_ranking', JSON.stringify(lista)); }
+function salvarRanking(nome, metros, sim){ let lista=[]; try{ lista=JSON.parse(localStorage.getItem('simpesca2_ranking'))||[]; }catch(e){} lista.push({nome, metros:Math.round(metros*10)/10, sim, peso:Math.round(pesoEsp(sim)*10)/10, data:new Date().toISOString()}); localStorage.setItem('simpesca2_ranking', JSON.stringify(lista)); }
 function mostrarResultado(nome, metros, sim, salvou){
   document.getElementById('resultadoMetros').textContent=metros.toFixed(1)+' m';
   const posEl=document.getElementById('resultadoPos'), nomeEl=document.getElementById('resultadoNome'), rec=document.getElementById('resultadoRecorde');
@@ -720,7 +720,7 @@ function renderRanking(){
     const cls=i===0?'top1':i===1?'top2':i===2?'top3':'';
     const medalha=i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'º';
     const d=new Date(r.data); const data=d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-    return `<div class="rk-linha ${cls}"><div class="rk-pos">${medalha}</div><div class="rk-info"><div class="rk-nome">${escHtml(r.nome)}</div><div class="rk-meta">🐟 ${nomePeixe(r.sim)} · ${data}</div></div><div class="rk-metros">${r.metros.toFixed(1)} m</div></div>`;
+    return `<div class="rk-linha ${cls}"><div class="rk-pos">${medalha}</div><div class="rk-info"><div class="rk-nome">${escHtml(r.nome)}</div><div class="rk-meta">🐟 ${nomePeixe(r.sim)} · ${isFinite(r.peso)?'⚖️ '+r.peso.toFixed(1)+' kg · ':''}${data}</div></div><div class="rk-metros">${r.metros.toFixed(1)} m</div></div>`;
   }).join('');
 }
 

@@ -372,7 +372,10 @@ function montarBlocosSims(){
         '<span class="cal-sub" id="estLinha'+i+'" title="Estimativa de linha que o peixe puxa nesta briga">🐟 ≈ — m</span>'+
         '<div class="sim-mini-gauge"><span class="sim-gauge-pct" id="simPct'+i+'">0%</span><span>·</span><span class="sim-gauge-volt" id="simVolt'+i+'">1.00V</span><div class="sim-gauge-bar"><div class="sim-gauge-fill" id="simFill'+i+'"></div></div></div>'+
         '<div class="sim-controls">'+
-          '<button class="btn btn-accent" onclick="regerar('+i+')" title="Gerar nova briga deste peixe (usa os ajustes do gerador)">🎲</button>'+
+          '<button class="btn" style="background:#1565c0;color:#fff" onclick="gerarPositivo('+i+')" title="🎲 Gerar a PUXADA (azul, +). Mantém o freio que já existe.">🎲+</button>'+
+          '<button class="btn" style="background:#c1121f;color:#fff" onclick="gerarNegativo('+i+')" title="🎲 Gerar o FREIO (vermelho, −) nas janelas. Mantém a puxada que já existe.">🎲−</button>'+
+          '<button class="btn btn-outline" onclick="limparPositivo('+i+')" title="Apagar só a PUXADA (parte +)">🧹+</button>'+
+          '<button class="btn btn-outline" onclick="limparNegativo('+i+')" title="Apagar só o FREIO (parte −)">🧹−</button>'+
           '<button class="btn btn-green" onclick="playSim('+i+')">▶</button><button class="btn btn-yellow" onclick="pauseSim('+i+')">⏸</button><button class="btn btn-red" onclick="stopSim('+i+')">■</button>'+
           '<button class="btn btn-outline" onclick="copiarCurva('+i+')" title="Copiar curva deste peixe">📄</button>'+
           '<button class="btn btn-accent btnColar" id="colar'+i+'" onclick="colarCurva('+i+')" disabled title="Colar curva copiada">📋</button>'+
@@ -390,7 +393,7 @@ function montarBlocosSims(){
         '<label title="Distância entre pontos no tempo: 0 = densos (atual) · 100 = bem espaçados. Maior = o motor físico tem tempo de alcançar cada nível (não vira borrão)">espaço <input type="number" id="espaco'+i+'" min="0" max="100" value="40">/100</label>'+
         '<label title="Força MÁXIMA de tração SUSTENTADA que o peixe faz no FREIO (parte negativa), em kgf. É a profundidade da resistência gerada nas janelas (0 a -20 = base do gráfico). O PESO do peixe (no player) escala isso. Vira força REAL na linha após a calibração do VESC.">🛑 freio máx <input type="number" id="freioMax'+i+'" min="0" max="20" value="'+(FREIO_MAX_DEF[LETRAS[i]]||10)+'"> kgf</label>'+
         '<label title="Onde a briga gerada pelo 🎲 começa. Antes desse tempo a curva fica livre pra você desenhar as fisgadas MANUALMENTE." style="border-left:1px solid var(--border);padding-left:8px;margin-left:2px;">🎣 início da briga <input type="number" id="fisFisDur'+i+'" min="0" max="30" step="0.5" value="5" oninput="renderCurva('+i+')">s</label>'+
-        '<span>🎲 = nova briga com estes ajustes</span>'+
+        '<span>🎲+ puxada · 🎲− freio · 🧹 apaga cada um</span>'+
       '</div>'+
       '<div class="peso-row" style="display:flex;align-items:center;gap:8px;font-size:0.62rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin:4px 0 2px;">⚖️ peso (prévia) <input type="range" id="pesoSim'+i+'" min="'+PESO_MIN+'" max="'+pmx+'" step="0.5" value="'+pwv+'" oninput="ajustarPesoSim('+i+')" style="flex:1;max-width:260px;accent-color:#ffcc66;"><span id="pesoSimLbl'+i+'" style="font-family:monospace;color:var(--text);min-width:185px;text-transform:none;letter-spacing:0;"></span></div>'+
       '<div id="tl'+i+'" class="timeline-wrap"><div class="curve-area" id="curva'+i+'"></div><div id="playhead'+i+'" class="tl-playhead"></div></div>'+
@@ -1032,6 +1035,29 @@ function regerar(idx){
   salvarGenCfg(idx);
   log('🎲 '+NOMES[idx]+' (assinatura '+c.intens+'% · teto '+c.teto+'% · fadiga '+c.fadiga+'% · puxada '+c.puxada+'s · fisgada '+c.fisPico+'%/'+c.fisDur+'× · espaço '+c.espaco+') — nova briga gerada','ok');
 }
+// ── GERAÇÃO SEPARADA: 🎲+ azul = PUXADA (+) · 🎲− vermelho = FREIO (−) ──
+// 🎲+ : gera uma PUXADA nova (sem freio) e MANTÉM os pontos de freio que já existiam (mescla por tempo).
+function gerarPositivo(idx){
+  const c=cfgGerador(idx);
+  const negExist = SIMS[idx].pontos.filter(p=>p.pot<0);   // freio atual: preservado
+  genFreioMax = 0;                                         // gera SÓ a puxada (sem freio novo)
+  const novo = (FIGHTS[LETRAS[idx]]||fightTucunare)(c.teto,c.fadiga,c.puxada,c.fisDur,c.fisPico,c.intens,c.espaco,c.durFis);
+  SIMS[idx].pontos = finalizarFight(novo.concat(negExist));   // mescla puxada nova + freio antigo, clampa e ordena
+  salvarPontos(idx); simAtiva=idx; selPonto=-1; multiSel=[]; fecharEditorPonto(); renderCurva(idx); salvarGenCfg(idx);
+  log('🎲+ '+NOMES[idx]+' — PUXADA gerada'+(negExist.length?' (freio mantido)':''),'ok');
+}
+// 🎲− : MANTÉM a puxada (+) e os descansos, e (re)preenche o FREIO nas janelas de 0. Puxada intacta.
+function gerarNegativo(idx){
+  const c=cfgGerador(idx);
+  let base = SIMS[idx].pontos.filter(p=>p.pot>=0).slice().sort((a,b)=>a.t-b.t);   // puxada + descansos
+  if(!base.some(p=>p.pot>0)) base=[{t:0,pot:0},{t:c.durFis||0,pot:0},{t:DURACAO,pot:0}];   // sem puxada ainda: freio cobre tudo
+  genFreioMax = c.freioMax;
+  SIMS[idx].pontos = finalizarFight(preencherFreioJanelas(base, c.durFis));   // só adiciona o freio nas janelas
+  salvarPontos(idx); simAtiva=idx; selPonto=-1; multiSel=[]; fecharEditorPonto(); renderCurva(idx); salvarGenCfg(idx);
+  log('🎲− '+NOMES[idx]+' — FREIO gerado (freio máx '+c.freioMax+' kgf)','ok');
+}
+function limparPositivo(idx){ SIMS[idx].pontos = SIMS[idx].pontos.filter(p=>p.pot<=0); salvarPontos(idx); selPonto=-1; multiSel=[]; fecharEditorPonto(); renderCurva(idx); log('🧹+ '+NOMES[idx]+' — PUXADA apagada','info'); }
+function limparNegativo(idx){ SIMS[idx].pontos = SIMS[idx].pontos.filter(p=>p.pot>=0); salvarPontos(idx); selPonto=-1; multiSel=[]; fecharEditorPonto(); renderCurva(idx); log('🧹− '+NOMES[idx]+' — FREIO apagado','info'); }
 // Persiste/recupera os ajustes do gerador POR PEIXE (simpesca2_gen_<id>_<campo>)
 const GEN_CAMPOS=[['teto','teto'],['fadiga','fadiga'],['puxada','puxada'],['fisPico','fispico'],['fisDur','fisdur'],['intens','intens'],['espaco','espaco'],['freioMax','freiomax'],['fisFisDur','fisfisdur']];
 const FISFIS_GLOBAL={fisfisdur:'simpesca2_fisfis_dur'};  // migração antiga (só o tempo de início)

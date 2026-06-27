@@ -62,7 +62,7 @@ const ESPECIES=[
   {id:'jau',      nome:'Jaú'}
 ];
 function nomePeixe(id){ const e=ESPECIES.find(x=>x.id===id); return e?e.nome:('Sim '+id); }
-function carregar(){ try{ return JSON.parse(localStorage.getItem('simpesca_ranking'))||[]; }catch(e){ return []; } }
+function carregar(){ try{ return JSON.parse(localStorage.getItem('simpesca2_ranking'))||[]; }catch(e){ return []; } }
 function nomeValido(n){ n=(n||'').trim().toLowerCase(); return n!=='' && n!=='jogador'; }   // jogada sem nome não conta
 function fmtData(iso){ const d=new Date(iso); return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
 function render(){
@@ -76,7 +76,7 @@ function render(){
     const medalha = i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'º';
     return `<div class="linha-rank ${cls}">
       <div class="pos">${medalha}</div>
-      <div class="info"><div class="nome">${escapeHtml(r.nome)}</div><div class="meta">🐟 ${nomePeixe(r.sim)} · ${fmtData(r.data)}</div></div>
+      <div class="info"><div class="nome">${escapeHtml(r.nome)}</div><div class="meta">🐟 ${nomePeixe(r.sim)} · ${isFinite(r.peso)?'⚖️ '+r.peso.toFixed(1)+' kg · ':''}${fmtData(r.data)}</div></div>
       <div class="metros">${r.metros.toFixed(1)} m</div>
     </div>`;
   }).join('');
@@ -87,7 +87,7 @@ function exportar(){
   const blob=new Blob([JSON.stringify(carregar(),null,2)],{type:'application/json'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='ranking_simpesca.json'; a.click(); URL.revokeObjectURL(a.href);
 }
-function limpar(){ if(confirm('Apagar TODO o ranking? Não dá para desfazer.')){ localStorage.removeItem('simpesca_ranking'); render(); } }
+function limpar(){ if(confirm('Apagar TODO o ranking? Não dá para desfazer.')){ localStorage.removeItem('simpesca2_ranking'); render(); } }
 window.addEventListener('load',()=>{
   const f=document.getElementById('filtros');
   ESPECIES.forEach(e=>{ const b=document.createElement('button'); b.className='filtro'; b.dataset.sim=e.id; b.textContent=e.nome; b.onclick=()=>filtrar(e.id,b); f.appendChild(b); });
