@@ -328,6 +328,14 @@ const ESC_POS=40;    // topo do gráfico = PUXADA máxima (corrida do peixe)
 const ESC_NEG=-20;   // base do gráfico = FREIO máximo (resistência sustentada)
 const ESC_RANGE=ESC_POS-ESC_NEG;   // faixa total (60). Escala ASSIMÉTRICA: o 0 não fica no meio (fica em yOf(0))
 const FREIO_MAX_DEF={pirarara:13, tambaqui:9, tucunare:5, dourado:8, trairao:5, jau:18};   // freio máx SUSTENTADO (kgf) por espécie
+// ── Prévia de PESO no gráfico (mesma escala do player): mostra como a briga fica num peixe mais leve ──
+const PESO_MAX_DEF={pirarara:60, tambaqui:35, tucunare:14, dourado:30, trairao:15, jau:100};   // peso máx (gigante) por espécie — mesma fonte do player
+const PESO_MIN=1;
+function pesoMaxDash(id){ return PESO_MAX_DEF[id]||20; }
+function escalaPeso(id,w){ const mx=pesoMaxDash(id); return mx>0 ? Math.min(1, Math.pow(w/mx, 2/3)) : 1; }   // lei peso^⅔ (IDÊNTICA ao player)
+function pesoSimValor(i){ const el=document.getElementById('pesoSim'+i); const mx=pesoMaxDash(LETRAS[i]); const v=el?parseFloat(el.value):NaN; return isFinite(v)?Math.max(PESO_MIN,Math.min(mx,v)):mx; }
+function atualizarPesoLbl(i){ const id=LETRAS[i], w=pesoSimValor(i), mx=pesoMaxDash(id), esc=escalaPeso(id,w); const lbl=document.getElementById('pesoSimLbl'+i); if(!lbl) return; const fEl=document.getElementById('freioMax'+i), fmax=fEl?(parseFloat(fEl.value)||0):0; lbl.textContent = w.toFixed(1)+' kg · '+Math.round(esc*100)+'%'+(w>=mx?' (gigante)':' · freio ~'+(fmax*esc).toFixed(1)+' kgf'); }
+function ajustarPesoSim(i){ localStorage.setItem('simpesca2_dashpeso_'+LETRAS[i], pesoSimValor(i)); renderCurva(i); }   // renderCurva redesenha a prévia + atualiza o rótulo
 // UMA simulação POR PEIXE (mesma ordem do player)
 const ESPECIES=[
   {id:'pirarara', nome:'Pirarara'},
@@ -345,6 +353,7 @@ function montarBlocosSims(){
   const cont=document.getElementById('simsContainer');
   ESPECIES.forEach((e,i)=>{
     const cls=['a','b','c'][i%3];
+    const pmx=pesoMaxDash(e.id); const pwv=(function(){ const v=parseFloat(localStorage.getItem('simpesca2_dashpeso_'+e.id)); return isFinite(v)?Math.max(PESO_MIN,Math.min(pmx,v)):pmx; })();
     const d=document.createElement('div'); d.className='sim-bloco';
     d.innerHTML=
       '<div class="sim-header">'+
@@ -371,6 +380,7 @@ function montarBlocosSims(){
         '<label title="Onde a briga gerada pelo 🎲 começa. Antes desse tempo a curva fica livre pra você desenhar as fisgadas MANUALMENTE." style="border-left:1px solid var(--border);padding-left:8px;margin-left:2px;">🎣 início da briga <input type="number" id="fisFisDur'+i+'" min="0" max="30" step="0.5" value="5" oninput="renderCurva('+i+')">s</label>'+
         '<span>🎲 = nova briga com estes ajustes</span>'+
       '</div>'+
+      '<div class="peso-row" style="display:flex;align-items:center;gap:8px;font-size:0.62rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin:4px 0 2px;">⚖️ peso (prévia) <input type="range" id="pesoSim'+i+'" min="'+PESO_MIN+'" max="'+pmx+'" step="0.5" value="'+pwv+'" oninput="ajustarPesoSim('+i+')" style="flex:1;max-width:260px;accent-color:#ffcc66;"><span id="pesoSimLbl'+i+'" style="font-family:monospace;color:var(--text);min-width:185px;text-transform:none;letter-spacing:0;"></span></div>'+
       '<div id="tl'+i+'" class="timeline-wrap"><div class="curve-area" id="curva'+i+'"></div><div id="playhead'+i+'" class="tl-playhead"></div></div>';
     cont.appendChild(d);
   });
@@ -428,10 +438,14 @@ function renderCurva(idx){
     inner+=fill(v=>Math.min(0,v),'rgba(255,95,95,0.20)');     // preenche FREIO (abaixo do centro)
     const line=seq.map(c=>c[0].toFixed(2)+','+yOf(c[1]).toFixed(2)).join(' ');
     inner+=`<polyline points="${line}" fill="none" stroke="#dcefff" stroke-width="1.5" vector-effect="non-scaling-stroke"/>`;
+    // PRÉVIA DO PESO (lei peso^⅔, igual ao player): curva escalada — só aparece quando o peso < máx
+    const escP=escalaPeso(LETRAS[idx], pesoSimValor(idx));
+    if(escP<0.999){ const gl=seq.map(c=>c[0].toFixed(2)+','+yOf(c[1]*escP).toFixed(2)).join(' '); inner+=`<polyline points="${gl}" fill="none" stroke="#ffcc66" stroke-width="1.6" stroke-dasharray="3,2" opacity="0.95" vector-effect="non-scaling-stroke"/>`; }
   }
   area.innerHTML=`<svg class="curve-svg" viewBox="0 0 100 100" preserveAspectRatio="none">${inner}</svg>`;
   pts.forEach((p,i)=>{ const h=document.createElement('div'); let cls='ponto-handle'+(p.pot<0?' freio':''); if(idx===simAtiva){ if(multiSel.indexOf(p)>-1) cls+=' multi'; else if(i===selPonto) cls+=' sel'; } h.className=cls; h.style.left=(p.t/DURACAO*100)+'%'; h.style.top=yOf(p.pot)+'%'; h.addEventListener('mousedown',e=>iniciarDragPonto(e,idx,i)); area.appendChild(h); });
   const est=document.getElementById('estLinha'+idx); if(est) est.textContent='🐟 ≈ '+estimarLinha(pts).toFixed(1)+' m';
+  atualizarPesoLbl(idx);   // mantém o rótulo do slider de peso em sincronia (kg · % · freio escalado)
   // faixa-marcador: zona ANTES do início da briga gerada (0..durFis) = onde você desenha as fisgadas MANUAIS
   const wrap=document.getElementById('tl'+idx); let band=wrap.querySelector('.fisgada-band');
   if(durFis>0){

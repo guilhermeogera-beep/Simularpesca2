@@ -362,7 +362,7 @@ const PESO_MAX_DEF={pirarara:60, tambaqui:35, tucunare:14, dourado:30, trairao:1
 const PESO_MIN=1;   // o slider começa em 1 kg
 function pesoMaxEsp(id){ return PESO_MAX_DEF[id]||20; }   // peso que vale 100% — fixo no pesquisado (mesma fonte que o dashboard)
 function pesoEsp(id){ const mx=pesoMaxEsp(id); const v=parseFloat(localStorage.getItem('simpesca2_peso_'+id)); return isFinite(v)?Math.max(PESO_MIN,Math.min(mx,v)):mx; }   // selecionado (padrão = máx)
-function escalaPeso(id){ const mx=pesoMaxEsp(id); return mx>0 ? Math.max(0.15, Math.min(1, pesoEsp(id)/mx)) : 1; }   // peso -> escala (piso 15%); a física real entra depois
+function escalaPeso(id){ const mx=pesoMaxEsp(id), w=pesoEsp(id); return mx>0 ? Math.min(1, Math.pow(w/mx, 2/3)) : 1; }   // peso -> escala pela lei FÍSICA peso^⅔ (arrasto ∝ área ∝ peso^⅔): 1kg≈0,85kgf (base) · gigante=100% (freio máx) · meio na curva; sem piso
 function salvarPeso(id){ const el=document.getElementById('peso_'+id); if(!el) return; localStorage.setItem('simpesca2_peso_'+id, el.value); const lbl=document.getElementById('pesolbl_'+id); if(lbl) lbl.textContent=parseFloat(el.value).toFixed(1)+' kg'; }
 
 // ── AUTO-SAVE da sincronia no GitHub (só num PC com token; o totem não tem token → só lê) ──
