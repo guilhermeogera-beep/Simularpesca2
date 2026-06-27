@@ -394,9 +394,9 @@ function montarBlocosSims(){
       '<div class="sim-corpo" id="corpo'+i+'">'+
       '<div class="gen-row">'+
         '<label title="Intensidade da ASSINATURA do peixe: 50% = padrão · abaixo de 50 = briga mais plana/genérica · acima de 50 = caráter exagerado (vales mais fundos)">assinatura <input type="number" id="intens'+i+'" min="0" max="100" value="50">%</label>'+
-        '<label title="SAQUE da fisgada = freio máx × este fator. Ex.: 2,2× = o saque é 2,2 vezes a força do peixe. Escala com o peso sozinho.">🎣 saque <input type="number" id="saque'+i+'" min="0.2" max="5" step="0.1" value="2.2">×</label>'+
+        '<label title="Pico do SAQUE (fisgada), na escala do gráfico (0 a +40). O peso do peixe escala isso no player. Padrão sugerido = força × 2,2.">🎣 saque <input type="number" id="saque'+i+'" min="0" max="40" step="1" value="'+Math.round((FREIO_MAX_DEF[LETRAS[i]]||10)*2.2)+'"></label>'+
         '<label title="Alonga (>1) ou encurta (<1) a duração da fisgada">dur <input type="number" id="fisDur'+i+'" min="0.2" max="4" step="0.1" value="2">×</label>'+
-        '<label title="CORRIDA = freio máx × este fator. Ex.: 1,8× = a puxada (quando o peixe dispara) é 1,8 vezes a força dele. Escala com o peso sozinho.">🏃 corrida <input type="number" id="corrida'+i+'" min="0.2" max="4" step="0.1" value="1.8">×</label>'+
+        '<label title="Pico da PUXADA (quando o peixe dispara), na escala do gráfico (0 a +40). O peso do peixe escala isso no player. Padrão sugerido = força × 1,8.">🏃 corrida <input type="number" id="corrida'+i+'" min="0" max="40" step="1" value="'+Math.round((FREIO_MAX_DEF[LETRAS[i]]||10)*1.8)+'"></label>'+
         '<label title="0% = não cansa · 100% = cansa muito (trancos caem + janelas crescem)">fadiga <input type="number" id="fadiga'+i+'" min="0" max="100" value="50">%</label>'+
         '<label title="Tempo total de motor ligado (puxada). Maior = blocos mais longos, peixe puxa mais linha">puxada <input type="number" id="puxada'+i+'" min="5" max="80" value="55">s</label>'+
         '<label title="Distância entre pontos no tempo: 0 = densos (atual) · 100 = bem espaçados. Maior = o motor físico tem tempo de alcançar cada nível (não vira borrão)">espaço <input type="number" id="espaco'+i+'" min="0" max="100" value="40">/100</label>'+
@@ -1046,11 +1046,11 @@ function cfgGerador(idx){
   let intens=g('intens',50); intens=Math.max(0,Math.min(100,intens));
   let espaco=g('espaco',40); espaco=Math.max(0,Math.min(100,espaco));
   let freioMax=g('freioMax', FREIO_MAX_DEF[LETRAS[idx]]||10); freioMax=Math.max(0,Math.min(-ESC_NEG,freioMax));   // freio máx (kgf) = a FORÇA do peixe (arrasto sustentado)
-  // NOVO MODELO: puxada e fisgada são MÚLTIPLOS da força → escalam com o peso sozinhas (peixe maior puxa+finca mais forte)
-  let corrida=g('corrida',1.8); corrida=Math.max(0.2,Math.min(4,corrida));   // puxada = freioMax × corrida
-  let saque=g('saque',2.2);     saque=Math.max(0.2,Math.min(5,saque));       // saque  = freioMax × saque
-  const teto=Math.max(1,Math.min(ESC_POS, freioMax*corrida));     // pico da PUXADA (unid. do gráfico)
-  const fisPico=Math.max(1,Math.min(ESC_POS, freioMax*saque));    // pico do SAQUE (fisgada)
+  // PUXADA e SAQUE: VALORES DIRETOS na escala do gráfico (0..+ESC_POS). Padrão sugerido por peixe = força (freio máx) × fator.
+  let corrida=g('corrida', Math.round(freioMax*1.8)); corrida=Math.max(0,Math.min(ESC_POS,corrida));   // pico da PUXADA (direto)
+  let saque=g('saque', Math.round(freioMax*2.2));     saque=Math.max(0,Math.min(ESC_POS,saque));       // pico do SAQUE (direto)
+  const teto=Math.max(1, corrida);
+  const fisPico=Math.max(1, saque);
   const durFis=fisFisCfg(idx).dur;   // tempo de início da briga gerada (antes = fisgada manual)
   const freioQuad=!!(document.getElementById('freioQuad'+idx)||{}).checked;   // SIM = freio quadrado · NÃO = característico
   return {teto,fadiga,puxada,fisPico,fisDur,intens,espaco,durFis,freioMax,freioQuad,corrida,saque};
