@@ -142,7 +142,7 @@ select{background:var(--surface);border:1px solid var(--border);color:var(--text
 <button type="button" id="btnSairFS" onclick="voltarNormal()">↩ Voltar ao normal</button>
 
 <div class="card" id="gaugeArea">
-  <div id="gaugeLabel" class="recolhivel" data-cardkey="motor" onclick="toggleCard(this)"><span class="card-chevron">▾</span>Tensão do Motor</div>
+  <div id="gaugeLabel" class="secao-titulo recolhivel" data-cardkey="motor" onclick="toggleCard(this)"><span class="card-chevron">▾</span><span>🎚️</span> Controle Manual</div>
   <div id="gaugePct">0%</div>
   <div id="gaugeBar"><div id="gaugeBarFill"></div></div>
   <div id="gaugeVolt">1.00 V</div>
@@ -158,7 +158,7 @@ select{background:var(--surface);border:1px solid var(--border);color:var(--text
 
 <!-- CALIBRAÇÃO DO ENCODER -->
 <div class="card">
-  <div class="secao-titulo recolhivel" data-cardkey="calibracao" onclick="toggleCard(this)"><span class="card-chevron">▾</span><span>📏</span> Calibração da Linha (tacômetro do VESC)</div>
+  <div class="secao-titulo recolhivel" data-cardkey="calibracao" onclick="toggleCard(this)"><span class="card-chevron">▾</span><span>📏</span> Encoder</div>
   <div class="cal-grid">
     <div class="cal-campo"><label>Metros por volta</label><input type="number" id="calMpv" step="0.0001" min="0" value="0.0854"></div>
     <div class="cal-campo"><label>Vel. motor a 100% (m/s)</label><input type="number" id="calVel" step="0.01" min="0" value="2.5"></div>
@@ -196,7 +196,7 @@ select{background:var(--surface);border:1px solid var(--border);color:var(--text
 
 <!-- CONTADORES DE LINHA (teste) -->
 <div class="card">
-  <div class="secao-titulo recolhivel" data-cardkey="linha" onclick="toggleCard(this)"><span class="card-chevron">▾</span><span>🎣</span> Linha — Ganhos / Perdidos (teste)</div>
+  <div class="secao-titulo recolhivel" data-cardkey="linha" onclick="toggleCard(this)"><span class="card-chevron">▾</span><span>🎣</span> Controle de Carretel</div>
   <div class="cont3" style="display:flex;gap:14px;flex-wrap:wrap;">
     <div style="flex:1;min-width:120px;background:rgba(0,230,118,0.06);border:1px solid rgba(0,230,118,0.35);border-radius:10px;padding:14px;text-align:center;">
       <div class="cal-sub">⬆ Ganhos (recolheu)</div>
@@ -223,8 +223,6 @@ select{background:var(--surface);border:1px solid var(--border);color:var(--text
 <!-- EDITOR DE CURVA POR PONTOS -->
 <div class="card">
   <div class="secao-titulo" style="margin-bottom:12px"><span>⚡</span> Curva de Potência (por pontos) <span id="copiaAviso" class="copia-aviso"></span></div>
-  <div class="dica-editor">👉 <b>Clique</b> na timeline = novo ponto · <b>arraste</b> = mover · <b>clique num ponto</b> = editar/remover.<br>📌 <b>Ctrl+clique</b> marca vários pontos (verdes) · <b>arraste um deles para mover todos juntos</b> · <b>Ctrl+C</b> copia → passe o mouse na outra Sim e <b>Ctrl+V</b> cola (ou 📋). Delete remove os marcados · Esc limpa.</div>
-
   <div id="simsContainer"></div>
 
   <div id="pontoEditor">
@@ -234,6 +232,11 @@ select{background:var(--surface);border:1px solid var(--border);color:var(--text
     <button class="btn btn-green" onclick="fecharEditorPonto()">✓ Fechar</button>
   </div>
 
+</div>
+
+<!-- EXPORTAÇÃO / IMPORTAÇÃO -->
+<div class="card">
+  <div class="secao-titulo recolhivel" data-cardkey="export" onclick="toggleCard(this)"><span class="card-chevron">▾</span><span>💾</span> Exportar / Importar</div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;">
     <select id="selSimAcao"><option value="0">Pirarara</option><option value="1">Tambacu</option><option value="2">Tucunaré</option><option value="3">Dourado</option><option value="4">Trairão</option><option value="5">Jaú</option></select>
     <button class="btn btn-green" onclick="exportarJSON()">⬇ Exportar</button>
@@ -247,7 +250,7 @@ select{background:var(--surface);border:1px solid var(--border);color:var(--text
 </div>
 
 <div class="card">
-  <div class="secao-titulo" style="margin-bottom:10px;"><span>📋</span> Terminal de Eventos</div>
+  <div class="secao-titulo recolhivel" data-cardkey="terminal" onclick="toggleCard(this)" style="margin-bottom:10px;"><span class="card-chevron">▾</span><span>📋</span> Terminal de Eventos</div>
   <div id="log"><span class="info">Aguardando inicialização...</span></div>
 </div>
 
