@@ -871,7 +871,6 @@ function buildFight(pe, nMin, nMax, teto, fadiga, puxada, fisEstilo, fisDur, fis
     let wdur=restTotal*(w[k]/wsum)*rnd(0.85,1.15);    // janela cresce ao longo do tempo
     wdur=Math.max(2.0, Math.min(16, wdur));
     wdur=Math.min(wdur, Math.max(1.5, (DURACAO-11)-t));  // não invade os ~11s reservados pra última investida
-    if(genFreioMax>0 && wdur>=2.2) pts.push({t:t+wdur*rnd(0.4,0.6), pot:-genFreioMax*rnd(0.55,1.0), frear:true});  // FREIO: peixe segura o peso no meio da janela
     t+=wdur; pts.push({t,pot:0});
     if(t>DURACAO-12) break;                            // reserva o fim pra ÚLTIMA INVESTIDA (clímax garantido)
   }
@@ -886,7 +885,24 @@ function buildFight(pe, nMin, nMax, teto, fadiga, puxada, fisEstilo, fisDur, fis
     if(topo>0) pts.forEach(p=>{ if(!p.fis && p.pot>0) p.pot=Math.max(0.5, Math.min(100, topo-(topo-p.pot)*ig)); });
   }
   pts.forEach(p=>{ if(!p.fis && !p.frear) p.pot*=tf; });   // teto só nos trancos (não no freio nem na fisgada)
-  return finalizarFight(espacar(suavizar(pts), espacoSeg(espaco)));   // suaviza → espaça (por último) → piso/arredonda
+  return finalizarFight(espacar(suavizar(preencherFreioJanelas(pts, t0)), espacoSeg(espaco)));   // freio nas janelas → suaviza → espaça → piso
+}
+// Varre a curva e preenche TODA janela de 0 (entre dois pontos em ~0, com gap real) com FREIO sustentado,
+// pra NUNCA rodar livre durante a briga. Pula a zona inicial [0, t0] (onde você desenha a fisgada MANUAL).
+function preencherFreioJanelas(pts, t0){
+  if(!(genFreioMax>0)) return pts;
+  pts.sort((a,b)=>a.t-b.t);
+  const out=[];
+  for(let i=0;i<pts.length;i++){
+    out.push(pts[i]);
+    const a=pts[i], b=pts[i+1]; if(!b) continue;
+    if(Math.abs(a.pot)<1 && Math.abs(b.pot)<1 && (b.t-a.t)>1.0 && a.t>=t0-0.01){   // janela de 0 DURANTE a briga
+      const w=b.t-a.t, fr=-genFreioMax*rnd(0.55,1.0);
+      out.push({t:a.t+w*0.2, pot:fr, frear:true});     // entra no freio
+      out.push({t:a.t+w*0.8, pot:fr, frear:true});     // segura até quase o fim da janela
+    }
+  }
+  return out;
 }
 // PIRARARÁ — FORÇA BRUTA: swells lentos e PESADOS (sobe-desce devagar entre alto e médio-alto), sem estalos
 function pePirarara(pts,t,pdur,fat){
