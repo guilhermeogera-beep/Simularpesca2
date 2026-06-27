@@ -1,7 +1,7 @@
 {
   "versao": 1,
   "tipo": "curvas_todas",
-  "criado": "2026-06-27T18:31:53.605Z",
+  "criado": "2026-06-27T18:32:03.556Z",
   "curvas": {
     "pirarara": [
       {
@@ -845,6 +845,10 @@
       {
         "t": 86.35,
         "pot": 0
+      },
+      {
+        "t": 86.92,
+        "pot": -4
       }
     ],
     "tucunare": [
