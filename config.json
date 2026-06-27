@@ -1,7 +1,7 @@
 {
   "versao": 1,
   "tipo": "config",
-  "criado": "2026-06-27T06:39:21.762Z",
+  "criado": "2026-06-27T06:39:34.051Z",
   "cal": {
     "mpv": 0.0854,
     "limite": -152,
@@ -18,7 +18,7 @@
       "fisdur": "3.2",
       "intens": "100",
       "espaco": "23",
-      "freiomax": "15",
+      "freiomax": "19",
       "fisfisdur": "0"
     },
     "tambaqui": {
