@@ -336,6 +336,7 @@ const ESPECIES=[
 const LETRAS=ESPECIES.map(e=>e.id);    // chaves de storage (simpesca2_pontos_<id>)
 const NOMES=ESPECIES.map(e=>e.nome);   // exibição
 const NSIMS=ESPECIES.length;
+const PESO_MAX_DEF={pirarara:60, tambaqui:35, tucunare:14, dourado:30, trairao:15, jau:100};   // peso máx pesquisado (gigante) por espécie
 // Monta os blocos (1 timeline por peixe) com os mesmos ids indexados (tl0.., curva0.., etc.)
 function montarBlocosSims(){
   const cont=document.getElementById('simsContainer');
@@ -364,7 +365,7 @@ function montarBlocosSims(){
         '<label title="Tempo total de motor ligado (puxada). Maior = blocos mais longos, peixe puxa mais linha">puxada <input type="number" id="puxada'+i+'" min="5" max="80" value="55">s</label>'+
         '<label title="Distância entre pontos no tempo: 0 = densos (atual) · 100 = bem espaçados. Maior = o motor físico tem tempo de alcançar cada nível (não vira borrão)">espaço <input type="number" id="espaco'+i+'" min="0" max="100" value="40">/100</label>'+
         '<label title="Freio máximo gerado nas janelas de descanso (negativo). É a profundidade da resistência. No player, o PESO do peixe escala isso.">🛑 freio máx <input type="number" id="freioMax'+i+'" min="0" max="100" value="50">%</label>'+
-        '<label title="Peso MÁXIMO da espécie (kg) = o peixe gigante = 100% da curva. No player, o slider vai de 0 a este peso e escala a força.">⚖️ peso máx <input type="number" id="pesoMax'+i+'" min="1" max="500" step="0.5" value="20">kg</label>'+
+        '<label title="Peso MÁXIMO da espécie (kg) = o peixe gigante = 100% da curva. No player, o slider vai de 1 kg a este peso e escala a força.">⚖️ peso máx <input type="number" id="pesoMax'+i+'" min="1" max="500" step="0.5" value="'+(PESO_MAX_DEF[LETRAS[i]]||20)+'">kg</label>'+
         '<label title="Onde a briga gerada pelo 🎲 começa. Antes desse tempo a curva fica livre pra você desenhar as fisgadas MANUALMENTE." style="border-left:1px solid var(--border);padding-left:8px;margin-left:2px;">🎣 início da briga <input type="number" id="fisFisDur'+i+'" min="0" max="30" step="0.5" value="5" oninput="renderCurva('+i+')">s</label>'+
         '<span>🎲 = nova briga com estes ajustes</span>'+
       '</div>'+
