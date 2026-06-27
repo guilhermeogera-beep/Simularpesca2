@@ -236,7 +236,7 @@ function limiteLinha(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_l
 function inverterDir(){ return localStorage.getItem('simpesca2_cal_inv')==='1'; }
 function contagemParaMetros(c){ let m=(c/4096)*metrosPorVolta(); if(inverterDir()) m=-m; return m; }
 function metrosAtuais(){ return Math.max(0, metrosGanhos); }   // só os metros recolhidos (ganhos)
-function atualizarLinha(){ const m=metrosAtuais(); document.getElementById('linhaBadge').textContent='LINHA '+m.toFixed(1)+' m'; document.getElementById('hudLinha').textContent='🧵 Enrolada: '+m.toFixed(1)+' m';
+function atualizarLinha(){ const m=metrosAtuais(); document.getElementById('linhaBadge').textContent='LINHA '+m.toFixed(1)+' m'; document.getElementById('hudLinha').textContent='🎣 Enrolada: '+m.toFixed(1)+' m';
   const car=linhaCarretel(), L=limiteLinha(), travadoLin=Math.abs(car)>=Math.abs(L);
   const hc=document.getElementById('hudCarretel');
   hc.textContent='📍 Carretel: '+car.toFixed(1)+' / '+L.toFixed(0)+' m'; hc.classList.toggle('travado', travadoLin);
