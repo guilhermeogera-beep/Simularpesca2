@@ -1,7 +1,7 @@
 {
   "versao": 1,
   "tipo": "config",
-  "criado": "2026-06-27T18:56:04.651Z",
+  "criado": "2026-06-27T18:56:53.041Z",
   "cal": {
     "mpv": 0.0854,
     "limite": -152,
@@ -16,7 +16,7 @@
       "puxada": "55",
       "fispico": "20",
       "fisdur": "3.2",
-      "intens": "50",
+      "intens": "25",
       "espaco": "23",
       "freiomax": "13",
       "fisfisdur": "0"
@@ -27,7 +27,7 @@
       "puxada": "55",
       "fispico": "40",
       "fisdur": "2.1",
-      "intens": "100",
+      "intens": "50",
       "espaco": "65",
       "freiomax": "9",
       "fisfisdur": "5"
@@ -38,7 +38,7 @@
       "puxada": "55",
       "fispico": "20",
       "fisdur": "2",
-      "intens": "81",
+      "intens": "41",
       "espaco": "40",
       "freiomax": "5",
       "fisfisdur": "5"
@@ -49,7 +49,7 @@
       "puxada": "55",
       "fispico": "40",
       "fisdur": "2",
-      "intens": "100",
+      "intens": "50",
       "espaco": "48",
       "freiomax": "8",
       "fisfisdur": "0"
@@ -60,7 +60,7 @@
       "puxada": "55",
       "fispico": "40",
       "fisdur": "4",
-      "intens": "100",
+      "intens": "50",
       "espaco": "45",
       "freiomax": "5",
       "fisfisdur": "0"
@@ -71,7 +71,7 @@
       "puxada": "55",
       "fispico": "30",
       "fisdur": "3",
-      "intens": "50",
+      "intens": "25",
       "espaco": "51",
       "freiomax": "18",
       "fisfisdur": "0"
