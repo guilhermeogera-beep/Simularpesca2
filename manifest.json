@@ -1,7 +1,8 @@
 {
-  "name": "Simulador de Pesca",
-  "short_name": "SimPesca",
-  "description": "Controle o simulador de pesca via Bluetooth",
+  "name": "Simulador de Pesca v2",
+  "short_name": "Pesca v2",
+  "id": "/Simularpesca2/",
+  "description": "Simulador de Pesca v2 (VESC) — controle via Bluetooth",
   "start_url": "/Simularpesca2/",
   "scope": "/Simularpesca2/",
   "display": "standalone",
