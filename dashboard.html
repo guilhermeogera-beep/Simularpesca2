@@ -415,11 +415,12 @@ let simAtiva=0, selPonto=-1, clip=null, multiSel=[], arrastouPonto=false, simHov
 
 function carregarSim(idx){
   const id=LETRAS[idx]; let pts=null;
-  try{ const r=localStorage.getItem('simpesca2_pontos_'+id); if(r){ const d=JSON.parse(r); if(Array.isArray(d)&&d.length) pts=d; } }catch(e){}
-  // 1º: GitHub (curvas.json) — fonte principal quando online
-  if(curvasGitHub[id]&&Array.isArray(curvasGitHub[id])&&curvasGitHub[id].length){ pts=curvasGitHub[id]; }
-  // 2º: localStorage (curvas editadas localmente / offline)
-  if(!pts){ try{ const r=localStorage.getItem('simpesca2_pontos_'+id); if(r){ const d=JSON.parse(r); if(Array.isArray(d)&&d.length) pts=d; } }catch(e){} }
+  const ehEditor = !!(localStorage.getItem('simpesca2_github_token')||'').trim();   // PC de edição tem token
+  let local=null; try{ const r=localStorage.getItem('simpesca2_pontos_'+id); if(r){ const d=JSON.parse(r); if(Array.isArray(d)&&d.length) local=d; } }catch(e){}
+  const gh=(curvasGitHub[id]&&Array.isArray(curvasGitHub[id])&&curvasGitHub[id].length)?curvasGitHub[id]:null;
+  if(ehEditor && local) pts=local;        // EDITOR (token): edit LOCAL vence — não perde no reload
+  else if(gh) pts=gh;                      // online: GitHub é a fonte de verdade
+  else if(local) pts=local;               // offline/sem GitHub: usa o local
   // migração: curvas antigas das Sims A/B/C
   if(!pts && idx<3){ try{ const r=localStorage.getItem('simpesca2_pontos_'+['A','B','C'][idx]); if(r){ const d=JSON.parse(r); if(Array.isArray(d)&&d.length) pts=d; } }catch(e){} }
   // padrão: gera a briga característica da espécie

@@ -279,10 +279,12 @@ function gatilhosParaPontos(gatilhos){
 }
 let curvasGitHub={};
 function carregarPontos(id){
-  // 1º: GitHub (curvas.json) — fonte de verdade entre dispositivos
-  if(curvasGitHub[id]&&Array.isArray(curvasGitHub[id])&&curvasGitHub[id].length) return curvasGitHub[id].slice().sort((a,b)=>a.t-b.t);
-  // 2º: localStorage (offline, ou editado localmente nesta máquina)
-  try{ const r=localStorage.getItem('simpesca2_pontos_'+id); if(r){ const d=JSON.parse(r); if(Array.isArray(d)&&d.length) return d.slice().sort((a,b)=>a.t-b.t); } }catch(e){}
+  const ehEditor = !!(localStorage.getItem('simpesca2_github_token')||'').trim();   // só o PC de edição tem token
+  let local=null; try{ const r=localStorage.getItem('simpesca2_pontos_'+id); if(r){ const d=JSON.parse(r); if(Array.isArray(d)&&d.length) local=d.slice().sort((a,b)=>a.t-b.t); } }catch(e){}
+  const gh=(curvasGitHub[id]&&Array.isArray(curvasGitHub[id])&&curvasGitHub[id].length) ? curvasGitHub[id].slice().sort((a,b)=>a.t-b.t) : null;
+  if(ehEditor && local) return local;   // EDITOR (tem token): o edit LOCAL vence = feedback imediato no player
+  if(gh) return gh;                      // TOTEM (sem token): GitHub é a fonte de verdade
+  if(local) return local;                // offline/sem GitHub: usa o local
   // fallback: curvas antigas A/B/C (cíclico) ou padrão embutido
   const idx=Math.max(0,ESPECIES.findIndex(e=>e.id===id)), L=['A','B','C'][idx%3];
   try{ const r=localStorage.getItem('simpesca2_pontos_'+L); if(r){ const d=JSON.parse(r); if(Array.isArray(d)&&d.length) return d.slice().sort((a,b)=>a.t-b.t); } }catch(e){}
