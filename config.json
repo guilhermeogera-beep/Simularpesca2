@@ -1,0 +1,94 @@
+{
+  "versao": 1,
+  "tipo": "config",
+  "criado": "2026-06-27T02:35:50.483Z",
+  "cal": {
+    "mpv": 0.0854,
+    "limite": -152,
+    "velmax": 6.6,
+    "offset": 15,
+    "inv": "0"
+  },
+  "gen": {
+    "pirarara": {
+      "teto": "25",
+      "fadiga": "50",
+      "puxada": "55",
+      "fispico": "30",
+      "fisdur": "3.1",
+      "intens": "100",
+      "espaco": "23",
+      "fisfispot": "15",
+      "fisfisvoltas": "2",
+      "fisfisdur": "0"
+    },
+    "tambaqui": {
+      "teto": "30",
+      "fadiga": "59",
+      "puxada": "55",
+      "fispico": "40",
+      "fisdur": "2.1",
+      "intens": "100",
+      "espaco": "65",
+      "fisfispot": "15",
+      "fisfisvoltas": "4",
+      "fisfisdur": "5"
+    },
+    "tucunare": {
+      "teto": "30",
+      "fadiga": "50",
+      "puxada": "55",
+      "fispico": "30",
+      "fisdur": "2",
+      "intens": "81",
+      "espaco": "40",
+      "fisfispot": "15",
+      "fisfisvoltas": "2",
+      "fisfisdur": "5"
+    },
+    "dourado": {
+      "teto": "30",
+      "fadiga": "52",
+      "puxada": "55",
+      "fispico": "40",
+      "fisdur": "2",
+      "intens": "100",
+      "espaco": "48",
+      "fisfispot": "15",
+      "fisfisvoltas": "2",
+      "fisfisdur": "0"
+    },
+    "trairao": {
+      "teto": "29",
+      "fadiga": "60",
+      "puxada": "55",
+      "fispico": "40",
+      "fisdur": "4",
+      "intens": "100",
+      "espaco": "45",
+      "fisfispot": "15",
+      "fisfisvoltas": "2",
+      "fisfisdur": "0"
+    },
+    "jau": {
+      "teto": "30",
+      "fadiga": "50",
+      "puxada": "55",
+      "fispico": "35",
+      "fisdur": "3",
+      "intens": "100",
+      "espaco": "51",
+      "fisfispot": "15",
+      "fisfisvoltas": "2",
+      "fisfisdur": "0"
+    }
+  },
+  "sync": {
+    "pirarara": "-1",
+    "tambaqui": "-1",
+    "tucunare": "0",
+    "dourado": "0",
+    "trairao": "0",
+    "jau": "0"
+  }
+}
