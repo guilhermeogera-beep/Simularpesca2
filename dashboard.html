@@ -334,8 +334,8 @@ const PESO_MIN=1;
 function pesoMaxDash(id){ return PESO_MAX_DEF[id]||20; }
 function escalaPeso(id,w){ const mx=pesoMaxDash(id); return mx>0 ? Math.min(1, Math.pow(w/mx, 2/3)) : 1; }   // lei peso^⅔ (IDÊNTICA ao player)
 function pesoSimValor(i){ const el=document.getElementById('pesoSim'+i); const mx=pesoMaxDash(LETRAS[i]); const v=el?parseFloat(el.value):NaN; return isFinite(v)?Math.max(PESO_MIN,Math.min(mx,v)):mx; }
-function atualizarPesoLbl(i){ const id=LETRAS[i], w=pesoSimValor(i), mx=pesoMaxDash(id), esc=escalaPeso(id,w); const lbl=document.getElementById('pesoSimLbl'+i); if(!lbl) return; const fEl=document.getElementById('freioMax'+i), fmax=fEl?(parseFloat(fEl.value)||0):0; lbl.textContent = w.toFixed(1)+' kg · '+Math.round(esc*100)+'%'+(w>=mx?' (gigante)':' · freio ~'+(fmax*esc).toFixed(1)+' kgf'); }
-function ajustarPesoSim(i){ localStorage.setItem('simpesca2_dashpeso_'+LETRAS[i], pesoSimValor(i)); renderCurva(i); }   // renderCurva redesenha a prévia + atualiza o rótulo
+function atualizarPesoLbl(i){ const id=LETRAS[i], w=pesoSimValor(i), esc=escalaPeso(id,w); const lbl=document.getElementById('pesoSimLbl'+i); if(!lbl) return; const fEl=document.getElementById('freioMax'+i), fmax=fEl?(parseFloat(fEl.value)||0):0; lbl.textContent = w.toFixed(1)+' kg · '+Math.round(esc*100)+'% · freio ~'+(fmax*esc).toFixed(1)+' kgf'; }
+function ajustarPesoSim(i){ localStorage.setItem('simpesca2_peso_'+LETRAS[i], pesoSimValor(i)); renderCurva(i); }   // MESMA chave do player (sincroniza) · renderCurva redesenha a prévia + rótulo
 // UMA simulação POR PEIXE (mesma ordem do player)
 const ESPECIES=[
   {id:'pirarara', nome:'Pirarara'},
@@ -353,7 +353,7 @@ function montarBlocosSims(){
   const cont=document.getElementById('simsContainer');
   ESPECIES.forEach((e,i)=>{
     const cls=['a','b','c'][i%3];
-    const pmx=pesoMaxDash(e.id); const pwv=(function(){ const v=parseFloat(localStorage.getItem('simpesca2_dashpeso_'+e.id)); return isFinite(v)?Math.max(PESO_MIN,Math.min(pmx,v)):pmx; })();
+    const pmx=pesoMaxDash(e.id); const pwv=(function(){ const v=parseFloat(localStorage.getItem('simpesca2_peso_'+e.id)); return isFinite(v)?Math.max(PESO_MIN,Math.min(pmx,v)):pmx; })();
     const d=document.createElement('div'); d.className='sim-bloco';
     d.innerHTML=
       '<div class="sim-header">'+
