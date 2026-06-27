@@ -450,7 +450,7 @@ window.addEventListener('load',async()=>{
 // ══ MOTOR ═════════════════════════════════════════════════════
 let ultimoToastTrava=0;
 function travado(){ return Math.abs(linhaCarretel()) >= Math.abs(limiteLinha()); }
-function offsetMotor(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_offset')); return (isFinite(v)&&v>=0&&v<100)?v:15; }
+function offsetMotor(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_offset')); return (isFinite(v)&&v>=0&&v<100)?v:0; }   // v2: padrão 0 (controle por corrente não tem zona morta)
 function comOffset(pct){ return pct>0 ? Math.min(100, offsetMotor()+(100-offsetMotor())*pct/100) : 0; }  // 0=desligado; >0 começa no offset (mín. pra girar)
 function aplicarMotor(pct){ pct=Math.max(0,Math.min(100,pct));
   if(travado()){ if(pct>0 && Date.now()-ultimoToastTrava>2500){ ultimoToastTrava=Date.now(); mostrarToast('🛑 Motor travado pelo limite de linha'); } pct=0; }

@@ -144,6 +144,10 @@ select{background:var(--surface);border:1px solid var(--border);color:var(--text
   <div style="margin-top:25px;border-top:1px solid var(--border);padding-top:20px;">
     <div class="secao-titulo" style="justify-content:center;"><span>⚙️</span> Teste Manual de Velocidade</div>
     <input type="range" id="motorSlider" min="0" max="100" value="0">
+    <div class="cal-campo" style="align-items:center;margin-top:14px;" title="Força/corrente MÍNIMA pra o motor começar a girar (vence o atrito). No controle por corrente do VESC, deixe 0 = sem piso. Afeta o gerador (piso da puxada) e a saída do motor.">
+      <label>Offset motor (mín. p/ girar)</label>
+      <input type="number" id="calOffset" step="1" min="0" max="90" value="0" onchange="salvarCal()">
+    </div>
   </div>
 </div>
 
@@ -153,7 +157,6 @@ select{background:var(--surface);border:1px solid var(--border);color:var(--text
   <div class="cal-grid">
     <div class="cal-campo"><label>Metros por volta</label><input type="number" id="calMpv" step="0.0001" min="0" value="0.0854"></div>
     <div class="cal-campo"><label>Vel. motor a 100% (m/s)</label><input type="number" id="calVel" step="0.01" min="0" value="2.5"></div>
-    <div class="cal-campo"><label>Offset motor (% p/ girar)</label><input type="number" id="calOffset" step="1" min="0" max="90" value="15"></div>
     <button class="btn btn-green" onclick="salvarCal()">💾 Salvar</button>
     <button class="btn btn-green" onclick="exportarConfig()" title="Baixa config.json (backup manual)">⬇ Exportar config.json</button>
     <span id="cfgSyncStatus" style="font-size:11px;color:#7b8d9e;align-self:center;"></span>
@@ -296,7 +299,7 @@ function checarLimiteSegurancaDash(){
 function metrosPorVolta(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_mpv')); return (isFinite(v)&&v>0)?v:0.0854; }
 function limiteLinha(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_limite')); return (isFinite(v)&&v!==0)?v:-50; }
 function velMotor(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_velmax')); return (isFinite(v)&&v>0)?v:2.5; }   // m/s a 100%
-function offsetMotor(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_offset')); return (isFinite(v)&&v>=0&&v<100)?v:15; }   // % mínimo pra o motor girar
+function offsetMotor(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_offset')); return (isFinite(v)&&v>=0&&v<100)?v:0; }   // mínimo pra o motor girar (v2: padrão 0 — controle por corrente não tem zona morta)
 function comOffset(pct){ return pct>0 ? Math.min(100, offsetMotor()+(100-offsetMotor())*pct/100) : 0; }   // 0=desligado; >0 começa no offset
 // ∫ pot dt (0..DURACAO) da curva contínua = "esforço" do peixe em %·s
 function integralPot(pts){
@@ -786,7 +789,7 @@ function espacar(pts, dmin){
   out.push(pts[pts.length-1]); return out;
 }
 function finalizarFight(pts){
-  const piso=Math.max(15, offsetMotor());   // puxada mínima = deadband do motor (abaixo disso ele não gira)
+  const piso=offsetMotor();   // puxada mínima = OFFSET do motor (0 = sem piso; só força um mínimo se offset > 0)
   return pts.filter(p=>p.t<=DURACAO).map(p=>{
     let pot=Math.max(ESC_NEG,Math.min(ESC_POS,Math.round(p.pot)));
     if(pot>0 && pot<piso) pot=piso;          // piso só na PUXADA; 0 = parado; <0 = FREIO (passa direto)
