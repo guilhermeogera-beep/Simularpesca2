@@ -318,7 +318,7 @@ function integralPot(pts){
   return area;
 }
 function estimarLinha(pts){ return velMotor()*integralPot(pts)/100; }   // metros que o peixe puxa
-function atualizarEstimativas(){ for(let i=0;i<NSIMS;i++){ const e=document.getElementById('estLinha'+i); if(e) e.textContent='🐟 ≈ '+estimarLinha(SIMS[i].pontos).toFixed(1)+' m'; } }
+function atualizarEstimativas(){ for(let i=0;i<NSIMS;i++){ const e=document.getElementById('estLinha'+i); if(e) e.textContent='🐟 ≈ '+(estimarLinha(SIMS[i].pontos)*escalaPeso(LETRAS[i],pesoSimValor(i))).toFixed(1)+' m'; } }   // escala com o PESO selecionado
 function inverterDir(){ return localStorage.getItem('simpesca2_cal_inv')==='1'; }
 function contagemParaMetros(c){ let m=(c/4096)*metrosPorVolta(); if(inverterDir()) m=-m; return m; }
 function atualizarCalLive(){ const voltas=contagemEncoder/4096, m=Math.max(0,contagemParaMetros(contagemEncoder)); document.getElementById('calCont').textContent=contagemEncoder; document.getElementById('calVoltas').textContent=voltas.toFixed(2); document.getElementById('calMetros').textContent=m.toFixed(1)+' m'; }
@@ -487,7 +487,7 @@ function renderCurva(idx){
   }
   area.innerHTML=`<svg class="curve-svg" viewBox="0 0 100 100" preserveAspectRatio="none">${inner}</svg>`;
   pts.forEach((p,i)=>{ const h=document.createElement('div'); let cls='ponto-handle'+(p.pot<0?' freio':''); if(idx===simAtiva){ if(multiSel.indexOf(p)>-1) cls+=' multi'; else if(i===selPonto) cls+=' sel'; } h.className=cls; h.style.left=(p.t/DURACAO*100)+'%'; h.style.top=yOf(p.pot)+'%'; h.addEventListener('mousedown',e=>iniciarDragPonto(e,idx,i)); area.appendChild(h); });
-  const est=document.getElementById('estLinha'+idx); if(est) est.textContent='🐟 ≈ '+estimarLinha(pts).toFixed(1)+' m';
+  const est=document.getElementById('estLinha'+idx); if(est) est.textContent='🐟 ≈ '+(estimarLinha(pts)*escalaPeso(LETRAS[idx],pesoSimValor(idx))).toFixed(1)+' m';   // escala com o PESO selecionado
   atualizarPesoLbl(idx);   // mantém o rótulo do slider de peso em sincronia (kg · % · freio escalado)
   // faixa-marcador: zona ANTES do início da briga gerada (0..durFis) = onde você desenha as fisgadas MANUAIS
   const wrap=document.getElementById('tl'+idx); let band=wrap.querySelector('.fisgada-band');
