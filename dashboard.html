@@ -336,7 +336,6 @@ const ESPECIES=[
 const LETRAS=ESPECIES.map(e=>e.id);    // chaves de storage (simpesca2_pontos_<id>)
 const NOMES=ESPECIES.map(e=>e.nome);   // exibição
 const NSIMS=ESPECIES.length;
-const PESO_MAX_DEF={pirarara:60, tambaqui:35, tucunare:14, dourado:30, trairao:15, jau:100};   // peso máx pesquisado (gigante) por espécie
 // Monta os blocos (1 timeline por peixe) com os mesmos ids indexados (tl0.., curva0.., etc.)
 function montarBlocosSims(){
   const cont=document.getElementById('simsContainer');
@@ -364,8 +363,7 @@ function montarBlocosSims(){
         '<label title="0% = não cansa · 100% = cansa muito (trancos caem + janelas crescem)">fadiga <input type="number" id="fadiga'+i+'" min="0" max="100" value="50">%</label>'+
         '<label title="Tempo total de motor ligado (puxada). Maior = blocos mais longos, peixe puxa mais linha">puxada <input type="number" id="puxada'+i+'" min="5" max="80" value="55">s</label>'+
         '<label title="Distância entre pontos no tempo: 0 = densos (atual) · 100 = bem espaçados. Maior = o motor físico tem tempo de alcançar cada nível (não vira borrão)">espaço <input type="number" id="espaco'+i+'" min="0" max="100" value="40">/100</label>'+
-        '<label title="Freio máximo gerado nas janelas de descanso (negativo). É a profundidade da resistência. No player, o PESO do peixe escala isso.">🛑 freio máx <input type="number" id="freioMax'+i+'" min="0" max="100" value="50">%</label>'+
-        '<label title="Peso MÁXIMO da espécie (kg), pesquisado = 100% da curva. Mesmo valor no player. Fixo por ora; volta a ser editável na calibração com o VESC.">⚖️ peso máx <input type="number" id="pesoMax'+i+'" value="'+(PESO_MAX_DEF[LETRAS[i]]||20)+'" readonly style="opacity:0.65;cursor:default">kg</label>'+
+        '<label title="Força MÁXIMA de tração que o peixe faz no FREIO (parte negativa), em kgf. É a profundidade da resistência gerada nas janelas. O PESO do peixe (no player) escala isso. Vira força REAL na linha após a calibração do VESC.">🛑 freio máx <input type="number" id="freioMax'+i+'" min="0" max="100" value="50"> kgf</label>'+
         '<label title="Onde a briga gerada pelo 🎲 começa. Antes desse tempo a curva fica livre pra você desenhar as fisgadas MANUALMENTE." style="border-left:1px solid var(--border);padding-left:8px;margin-left:2px;">🎣 início da briga <input type="number" id="fisFisDur'+i+'" min="0" max="30" step="0.5" value="5" oninput="renderCurva('+i+')">s</label>'+
         '<span>🎲 = nova briga com estes ajustes</span>'+
       '</div>'+
