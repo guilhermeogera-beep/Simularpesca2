@@ -394,9 +394,9 @@ function montarBlocosSims(){
       '<div class="sim-corpo" id="corpo'+i+'">'+
       '<div class="gen-row">'+
         '<label title="Intensidade da ASSINATURA do peixe: 50% = padrão · abaixo de 50 = briga mais plana/genérica · acima de 50 = caráter exagerado (vales mais fundos)">assinatura <input type="number" id="intens'+i+'" min="0" max="100" value="50">%</label>'+
-        '<label title="Pico da FISGADA (saque inicial), independente do teto">fisgada <input type="number" id="fisPico'+i+'" min="0" max="100" value="50">%</label>'+
+        '<label title="SAQUE da fisgada = freio máx × este fator. Ex.: 2,2× = o saque é 2,2 vezes a força do peixe. Escala com o peso sozinho.">🎣 saque <input type="number" id="saque'+i+'" min="0.2" max="5" step="0.1" value="2.2">×</label>'+
         '<label title="Alonga (>1) ou encurta (<1) a duração da fisgada">dur <input type="number" id="fisDur'+i+'" min="0.2" max="4" step="0.1" value="2">×</label>'+
-        '<label title="Pico máximo da puxada — use menor p/ peixe menor">teto <input type="number" id="teto'+i+'" min="0" max="100" value="50">%</label>'+
+        '<label title="CORRIDA = freio máx × este fator. Ex.: 1,8× = a puxada (quando o peixe dispara) é 1,8 vezes a força dele. Escala com o peso sozinho.">🏃 corrida <input type="number" id="corrida'+i+'" min="0.2" max="4" step="0.1" value="1.8">×</label>'+
         '<label title="0% = não cansa · 100% = cansa muito (trancos caem + janelas crescem)">fadiga <input type="number" id="fadiga'+i+'" min="0" max="100" value="50">%</label>'+
         '<label title="Tempo total de motor ligado (puxada). Maior = blocos mais longos, peixe puxa mais linha">puxada <input type="number" id="puxada'+i+'" min="5" max="80" value="55">s</label>'+
         '<label title="Distância entre pontos no tempo: 0 = densos (atual) · 100 = bem espaçados. Maior = o motor físico tem tempo de alcançar cada nível (não vira borrão)">espaço <input type="number" id="espaco'+i+'" min="0" max="100" value="40">/100</label>'+
@@ -1040,17 +1040,20 @@ const FIGHTS={pirarara:fightPirarara, tambaqui:fightTambaqui, tucunare:fightTucu
 // Ajustes do gerador POR PEIXE (inputs na linha de cada simulação)
 function cfgGerador(idx){
   const g=(id,d)=>{ const el=document.getElementById(id+idx); const v=el?parseFloat(el.value):NaN; return isFinite(v)?v:d; };
-  let teto=g('teto',50);    teto=Math.max(1,Math.min(100,teto));
   let fadiga=g('fadiga',50); fadiga=Math.max(0,Math.min(100,fadiga));
   let puxada=g('puxada',55); if(!(puxada>0)) puxada=55;
-  let fisPico=g('fisPico',50); if(!(fisPico>0)) fisPico=50; fisPico=Math.min(100,fisPico);
   let fisDur=g('fisDur',2); if(!(fisDur>0)) fisDur=2;
   let intens=g('intens',50); intens=Math.max(0,Math.min(100,intens));
   let espaco=g('espaco',40); espaco=Math.max(0,Math.min(100,espaco));
-  let freioMax=g('freioMax', FREIO_MAX_DEF[LETRAS[idx]]||10); freioMax=Math.max(0,Math.min(-ESC_NEG,freioMax));   // freio máx (kgf) = profundidade do negativo (0..|ESC_NEG|)
+  let freioMax=g('freioMax', FREIO_MAX_DEF[LETRAS[idx]]||10); freioMax=Math.max(0,Math.min(-ESC_NEG,freioMax));   // freio máx (kgf) = a FORÇA do peixe (arrasto sustentado)
+  // NOVO MODELO: puxada e fisgada são MÚLTIPLOS da força → escalam com o peso sozinhas (peixe maior puxa+finca mais forte)
+  let corrida=g('corrida',1.8); corrida=Math.max(0.2,Math.min(4,corrida));   // puxada = freioMax × corrida
+  let saque=g('saque',2.2);     saque=Math.max(0.2,Math.min(5,saque));       // saque  = freioMax × saque
+  const teto=Math.max(1,Math.min(ESC_POS, freioMax*corrida));     // pico da PUXADA (unid. do gráfico)
+  const fisPico=Math.max(1,Math.min(ESC_POS, freioMax*saque));    // pico do SAQUE (fisgada)
   const durFis=fisFisCfg(idx).dur;   // tempo de início da briga gerada (antes = fisgada manual)
-  const freioQuad=!!(document.getElementById('freioQuad'+idx)||{}).checked;   // SIM = freio quadrado · NÃO = característico (varia c/ força+fadiga)
-  return {teto,fadiga,puxada,fisPico,fisDur,intens,espaco,durFis,freioMax,freioQuad};
+  const freioQuad=!!(document.getElementById('freioQuad'+idx)||{}).checked;   // SIM = freio quadrado · NÃO = característico
+  return {teto,fadiga,puxada,fisPico,fisDur,intens,espaco,durFis,freioMax,freioQuad,corrida,saque};
 }
 let genFreioMax=0;   // freio máx do peixe sendo gerado (buildFight lê daqui, sem passar por todos os wrappers)
 let genFreioQuad=false, genFreioFad=0;   // modo do freio: quadrado? · fadiga (0-1) p/ o freio CARACTERÍSTICO afrouxar
@@ -1085,7 +1088,7 @@ function gerarNegativo(idx){
 function limparPositivo(idx){ SIMS[idx].pontos = SIMS[idx].pontos.filter(p=>p.pot<=0); salvarPontos(idx); selPonto=-1; multiSel=[]; fecharEditorPonto(); renderCurva(idx); log('🧹+ '+NOMES[idx]+' — PUXADA apagada','info'); }
 function limparNegativo(idx){ SIMS[idx].pontos = SIMS[idx].pontos.filter(p=>p.pot>=0); salvarPontos(idx); selPonto=-1; multiSel=[]; fecharEditorPonto(); renderCurva(idx); log('🧹− '+NOMES[idx]+' — FREIO apagado','info'); }
 // Persiste/recupera os ajustes do gerador POR PEIXE (simpesca2_gen_<id>_<campo>)
-const GEN_CAMPOS=[['teto','teto'],['fadiga','fadiga'],['puxada','puxada'],['fisPico','fispico'],['fisDur','fisdur'],['intens','intens'],['espaco','espaco'],['freioMax','freiomax'],['fisFisDur','fisfisdur']];
+const GEN_CAMPOS=[['corrida','corrida'],['fadiga','fadiga'],['puxada','puxada'],['saque','saque'],['fisDur','fisdur'],['intens','intens'],['espaco','espaco'],['freioMax','freiomax'],['fisFisDur','fisfisdur']];
 const FISFIS_GLOBAL={fisfisdur:'simpesca2_fisfis_dur'};  // migração antiga (só o tempo de início)
 function salvarGenCfg(idx){ const id=LETRAS[idx]; GEN_CAMPOS.forEach(([inp,key])=>{ const el=document.getElementById(inp+idx); if(el) localStorage.setItem('simpesca2_gen_'+id+'_'+key, el.value); }); agendarSync('config'); }
 function togFreioQuad(i){ const el=document.getElementById('freioQuad'+i); if(el) localStorage.setItem('simpesca2_gen_'+LETRAS[i]+'_freioquad', el.checked?'1':'0'); }   // modo do freio (local; o totem não gera)
