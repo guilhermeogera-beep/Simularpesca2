@@ -129,6 +129,7 @@ input[type=text]:focus{border-color:var(--accent);}
   <label><input type="checkbox" id="cfgBarra" checked> Barra de antecipação</label>
   <label><input type="checkbox" id="cfgCarretel"> Linha no carretel / trava</label>
   <label><input type="checkbox" id="cfgSync" checked> Ajuste de sincronia (⏱)</label>
+  <label><input type="checkbox" id="cfgPeso" checked> Barra de peso (⚖️)</label>
   <div class="hc-tit" style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);">🐟 Peixes na tela</div>
   <div id="cfgPeixes"></div>
 </div>
@@ -361,7 +362,7 @@ function aplicarConfigPlayer(d){
 // ── PESO do peixe (slider por espécie) -> fator de escala da curva (puxa + freia) ──
 const PESO_MAX_DEF={pirarara:60, tambaqui:35, tucunare:14, dourado:30, trairao:15, jau:100};   // peso máx pesquisado (gigante) por espécie; ajustável no dashboard
 const PESO_MIN=1;   // o slider começa em 1 kg
-function pesoMaxEsp(id){ const v=parseFloat(localStorage.getItem('simpesca2_gen_'+id+'_pesomax')); return (isFinite(v)&&v>0&&v!==20)?v:(PESO_MAX_DEF[id]||20); }   // peso que vale 100% (ignora o 20 travado do padrão antigo)
+function pesoMaxEsp(id){ const v=parseFloat(localStorage.getItem('simpesca2_gen_'+id+'_pesomax')); return (isFinite(v)&&v>PESO_MIN&&v!==20)?v:(PESO_MAX_DEF[id]||20); }   // peso que vale 100% (ignora valores travados: ≤1 ou 20)
 function pesoEsp(id){ const mx=pesoMaxEsp(id); const v=parseFloat(localStorage.getItem('simpesca2_peso_'+id)); return isFinite(v)?Math.max(PESO_MIN,Math.min(mx,v)):mx; }   // selecionado (padrão = máx)
 function escalaPeso(id){ const mx=pesoMaxEsp(id); return mx>0 ? Math.max(0.15, Math.min(1, pesoEsp(id)/mx)) : 1; }   // peso -> escala (piso 15%); a física real entra depois
 function salvarPeso(id){ const el=document.getElementById('peso_'+id); if(!el) return; localStorage.setItem('simpesca2_peso_'+id, el.value); const lbl=document.getElementById('pesolbl_'+id); if(lbl) lbl.textContent=parseFloat(el.value).toFixed(1)+' kg'; }
@@ -465,7 +466,7 @@ function aplicarMotor(pct){ pct=Math.max(0,Math.min(100,pct));
 // ── BARRA DE ANTECIPAÇÃO (estilo waveform) + visibilidade configurável dos HUDs ──
 let simTocando=null, tlRAF=null, emJogo=false;
 const TL_PASSADO=1.4, TL_FUTURO=6.0;   // segundos à esquerda (passado) e à direita (futuro) do "AGORA"
-const hudCfg={linha:true, estado:true, barra:true, carretel:false, sync:true};
+const hudCfg={linha:true, estado:true, barra:true, carretel:false, sync:true, peso:true};
 function loopTimeline(){ tlRAF=requestAnimationFrame(loopTimeline); if(simTocando!=null) desenharTimeline(SIMS[simTocando]); }
 function desenharTimeline(sim){
   const cv=document.getElementById('tlCanvas'); if(!cv) return;
@@ -526,18 +527,21 @@ function nudgeSync(delta){
 }
 // mostra/esconde o campo ⏱ sincronia nos cards (tela de seleção) conforme o toggle do EXIBIR
 function atualizarSyncCards(){ document.querySelectorAll('.card-sync').forEach(el=>{ el.style.display = hudCfg.sync ? '' : 'none'; }); }
-function salvarHudCfg(){ localStorage.setItem('simpesca2_hud_linha',hudCfg.linha?'1':'0'); localStorage.setItem('simpesca2_hud_estado',hudCfg.estado?'1':'0'); localStorage.setItem('simpesca2_hud_barra',hudCfg.barra?'1':'0'); localStorage.setItem('simpesca2_hud_carretel',hudCfg.carretel?'1':'0'); localStorage.setItem('simpesca2_hud_sync',hudCfg.sync?'1':'0'); }
+function atualizarPesoCards(){ document.querySelectorAll('.card-peso').forEach(el=>{ el.style.display = hudCfg.peso ? '' : 'none'; }); }
+function salvarHudCfg(){ localStorage.setItem('simpesca2_hud_linha',hudCfg.linha?'1':'0'); localStorage.setItem('simpesca2_hud_estado',hudCfg.estado?'1':'0'); localStorage.setItem('simpesca2_hud_barra',hudCfg.barra?'1':'0'); localStorage.setItem('simpesca2_hud_carretel',hudCfg.carretel?'1':'0'); localStorage.setItem('simpesca2_hud_sync',hudCfg.sync?'1':'0'); localStorage.setItem('simpesca2_hud_peso',hudCfg.peso?'1':'0'); }
 function carregarHudCfg(){
   const g=(k,d)=>{ const v=localStorage.getItem(k); return v===null?d:v==='1'; };
-  hudCfg.linha=g('simpesca2_hud_linha',true); hudCfg.estado=g('simpesca2_hud_estado',true); hudCfg.barra=g('simpesca2_hud_barra',true); hudCfg.carretel=g('simpesca2_hud_carretel',false); hudCfg.sync=g('simpesca2_hud_sync',true);
-  const cl=document.getElementById('cfgLinha'), ce=document.getElementById('cfgEstado'), cb=document.getElementById('cfgBarra'), cc=document.getElementById('cfgCarretel'), cs=document.getElementById('cfgSync');
-  cl.checked=hudCfg.linha; ce.checked=hudCfg.estado; cb.checked=hudCfg.barra; cc.checked=hudCfg.carretel; cs.checked=hudCfg.sync;
+  hudCfg.linha=g('simpesca2_hud_linha',true); hudCfg.estado=g('simpesca2_hud_estado',true); hudCfg.barra=g('simpesca2_hud_barra',true); hudCfg.carretel=g('simpesca2_hud_carretel',false); hudCfg.sync=g('simpesca2_hud_sync',true); hudCfg.peso=g('simpesca2_hud_peso',true);
+  const cl=document.getElementById('cfgLinha'), ce=document.getElementById('cfgEstado'), cb=document.getElementById('cfgBarra'), cc=document.getElementById('cfgCarretel'), cs=document.getElementById('cfgSync'), cp=document.getElementById('cfgPeso');
+  cl.checked=hudCfg.linha; ce.checked=hudCfg.estado; cb.checked=hudCfg.barra; cc.checked=hudCfg.carretel; cs.checked=hudCfg.sync; cp.checked=hudCfg.peso;
   cl.addEventListener('change',()=>{ hudCfg.linha=cl.checked; salvarHudCfg(); atualizarVisibilidadeHUD(); });
   ce.addEventListener('change',()=>{ hudCfg.estado=ce.checked; salvarHudCfg(); atualizarVisibilidadeHUD(); });
   cb.addEventListener('change',()=>{ hudCfg.barra=cb.checked; salvarHudCfg(); atualizarVisibilidadeHUD(); });
   cc.addEventListener('change',()=>{ hudCfg.carretel=cc.checked; salvarHudCfg(); atualizarVisibilidadeHUD(); });
   cs.addEventListener('change',()=>{ hudCfg.sync=cs.checked; salvarHudCfg(); atualizarVisibilidadeHUD(); atualizarSyncCards(); });
+  cp.addEventListener('change',()=>{ hudCfg.peso=cp.checked; salvarHudCfg(); atualizarPesoCards(); });
   atualizarSyncCards();   // aplica o estado salvo aos campos dos cards no load
+  atualizarPesoCards();
   montarCfgPeixes();      // checkboxes de "peixes na tela"
   aplicarVisibilidadePeixes();
 }
