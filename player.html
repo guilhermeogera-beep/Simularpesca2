@@ -464,28 +464,31 @@ function aplicarMotor(pct){ pct=Math.max(0,Math.min(100,pct));
 // ── BARRA DE ANTECIPAÇÃO (estilo waveform) + visibilidade configurável dos HUDs ──
 let simTocando=null, tlRAF=null, emJogo=false;
 const TL_PASSADO=1.4, TL_FUTURO=6.0;   // segundos à esquerda (passado) e à direita (futuro) do "AGORA"
+const ESC_POS=40, ESC_NEG=-20, ESC_RANGE=ESC_POS-ESC_NEG;   // escala da barra (igual ao dashboard): +40 puxa (topo) · -20 freia (base) · 0 a ~⅔
 const hudCfg={linha:true, estado:true, barra:true, carretel:false, sync:true, peso:true};
 function loopTimeline(){ tlRAF=requestAnimationFrame(loopTimeline); if(simTocando!=null) desenharTimeline(SIMS[simTocando]); }
 function desenharTimeline(sim){
   const cv=document.getElementById('tlCanvas'); if(!cv) return;
   const ctx=cv.getContext('2d'), W=cv.width, H=cv.height, P=sim.pontos;
   const now=(sim.video.currentTime-syncVideo(simTocando))||0, t0=now-TL_PASSADO, span=TL_PASSADO+TL_FUTURO, N=140;   // tempo EFETIVO (com a sincronia), igual ao motor
-  const yOf=t=>H-(interpolarPontos(P,t)/100)*(H-4)-2;
+  const yv=v=>2+((ESC_POS-Math.max(ESC_NEG,Math.min(ESC_POS,v)))/ESC_RANGE)*(H-4);   // força -> Y(px): +ESC_POS topo · 0=centro · -ESC_NEG base
+  const y0=yv(0);                                        // Y do zero (centro lógico, ~⅔ pra baixo: escala assimétrica)
   const durFis=fisgadaFisicaCfg(simTocando).dur;
-  const xFis=durFis>0 ? ((durFis-t0)/span)*W : 0;        // borda direita da fisgada
-  const xStart=Math.min(W, Math.max(0, xFis));           // a CURVA só começa aqui (depois da fisgada)
+  const xFis=durFis>0 ? ((durFis-t0)/span)*W : 0;        // borda direita do início da briga
+  const xStart=Math.min(W, Math.max(0, xFis));           // a CURVA só começa aqui (depois do início da briga)
   ctx.clearRect(0,0,W,H);
-  // área preenchida (degradê) — só a partir do fim da fisgada
-  ctx.beginPath(); ctx.moveTo(xStart,H);
-  for(let i=0;i<=N;i++){ const x=(i/N)*W; if(x<xStart) continue; ctx.lineTo(x, yOf(t0+(x/W)*span)); }
-  ctx.lineTo(W,H); ctx.closePath();
-  const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,'rgba(0,212,255,0.40)'); g.addColorStop(1,'rgba(0,212,255,0.02)'); ctx.fillStyle=g; ctx.fill();
-  // linha brilhante, cor pelo estado — só a partir do fim da fisgada
+  // preenchimentos divididos no ZERO: PUXA (azul, acima) · FREIO (laranja, abaixo) — só a partir do início da briga
+  const fillZona=(clamp,cor)=>{ ctx.beginPath(); ctx.moveTo(xStart,y0); for(let i=0;i<=N;i++){ const x=(i/N)*W; if(x<xStart) continue; ctx.lineTo(x, yv(clamp(interpolarPontos(P,t0+(x/W)*span)))); } ctx.lineTo(W,y0); ctx.closePath(); ctx.fillStyle=cor; ctx.fill(); };
+  fillZona(v=>Math.max(0,v),'rgba(0,212,255,0.28)');     // PUXA (acima do zero)
+  fillZona(v=>Math.min(0,v),'rgba(255,150,30,0.28)');    // FREIO (abaixo do zero)
+  ctx.strokeStyle='rgba(255,255,255,0.22)'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(xStart,y0); ctx.lineTo(W,y0); ctx.stroke();   // linha do zero
+  // linha brilhante, cor pelo ESTADO (3 cores) — só a partir do início da briga
   ctx.lineWidth=3; ctx.lineJoin='round'; ctx.save(); ctx.shadowBlur=8;
   let started=false, px=0, py=0;
-  for(let i=0;i<=N;i++){ const x=(i/N)*W; if(x<xStart) continue; const t=t0+(x/W)*span, pot=interpolarPontos(P,t), y=yOf(t);
+  for(let i=0;i<=N;i++){ const x=(i/N)*W; if(x<xStart) continue; const t=t0+(x/W)*span, pot=interpolarPontos(P,t), y=yv(pot);
     if(!started){ px=x; py=y; started=true; continue; }
-    const c=pot>=1?'#ff6184':'#1bffa0'; ctx.strokeStyle=c; ctx.shadowColor=c; ctx.beginPath(); ctx.moveTo(px,py); ctx.lineTo(x,y); ctx.stroke(); px=x; py=y; }
+    const c = pot>=1 ? '#ff6184' : (pot<=-1 ? '#ffa838' : '#1bffa0');   // 🔴 puxa · 🟠 freia · 🟢 livre
+    ctx.strokeStyle=c; ctx.shadowColor=c; ctx.beginPath(); ctx.moveTo(px,py); ctx.lineTo(x,y); ctx.stroke(); px=x; py=y; }
   ctx.restore();
   // zona da FISGADA FÍSICA (0..durFis) — só a faixa laranja
   if(durFis>0){
