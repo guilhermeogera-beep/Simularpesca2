@@ -1,7 +1,7 @@
 {
   "versao": 1,
   "tipo": "config",
-  "criado": "2026-06-27T08:38:25.796Z",
+  "criado": "2026-06-27T08:38:33.408Z",
   "cal": {
     "mpv": 0.0854,
     "limite": -152,
@@ -11,10 +11,10 @@
   },
   "gen": {
     "pirarara": {
-      "teto": "25",
+      "teto": "15",
       "fadiga": "50",
       "puxada": "55",
-      "fispico": "30",
+      "fispico": "29",
       "fisdur": "3.2",
       "intens": "100",
       "espaco": "23",
