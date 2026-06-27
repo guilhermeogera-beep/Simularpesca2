@@ -215,7 +215,7 @@ select{background:var(--surface);border:1px solid var(--border);color:var(--text
 
   <div id="pontoEditor">
     <div class="campo"><label>Tempo (s)</label><input type="number" id="pTempo" step="0.1" min="0"></div>
-    <div class="campo"><label>Força (puxa + / freia −)</label><input type="number" id="pPot" step="1" min="-50" max="50"></div>
+    <div class="campo"><label>Força (puxa + / freia −)</label><input type="number" id="pPot" step="1" min="-20" max="40"></div>
     <button class="btn btn-red" onclick="removerPonto()">🗑 Remover</button>
     <button class="btn btn-green" onclick="fecharEditorPonto()">✓ Fechar</button>
   </div>
@@ -324,7 +324,10 @@ document.getElementById('motorSlider').addEventListener('input',e=>aplicarMotor(
 
 // ══ MODELO DE PONTOS ──────────────────────────────────────────
 const DURACAO=90;
-const ESCALA=50;   // extremidade do gráfico: +ESCALA (topo, puxa) .. -ESCALA (base, freia). Faixa de trabalho real.
+const ESC_POS=40;    // topo do gráfico = PUXADA máxima (corrida do peixe)
+const ESC_NEG=-20;   // base do gráfico = FREIO máximo (resistência sustentada)
+const ESC_RANGE=ESC_POS-ESC_NEG;   // faixa total (60). Escala ASSIMÉTRICA: o 0 não fica no meio (fica em yOf(0))
+const FREIO_MAX_DEF={pirarara:13, tambaqui:9, tucunare:5, dourado:8, trairao:5, jau:18};   // freio máx SUSTENTADO (kgf) por espécie
 // UMA simulação POR PEIXE (mesma ordem do player)
 const ESPECIES=[
   {id:'pirarara', nome:'Pirarara'},
@@ -364,7 +367,7 @@ function montarBlocosSims(){
         '<label title="0% = não cansa · 100% = cansa muito (trancos caem + janelas crescem)">fadiga <input type="number" id="fadiga'+i+'" min="0" max="100" value="50">%</label>'+
         '<label title="Tempo total de motor ligado (puxada). Maior = blocos mais longos, peixe puxa mais linha">puxada <input type="number" id="puxada'+i+'" min="5" max="80" value="55">s</label>'+
         '<label title="Distância entre pontos no tempo: 0 = densos (atual) · 100 = bem espaçados. Maior = o motor físico tem tempo de alcançar cada nível (não vira borrão)">espaço <input type="number" id="espaco'+i+'" min="0" max="100" value="40">/100</label>'+
-        '<label title="Força MÁXIMA de tração que o peixe faz no FREIO (parte negativa), em kgf. É a profundidade da resistência gerada nas janelas (0 a -50 = base do gráfico). O PESO do peixe (no player) escala isso. Vira força REAL na linha após a calibração do VESC.">🛑 freio máx <input type="number" id="freioMax'+i+'" min="0" max="50" value="30"> kgf</label>'+
+        '<label title="Força MÁXIMA de tração SUSTENTADA que o peixe faz no FREIO (parte negativa), em kgf. É a profundidade da resistência gerada nas janelas (0 a -20 = base do gráfico). O PESO do peixe (no player) escala isso. Vira força REAL na linha após a calibração do VESC.">🛑 freio máx <input type="number" id="freioMax'+i+'" min="0" max="20" value="'+(FREIO_MAX_DEF[LETRAS[i]]||10)+'"> kgf</label>'+
         '<label title="Onde a briga gerada pelo 🎲 começa. Antes desse tempo a curva fica livre pra você desenhar as fisgadas MANUALMENTE." style="border-left:1px solid var(--border);padding-left:8px;margin-left:2px;">🎣 início da briga <input type="number" id="fisFisDur'+i+'" min="0" max="30" step="0.5" value="5" oninput="renderCurva('+i+')">s</label>'+
         '<span>🎲 = nova briga com estes ajustes</span>'+
       '</div>'+
@@ -410,15 +413,17 @@ function renderTicks(idx){
 function renderCurva(idx){
   renderTicks(idx);
   const area=document.getElementById('curva'+idx); const pts=SIMS[idx].pontos; const durFis=fisFisDurSeg(idx);
-  const yOf=v=>50-(v/ESCALA)*50;   // força (-ESCALA..ESCALA) -> Y(0..100): +ESCALA=topo(0) · 0=centro(50) · -ESCALA=base(100)
+  const yOf=v=>((ESC_POS-v)/ESC_RANGE)*100;   // força -> Y(0..100): +ESC_POS=topo(0) · -ESC_NEG=base(100); 0 cai em yOf(0)
+  const y0=yOf(0);                              // Y do zero (linha do centro lógico) — fica abaixo do meio (escala assimétrica)
   let inner='';
   // zonas: PUXA (cima, azul) / FREIO (baixo, vermelho) + linha do centro — sempre desenhadas
-  inner+='<rect x="0" y="0" width="100" height="50" fill="rgba(0,212,255,0.06)"/>';
-  inner+='<rect x="0" y="50" width="100" height="50" fill="rgba(255,95,95,0.06)"/>';
-  inner+='<line x1="0" y1="50" x2="100" y2="50" stroke="rgba(255,255,255,0.28)" stroke-width="1" vector-effect="non-scaling-stroke"/>';
+  const y0s=y0.toFixed(2);
+  inner+='<rect x="0" y="0" width="100" height="'+y0s+'" fill="rgba(0,212,255,0.06)"/>';
+  inner+='<rect x="0" y="'+y0s+'" width="100" height="'+(100-y0).toFixed(2)+'" fill="rgba(255,95,95,0.06)"/>';
+  inner+='<line x1="0" y1="'+y0s+'" x2="100" y2="'+y0s+'" stroke="rgba(255,255,255,0.28)" stroke-width="1" vector-effect="non-scaling-stroke"/>';
   if(pts.length){
     const seq=[[0,pts[0].pot]].concat(pts.map(p=>[(p.t/DURACAO)*100,p.pot])).concat([[100,pts[pts.length-1].pot]]);
-    const fill=(clamp,cor)=>{ const pp=seq.map(c=>c[0].toFixed(2)+','+yOf(clamp(c[1])).toFixed(2)).join(' '); return `<polygon points="0,50 ${pp} 100,50" fill="${cor}"/>`; };
+    const fill=(clamp,cor)=>{ const pp=seq.map(c=>c[0].toFixed(2)+','+yOf(clamp(c[1])).toFixed(2)).join(' '); return `<polygon points="0,${y0s} ${pp} 100,${y0s}" fill="${cor}"/>`; };
     inner+=fill(v=>Math.max(0,v),'rgba(0,212,255,0.20)');     // preenche PUXA (acima do centro)
     inner+=fill(v=>Math.min(0,v),'rgba(255,95,95,0.20)');     // preenche FREIO (abaixo do centro)
     const line=seq.map(c=>c[0].toFixed(2)+','+yOf(c[1]).toFixed(2)).join(' ');
@@ -463,7 +468,7 @@ function setupArea(idx){
     if(e.ctrlKey||e.metaKey) return;   // Ctrl+clique no fundo não cria ponto
     const rect=area.getBoundingClientRect();
     let t=round2(Math.max(0,Math.min(DURACAO,(e.clientX-rect.left)/rect.width*DURACAO)));
-    let pot=Math.max(-ESCALA,Math.min(ESCALA,Math.round((0.5-(e.clientY-rect.top)/rect.height)*2*ESCALA)));   // centro=0, cima=puxa(+), baixo=freio(-)
+    let pot=Math.max(ESC_NEG,Math.min(ESC_POS,Math.round(ESC_POS-((e.clientY-rect.top)/rect.height)*ESC_RANGE)));   // topo=+ESC_POS(puxa), base=ESC_NEG(freio)
     const novo={t,pot}; SIMS[idx].pontos.push(novo); SIMS[idx].pontos.sort((a,b)=>a.t-b.t);
     simAtiva=idx; multiSel=[]; selPonto=SIMS[idx].pontos.indexOf(novo);
     salvarPontos(idx); renderCurva(idx); abrirEditorPonto(e);
@@ -478,7 +483,7 @@ function iniciarDragPonto(e,idx,i){
   const area=document.getElementById('curva'+idx); const rect=area.getBoundingClientRect();
   const onMove=ev=>{ arrastouPonto=true; const p=SIMS[idx].pontos[selPonto]; if(!p) return;
     p.t=round2(Math.max(0,Math.min(DURACAO,(ev.clientX-rect.left)/rect.width*DURACAO)));
-    p.pot=Math.max(-ESCALA,Math.min(ESCALA,Math.round((0.5-(ev.clientY-rect.top)/rect.height)*2*ESCALA)));
+    p.pot=Math.max(ESC_NEG,Math.min(ESC_POS,Math.round(ESC_POS-((ev.clientY-rect.top)/rect.height)*ESC_RANGE)));
     camposDoPonto(); renderCurva(idx);
   };
   const onUp=()=>{ document.removeEventListener('mousemove',onMove); document.removeEventListener('mouseup',onUp);
@@ -497,13 +502,13 @@ function iniciarDragGrupo(e,idx){
   const minT=Math.min.apply(null,orig.map(o=>o.t)), maxT=Math.max.apply(null,orig.map(o=>o.t));
   const minPot=Math.min.apply(null,orig.map(o=>o.pot)), maxPot=Math.max.apply(null,orig.map(o=>o.pot));
   const startT=(e.clientX-rect.left)/rect.width*DURACAO;
-  const startPot=(0.5-(e.clientY-rect.top)/rect.height)*2*ESCALA;
+  const startPot=ESC_POS-((e.clientY-rect.top)/rect.height)*ESC_RANGE;
   const onMove=ev=>{
     arrastouPonto=true;
     let dt=((ev.clientX-rect.left)/rect.width*DURACAO)-startT;
-    let dpot=((0.5-(ev.clientY-rect.top)/rect.height)*2*ESCALA)-startPot;
+    let dpot=(ESC_POS-((ev.clientY-rect.top)/rect.height)*ESC_RANGE)-startPot;
     dt=Math.max(-minT, Math.min(DURACAO-maxT, dt));        // trava o grupo nas bordas (0..90s)
-    dpot=Math.max(-ESCALA-minPot, Math.min(ESCALA-maxPot, dpot));   // e em -ESCALA..+ESCALA (puxa/freio)
+    dpot=Math.max(ESC_NEG-minPot, Math.min(ESC_POS-maxPot, dpot));   // trava nas bordas ESC_NEG..ESC_POS
     orig.forEach(o=>{ o.p.t=round2(o.t+dt); o.p.pot=Math.round(o.pot+dpot); });
     renderCurva(idx);
   };
@@ -529,7 +534,7 @@ function fecharEditorPonto(){ pEditor.style.display='none'; selPonto=-1; renderT
 function camposDoPonto(){ const p=SIMS[simAtiva].pontos[selPonto]; if(!p) return; document.getElementById('pTempo').value=p.t; document.getElementById('pPot').value=p.pot; }
 function removerPonto(){ if(selPonto>-1){ SIMS[simAtiva].pontos.splice(selPonto,1); salvarPontos(simAtiva); fecharEditorPonto(); renderCurva(simAtiva); } }
 document.getElementById('pTempo').addEventListener('input',e=>{ const p=SIMS[simAtiva].pontos[selPonto]; if(!p) return; p.t=Math.max(0,Math.min(DURACAO,parseFloat(e.target.value)||0)); salvarPontos(simAtiva); renderCurva(simAtiva); });
-document.getElementById('pPot').addEventListener('input',e=>{ const p=SIMS[simAtiva].pontos[selPonto]; if(!p) return; p.pot=Math.max(-ESCALA,Math.min(ESCALA,parseInt(e.target.value)||0)); salvarPontos(simAtiva); renderCurva(simAtiva); });
+document.getElementById('pPot').addEventListener('input',e=>{ const p=SIMS[simAtiva].pontos[selPonto]; if(!p) return; p.pot=Math.max(ESC_NEG,Math.min(ESC_POS,parseInt(e.target.value)||0)); salvarPontos(simAtiva); renderCurva(simAtiva); });
 
 // ══ SELEÇÃO MÚLTIPLA + COPIAR / COLAR ─────────────────────────
 function toggleMulti(idx,i){
@@ -755,7 +760,7 @@ function espacar(pts, dmin){
 function finalizarFight(pts){
   const piso=Math.max(15, offsetMotor());   // puxada mínima = deadband do motor (abaixo disso ele não gira)
   return pts.filter(p=>p.t<=DURACAO).map(p=>{
-    let pot=Math.max(-ESCALA,Math.min(ESCALA,Math.round(p.pot)));
+    let pot=Math.max(ESC_NEG,Math.min(ESC_POS,Math.round(p.pot)));
     if(pot>0 && pot<piso) pot=piso;          // piso só na PUXADA; 0 = parado; <0 = FREIO (passa direto)
     return {t:Math.round(p.t*100)/100, pot};
   }).sort((a,b)=>a.t-b.t);
@@ -983,7 +988,7 @@ function cfgGerador(idx){
   let fisDur=g('fisDur',2); if(!(fisDur>0)) fisDur=2;
   let intens=g('intens',50); intens=Math.max(0,Math.min(100,intens));
   let espaco=g('espaco',40); espaco=Math.max(0,Math.min(100,espaco));
-  let freioMax=g('freioMax',30); freioMax=Math.max(0,Math.min(ESCALA,freioMax));   // freio máx = profundidade do negativo gerado (0..ESCALA)
+  let freioMax=g('freioMax', FREIO_MAX_DEF[LETRAS[idx]]||10); freioMax=Math.max(0,Math.min(-ESC_NEG,freioMax));   // freio máx (kgf) = profundidade do negativo (0..|ESC_NEG|)
   const durFis=fisFisCfg(idx).dur;   // tempo de início da briga gerada (antes = fisgada manual)
   return {teto,fadiga,puxada,fisPico,fisDur,intens,espaco,durFis,freioMax};
 }
