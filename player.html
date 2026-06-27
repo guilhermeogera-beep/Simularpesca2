@@ -211,9 +211,9 @@ async function ligar(device){
   btUI('conectado','🟢 Conectado'); mostrarToast('Bluetooth conectado');
 }
 // ── Fisgada física (puxadas do motor no início) ───────────────
-const FISFIS_GLOBAL={fisfispot:'simpesca_fisfis_pot', fisfisvoltas:'simpesca_fisfis_voltas', fisfisdur:'simpesca_fisfis_dur'};
-function fisgadaFisicaCfg(id){   // POR PEIXE (simpesca_gen_<id>_fisfis*), com fallback do global antigo e padrões
-  const g=(key,d)=>{ let v=parseFloat(localStorage.getItem('simpesca_gen_'+id+'_'+key)); if(isFinite(v))return v; v=parseFloat(localStorage.getItem(FISFIS_GLOBAL[key])); return isFinite(v)?v:d; };
+const FISFIS_GLOBAL={fisfispot:'simpesca2_fisfis_pot', fisfisvoltas:'simpesca2_fisfis_voltas', fisfisdur:'simpesca2_fisfis_dur'};
+function fisgadaFisicaCfg(id){   // POR PEIXE (simpesca2_gen_<id>_fisfis*), com fallback do global antigo e padrões
+  const g=(key,d)=>{ let v=parseFloat(localStorage.getItem('simpesca2_gen_'+id+'_'+key)); if(isFinite(v))return v; v=parseFloat(localStorage.getItem(FISFIS_GLOBAL[key])); return isFinite(v)?v:d; };
   return { pot:Math.max(0,Math.min(100,g('fisfispot',15))), voltas:Math.max(1,Math.round(g('fisfisvoltas',1))), dur:Math.max(0,g('fisfisdur',5)) };
 }
 function enviarFisgadaFisica(c){ if(!fisgadaChar) return; const ms=Math.round(c.dur*1000); const b=new Uint8Array([Math.round(c.pot), Math.round(c.voltas), ms&0xFF, (ms>>8)&0xFF]); try{ fisgadaChar.writeValueWithoutResponse?fisgadaChar.writeValueWithoutResponse(b):fisgadaChar.writeValue(b); }catch(e){} }
@@ -230,9 +230,9 @@ function novoJogoContadores(){ metrosGanhos=0; metrosPerdidos=0; contAnt=contage
 function resetarLinha(){ if(confirm('Zerar a linha acumulada do carretel?\nFaça isso só DEPOIS de re-enrolar a linha na carretilha/molinete.')){ zerarEncoder(); mostrarToast('Linha do carretel zerada'); } }
 
 // ══ CALIBRAÇÃO / LINHA ────────────────────────────────────────
-function metrosPorVolta(){ const v=parseFloat(localStorage.getItem('simpesca_cal_mpv')); return (isFinite(v)&&v>0)?v:0.0854; }
-function limiteLinha(){ const v=parseFloat(localStorage.getItem('simpesca_cal_limite')); return (isFinite(v)&&v!==0)?v:-50; }
-function inverterDir(){ return localStorage.getItem('simpesca_cal_inv')==='1'; }
+function metrosPorVolta(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_mpv')); return (isFinite(v)&&v>0)?v:0.0854; }
+function limiteLinha(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_limite')); return (isFinite(v)&&v!==0)?v:-50; }
+function inverterDir(){ return localStorage.getItem('simpesca2_cal_inv')==='1'; }
 function contagemParaMetros(c){ let m=(c/4096)*metrosPorVolta(); if(inverterDir()) m=-m; return m; }
 function metrosAtuais(){ return Math.max(0, metrosGanhos); }   // só os metros recolhidos (ganhos)
 function atualizarLinha(){ const m=metrosAtuais(); document.getElementById('linhaBadge').textContent='LINHA '+m.toFixed(1)+' m'; document.getElementById('hudLinha').textContent='🧵 Enrolada: '+m.toFixed(1)+' m';
@@ -244,7 +244,7 @@ function atualizarLinha(){ const m=metrosAtuais(); document.getElementById('linh
 // Linha ABSOLUTA do carretel (posição líquida do encoder) — ACUMULA entre jogadores, NÃO zera por jogo
 function linhaCarretel(){ return contagemParaMetros(contagemEncoder); }
 // Estimativa de quanto o peixe PUXA na simulação (mesma conta do dashboard: velMotor·∫pot dt/100)
-function velMotor(){ const v=parseFloat(localStorage.getItem('simpesca_cal_velmax')); return (isFinite(v)&&v>0)?v:2.5; }
+function velMotor(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_velmax')); return (isFinite(v)&&v>0)?v:2.5; }
 function integralPot(pts){ if(!pts||!pts.length) return 0; const seq=[{t:0,pot:pts[0].pot}].concat(pts).concat([{t:90,pot:pts[pts.length-1].pot}]); let a=0; for(let i=0;i<seq.length-1;i++){ const p=seq[i],q=seq[i+1],dt=q.t-p.t; if(dt>0) a+=(p.pot+q.pot)/2*dt; } return a; }
 function estimarLinhaPts(pts){ return velMotor()*integralPot(pts)/100; }
 function linhaDisponivel(){ return Math.abs(limiteLinha()) - Math.abs(linhaCarretel()); }   // o que ainda cabe puxar
@@ -281,10 +281,10 @@ function carregarPontos(id){
   // 1º: GitHub (curvas.json) — fonte de verdade entre dispositivos
   if(curvasGitHub[id]&&Array.isArray(curvasGitHub[id])&&curvasGitHub[id].length) return curvasGitHub[id].slice().sort((a,b)=>a.t-b.t);
   // 2º: localStorage (offline, ou editado localmente nesta máquina)
-  try{ const r=localStorage.getItem('simpesca_pontos_'+id); if(r){ const d=JSON.parse(r); if(Array.isArray(d)&&d.length) return d.slice().sort((a,b)=>a.t-b.t); } }catch(e){}
+  try{ const r=localStorage.getItem('simpesca2_pontos_'+id); if(r){ const d=JSON.parse(r); if(Array.isArray(d)&&d.length) return d.slice().sort((a,b)=>a.t-b.t); } }catch(e){}
   // fallback: curvas antigas A/B/C (cíclico) ou padrão embutido
   const idx=Math.max(0,ESPECIES.findIndex(e=>e.id===id)), L=['A','B','C'][idx%3];
-  try{ const r=localStorage.getItem('simpesca_pontos_'+L); if(r){ const d=JSON.parse(r); if(Array.isArray(d)&&d.length) return d.slice().sort((a,b)=>a.t-b.t); } }catch(e){}
+  try{ const r=localStorage.getItem('simpesca2_pontos_'+L); if(r){ const d=JSON.parse(r); if(Array.isArray(d)&&d.length) return d.slice().sort((a,b)=>a.t-b.t); } }catch(e){}
   return gatilhosParaPontos(GATILHOS_PADRAO[L]);
 }
 function interpolarPontos(pontos, t){
@@ -297,7 +297,7 @@ function interpolarPontos(pontos, t){
 }
 
 // ══ ESTADO ════════════════════════════════════════════════════
-// UMA simulação POR PEIXE: cada espécie tem seu vídeo (video_<id>.mp4) e sua curva (simpesca_pontos_<id>)
+// UMA simulação POR PEIXE: cada espécie tem seu vídeo (video_<id>.mp4) e sua curva (simpesca2_pontos_<id>)
 const ESPECIES=[
   {id:'pirarara', nome:'Pirarara'},
   {id:'tambaqui', nome:'Tambacu'},
@@ -308,14 +308,14 @@ const ESPECIES=[
 ];
 function nomePeixe(id){ const e=ESPECIES.find(x=>x.id===id); return e?e.nome:id; }
 // Sincronia POR VÍDEO: atraso (s) da simulação vs o vídeo. Positivo = motor age mais tarde (alinha com o vídeo).
-function syncVideo(id){ const v=parseFloat(localStorage.getItem('simpesca_sync_'+id)); return isFinite(v)?v:0; }
-function salvarSync(id){ const el=document.getElementById('sync_'+id); if(!el) return; let v=parseFloat(el.value); if(!isFinite(v)) v=0; v=Math.max(-30,Math.min(30,Math.round(v*10)/10)); el.value=v; localStorage.setItem('simpesca_sync_'+id,v); agendarSyncPlayer(); }
+function syncVideo(id){ const v=parseFloat(localStorage.getItem('simpesca2_sync_'+id)); return isFinite(v)?v:0; }
+function salvarSync(id){ const el=document.getElementById('sync_'+id); if(!el) return; let v=parseFloat(el.value); if(!isFinite(v)) v=0; v=Math.max(-30,Math.min(30,Math.round(v*10)/10)); el.value=v; localStorage.setItem('simpesca2_sync_'+id,v); agendarSyncPlayer(); }
 const SIMS={};
 ESPECIES.forEach(e=>{ SIMS[e.id]={letra:e.id,nome:e.nome,video:null,wrapper:null,overlay:null,prog:null,pontos:[],intervalo:null,estaRodando:false}; });
 let simEmContagem=null, simEmPausa=null, nomeJogador='';
 
 // ── IndexedDB para vídeos locais ──────────────────────────────
-const VIDEO_DB='simpesca-videos', VIDEO_STORE='videos';
+const VIDEO_DB='simpesca2-videos', VIDEO_STORE='videos';
 function abrirVideoDB(){ return new Promise((res,rej)=>{ const r=indexedDB.open(VIDEO_DB,1); r.onupgradeneeded=e=>e.target.result.createObjectStore(VIDEO_STORE); r.onsuccess=e=>res(e.target.result); r.onerror=rej; }); }
 async function lerVideoDB(key){ const db=await abrirVideoDB(); return new Promise((res,rej)=>{ const r=db.transaction(VIDEO_STORE,'readonly').objectStore(VIDEO_STORE).get(key); r.onsuccess=e=>res(e.target.result||null); r.onerror=rej; }); }
 
@@ -348,22 +348,29 @@ function liberarVideoAtual(){
 function aplicarConfigPlayer(d){
   if(!d) return;
   const c=d.cal||{};
-  if(c.mpv)          localStorage.setItem('simpesca_cal_mpv', c.mpv);
-  if(c.limite)       localStorage.setItem('simpesca_cal_limite', c.limite);
-  if(c.velmax)       localStorage.setItem('simpesca_cal_velmax', c.velmax);
-  if(c.offset!=null) localStorage.setItem('simpesca_cal_offset', c.offset);
-  if(c.inv!=null)    localStorage.setItem('simpesca_cal_inv', c.inv);
+  if(c.mpv)          localStorage.setItem('simpesca2_cal_mpv', c.mpv);
+  if(c.limite)       localStorage.setItem('simpesca2_cal_limite', c.limite);
+  if(c.velmax)       localStorage.setItem('simpesca2_cal_velmax', c.velmax);
+  if(c.offset!=null) localStorage.setItem('simpesca2_cal_offset', c.offset);
+  if(c.inv!=null)    localStorage.setItem('simpesca2_cal_inv', c.inv);
   const s=d.sync||{};
-  ESPECIES.forEach(e=>{ if(s[e.id]!=null) localStorage.setItem('simpesca_sync_'+e.id, s[e.id]); });
+  ESPECIES.forEach(e=>{ if(s[e.id]!=null) localStorage.setItem('simpesca2_sync_'+e.id, s[e.id]); });
+  const gen=d.gen||{};   // o player só precisa do PESO MÁX de cada espécie (pro slider)
+  ESPECIES.forEach(e=>{ if(gen[e.id]&&gen[e.id].pesomax!=null) localStorage.setItem('simpesca2_gen_'+e.id+'_pesomax', gen[e.id].pesomax); });
 }
+// ── PESO do peixe (slider por espécie) -> fator de escala da curva (puxa + freia) ──
+function pesoMaxEsp(id){ const v=parseFloat(localStorage.getItem('simpesca2_gen_'+id+'_pesomax')); return (isFinite(v)&&v>0)?v:20; }   // peso que vale 100% (vem do dashboard)
+function pesoEsp(id){ const mx=pesoMaxEsp(id); const v=parseFloat(localStorage.getItem('simpesca2_peso_'+id)); return isFinite(v)?Math.max(0,Math.min(mx,v)):mx; }   // selecionado (padrão = máx)
+function escalaPeso(id){ const mx=pesoMaxEsp(id); return mx>0 ? Math.max(0.15, Math.min(1, pesoEsp(id)/mx)) : 1; }   // peso -> escala (piso 15%); a física real entra depois
+function salvarPeso(id){ const el=document.getElementById('peso_'+id); if(!el) return; localStorage.setItem('simpesca2_peso_'+id, el.value); const lbl=document.getElementById('pesolbl_'+id); if(lbl) lbl.textContent=parseFloat(el.value).toFixed(1)+' kg'; }
 
 // ── AUTO-SAVE da sincronia no GitHub (só num PC com token; o totem não tem token → só lê) ──
 const GH_REPO='guilhermeogera-beep/Simularpesca2', GH_CONFIG='config.json';
-function ghToken(){ return (localStorage.getItem('simpesca_github_token')||'').trim(); }
+function ghToken(){ return (localStorage.getItem('simpesca2_github_token')||'').trim(); }
 let ghSyncTimer=null, ghSyncEnviando=false;
 function agendarSyncPlayer(){
   if(!ghToken()) return;                                  // sem token (totem): não publica
-  localStorage.setItem('simpesca_sync_pend','1');
+  localStorage.setItem('simpesca2_sync_pend','1');
   clearTimeout(ghSyncTimer); ghSyncTimer=setTimeout(enviarSyncPlayer, 2500);
 }
 async function enviarSyncPlayer(){
@@ -378,16 +385,16 @@ async function enviarSyncPlayer(){
     else if(g.status===404){ is404=true; }                // arquivo ainda não existe: vai criar
   }catch(e){ ghSyncEnviando=false; return; }               // offline/erro de rede: tenta depois
   if(!getOk && !is404){ ghSyncEnviando=false; return; }     // erro (rate limit/token): NÃO arrisca sobrescrever cal/gen
-  cfg.sync=cfg.sync||{}; ESPECIES.forEach(e=>{ cfg.sync[e.id]=localStorage.getItem('simpesca_sync_'+e.id)||'0'; });
+  cfg.sync=cfg.sync||{}; ESPECIES.forEach(e=>{ cfg.sync[e.id]=localStorage.getItem('simpesca2_sync_'+e.id)||'0'; });
   cfg.criado=new Date().toISOString();
   const content=btoa(unescape(encodeURIComponent(JSON.stringify(cfg,null,2))));
   const body={message:'auto: sincronia',content}; if(sha) body.sha=sha;
   let ok=false; try{ const r=await fetch(url,{method:'PUT',headers,body:JSON.stringify(body)}); ok=r.ok; }catch(e){}
   ghSyncEnviando=false;
-  if(ok){ localStorage.removeItem('simpesca_sync_pend'); mostrarToast('☁️ sincronia salva na nuvem'); }
+  if(ok){ localStorage.removeItem('simpesca2_sync_pend'); mostrarToast('☁️ sincronia salva na nuvem'); }
   else mostrarToast('⏳ sincronia: sobe quando tiver internet');
 }
-window.addEventListener('online',()=>{ if(ghToken() && localStorage.getItem('simpesca_sync_pend')) enviarSyncPlayer(); });
+window.addEventListener('online',()=>{ if(ghToken() && localStorage.getItem('simpesca2_sync_pend')) enviarSyncPlayer(); });
 
 window.addEventListener('load',async()=>{
   // GitHub é a fonte de verdade: curvas (curvas.json) + calibração/sincronia (config.json)
@@ -411,6 +418,7 @@ window.addEventListener('load',async()=>{
         '<div class="video-progress"><div class="video-progress-bar" id="prog_'+e.id+'"></div></div>'+
         '<div class="overlay" id="overlay_'+e.id+'"><button class="btn-play" onclick="pedirNome(\''+e.id+'\')"><svg width="26" height="26" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button><span class="sim-nome-overlay">'+e.nome+'</span></div>'+
       '</div>'+
+      '<div class="card-peso" style="display:flex;align-items:center;gap:8px;justify-content:center;margin-top:8px;font-size:0.74rem;color:#7b8d9e;"><span title="Tamanho/peso do peixe. Maior = mais força (puxa e freia). O máximo (gigante) = 100% da curva.">⚖️</span><input type="range" id="peso_'+e.id+'" min="0" max="'+pesoMaxEsp(e.id)+'" step="0.5" value="'+pesoMaxEsp(e.id)+'" oninput="salvarPeso(\''+e.id+'\')" style="flex:1;max-width:150px;accent-color:#00d4ff;"><span id="pesolbl_'+e.id+'" style="min-width:54px;text-align:right;font-weight:700;color:#c8d8e8;font-family:monospace;">'+pesoMaxEsp(e.id).toFixed(1)+' kg</span></div>'+
       '<div class="card-sync" style="text-align:center;margin-top:6px;font-size:0.72rem;color:#7b8d9e;"><label title="Atraso da simulação em relação ao vídeo (s). Positivo = as ações do motor acontecem mais tarde. Ajuste pra casar a briga com o vídeo.">⏱ sincronia <input type="number" id="sync_'+e.id+'" step="0.1" value="0" onchange="salvarSync(\''+e.id+'\')" style="width:62px;text-align:center;background:#0d151d;border:1px solid #1a2736;border-radius:5px;color:#e0e6ed;font-family:monospace;padding:3px 4px;outline:none;"> s</label></div>';
     grid.appendChild(bloco);
   });
@@ -420,6 +428,7 @@ window.addEventListener('load',async()=>{
     s.overlay=document.getElementById('overlay_'+id); s.prog=document.getElementById('prog_'+id);
     s.pontos=carregarPontos(id);
     const sy=document.getElementById('sync_'+id); if(sy) sy.value=syncVideo(id);   // carrega a sincronia salva
+    const pe=document.getElementById('peso_'+id); if(pe){ pe.value=pesoEsp(id); const pl=document.getElementById('pesolbl_'+id); if(pl) pl.textContent=pesoEsp(id).toFixed(1)+' kg'; }   // peso salvo
     s.video.addEventListener('click',()=>{ if(s.estaRodando) pausarSim(id); });
     s.video.addEventListener('timeupdate',()=>{ s.prog.style.width=((s.video.currentTime/s.video.duration)*100||0)+'%'; });
     s.video.addEventListener('ended',()=>encerrarSim(id,true,true));
@@ -430,17 +439,17 @@ window.addEventListener('load',async()=>{
   // filtros do ranking (1 por peixe)
   const rkF=document.getElementById('rkFiltros');
   ESPECIES.forEach(e=>{ const b=document.createElement('button'); b.className='rk-filtro'; b.dataset.sim=e.id; b.textContent=e.nome; b.onclick=()=>filtrarRanking(e.id,b); rkF.appendChild(b); });
-  document.getElementById('inputNome').value=localStorage.getItem('simpesca_ultimo_nome')||'';
+  document.getElementById('inputNome').value=localStorage.getItem('simpesca2_ultimo_nome')||'';
   carregarHudCfg();
   if('serviceWorker' in navigator) navigator.serviceWorker.register('service-worker.js').catch(()=>{});
-  if(ghToken() && navigator.onLine && localStorage.getItem('simpesca_sync_pend')) enviarSyncPlayer();   // retoma sincronia pendente
+  if(ghToken() && navigator.onLine && localStorage.getItem('simpesca2_sync_pend')) enviarSyncPlayer();   // retoma sincronia pendente
   tentarReconectar();
 });
 
 // ══ MOTOR ═════════════════════════════════════════════════════
 let ultimoToastTrava=0;
 function travado(){ return Math.abs(linhaCarretel()) >= Math.abs(limiteLinha()); }
-function offsetMotor(){ const v=parseFloat(localStorage.getItem('simpesca_cal_offset')); return (isFinite(v)&&v>=0&&v<100)?v:15; }
+function offsetMotor(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_offset')); return (isFinite(v)&&v>=0&&v<100)?v:15; }
 function comOffset(pct){ return pct>0 ? Math.min(100, offsetMotor()+(100-offsetMotor())*pct/100) : 0; }  // 0=desligado; >0 começa no offset (mín. pra girar)
 function aplicarMotor(pct){ pct=Math.max(0,Math.min(100,pct));
   if(travado()){ if(pct>0 && Date.now()-ultimoToastTrava>2500){ ultimoToastTrava=Date.now(); mostrarToast('🛑 Motor travado pelo limite de linha'); } pct=0; }
@@ -508,17 +517,17 @@ function atualizarHudSync(){ const el=document.getElementById('hudSyncVal'); if(
 function nudgeSync(delta){
   if(simTocando==null) return;
   let v=Math.max(-30,Math.min(30,Math.round((syncVideo(simTocando)+delta)*10)/10));
-  localStorage.setItem('simpesca_sync_'+simTocando, v);
+  localStorage.setItem('simpesca2_sync_'+simTocando, v);
   const card=document.getElementById('sync_'+simTocando); if(card) card.value=v;   // mantém o card alinhado
   atualizarHudSync();
   agendarSyncPlayer();
 }
 // mostra/esconde o campo ⏱ sincronia nos cards (tela de seleção) conforme o toggle do EXIBIR
 function atualizarSyncCards(){ document.querySelectorAll('.card-sync').forEach(el=>{ el.style.display = hudCfg.sync ? '' : 'none'; }); }
-function salvarHudCfg(){ localStorage.setItem('simpesca_hud_linha',hudCfg.linha?'1':'0'); localStorage.setItem('simpesca_hud_estado',hudCfg.estado?'1':'0'); localStorage.setItem('simpesca_hud_barra',hudCfg.barra?'1':'0'); localStorage.setItem('simpesca_hud_carretel',hudCfg.carretel?'1':'0'); localStorage.setItem('simpesca_hud_sync',hudCfg.sync?'1':'0'); }
+function salvarHudCfg(){ localStorage.setItem('simpesca2_hud_linha',hudCfg.linha?'1':'0'); localStorage.setItem('simpesca2_hud_estado',hudCfg.estado?'1':'0'); localStorage.setItem('simpesca2_hud_barra',hudCfg.barra?'1':'0'); localStorage.setItem('simpesca2_hud_carretel',hudCfg.carretel?'1':'0'); localStorage.setItem('simpesca2_hud_sync',hudCfg.sync?'1':'0'); }
 function carregarHudCfg(){
   const g=(k,d)=>{ const v=localStorage.getItem(k); return v===null?d:v==='1'; };
-  hudCfg.linha=g('simpesca_hud_linha',true); hudCfg.estado=g('simpesca_hud_estado',true); hudCfg.barra=g('simpesca_hud_barra',true); hudCfg.carretel=g('simpesca_hud_carretel',false); hudCfg.sync=g('simpesca_hud_sync',true);
+  hudCfg.linha=g('simpesca2_hud_linha',true); hudCfg.estado=g('simpesca2_hud_estado',true); hudCfg.barra=g('simpesca2_hud_barra',true); hudCfg.carretel=g('simpesca2_hud_carretel',false); hudCfg.sync=g('simpesca2_hud_sync',true);
   const cl=document.getElementById('cfgLinha'), ce=document.getElementById('cfgEstado'), cb=document.getElementById('cfgBarra'), cc=document.getElementById('cfgCarretel'), cs=document.getElementById('cfgSync');
   cl.checked=hudCfg.linha; ce.checked=hudCfg.estado; cb.checked=hudCfg.barra; cc.checked=hudCfg.carretel; cs.checked=hudCfg.sync;
   cl.addEventListener('change',()=>{ hudCfg.linha=cl.checked; salvarHudCfg(); atualizarVisibilidadeHUD(); });
@@ -532,7 +541,7 @@ function carregarHudCfg(){
 }
 
 // ── Mostrar/ocultar peixes na tela de seleção (painel EXIBIR) ──
-function peixeVisivel(id){ return localStorage.getItem('simpesca_peixe_'+id)!=='0'; }   // padrão: visível
+function peixeVisivel(id){ return localStorage.getItem('simpesca2_peixe_'+id)!=='0'; }   // padrão: visível
 function aplicarVisibilidadePeixes(){
   ESPECIES.forEach(e=>{
     const vis=peixeVisivel(e.id);
@@ -550,7 +559,7 @@ function montarCfgPeixes(){
   ESPECIES.forEach(e=>{
     const lab=document.createElement('label');
     const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=peixeVisivel(e.id);
-    cb.addEventListener('change',()=>{ localStorage.setItem('simpesca_peixe_'+e.id, cb.checked?'1':'0'); aplicarVisibilidadePeixes(); });
+    cb.addEventListener('change',()=>{ localStorage.setItem('simpesca2_peixe_'+e.id, cb.checked?'1':'0'); aplicarVisibilidadePeixes(); });
     lab.appendChild(cb); lab.appendChild(document.createTextNode(' '+e.nome));
     box.appendChild(lab);
   });
@@ -578,7 +587,7 @@ function atualizarLinhaOverlay(){
   ok.disabled=!pronto; ok.textContent=pronto?'▶ Continuar':'enrole mais...';
 }
 function fecharNome(){ document.getElementById('nomeOverlay').classList.remove('visivel'); simEmContagem=null; }
-function confirmarNome(){ const v=document.getElementById('inputNome').value.trim(); nomeJogador=v||'Jogador'; localStorage.setItem('simpesca_ultimo_nome',nomeJogador); document.getElementById('nomeOverlay').classList.remove('visivel'); iniciarContagem(simEmContagem); }
+function confirmarNome(){ const v=document.getElementById('inputNome').value.trim(); nomeJogador=v||'Jogador'; localStorage.setItem('simpesca2_ultimo_nome',nomeJogador); document.getElementById('nomeOverlay').classList.remove('visivel'); iniciarContagem(simEmContagem); }
 document.getElementById('inputNome').addEventListener('keydown',e=>{ if(e.key==='Enter') confirmarNome(); });
 
 // Leva os overlays (contagem/pausa/resultado) pra DENTRO do vídeo (aparecerem em tela cheia) e devolve depois
@@ -659,7 +668,7 @@ function encerrarSim(id, sairFS, salvar){
 // ══ RANKING ───────────────────────────────────────────────────
 // nome "de verdade": não vazio e diferente de "Jogador" (placeholder). Jogada sem nome não entra no ranking.
 function nomeValido(n){ n=(n||'').trim().toLowerCase(); return n!=='' && n!=='jogador'; }
-function salvarRanking(nome, metros, sim){ let lista=[]; try{ lista=JSON.parse(localStorage.getItem('simpesca_ranking'))||[]; }catch(e){} lista.push({nome, metros:Math.round(metros*10)/10, sim, data:new Date().toISOString()}); localStorage.setItem('simpesca_ranking', JSON.stringify(lista)); }
+function salvarRanking(nome, metros, sim){ let lista=[]; try{ lista=JSON.parse(localStorage.getItem('simpesca2_ranking'))||[]; }catch(e){} lista.push({nome, metros:Math.round(metros*10)/10, sim, data:new Date().toISOString()}); localStorage.setItem('simpesca2_ranking', JSON.stringify(lista)); }
 function mostrarResultado(nome, metros, sim, salvou){
   document.getElementById('resultadoMetros').textContent=metros.toFixed(1)+' m';
   const posEl=document.getElementById('resultadoPos'), nomeEl=document.getElementById('resultadoNome'), rec=document.getElementById('resultadoRecorde');
@@ -671,7 +680,7 @@ function mostrarResultado(nome, metros, sim, salvou){
     return;
   }
   const m=Math.round(metros*10)/10;
-  let lista=[]; try{ lista=JSON.parse(localStorage.getItem('simpesca_ranking'))||[]; }catch(e){}
+  let lista=[]; try{ lista=JSON.parse(localStorage.getItem('simpesca2_ranking'))||[]; }catch(e){}
   const naSim=lista.filter(r=>r.sim===sim); const total=naSim.length;
   const pos=naSim.filter(r=>r.metros>m).length + 1;
   const medalha = pos===1?'🥇':pos===2?'🥈':pos===3?'🥉':'';
@@ -691,7 +700,7 @@ function fecharRanking(){ document.getElementById('rankingOverlay').classList.re
 function filtrarRanking(sim,btn){ rkFiltro=sim; document.querySelectorAll('.rk-filtro').forEach(b=>b.classList.remove('ativo')); btn.classList.add('ativo'); renderRanking(); }
 function escHtml(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function renderRanking(){
-  let lista=[]; try{ lista=JSON.parse(localStorage.getItem('simpesca_ranking'))||[]; }catch(e){}
+  let lista=[]; try{ lista=JSON.parse(localStorage.getItem('simpesca2_ranking'))||[]; }catch(e){}
   lista=lista.filter(r=>nomeValido(r.nome));         // não mostra jogadas sem nome / "Jogador"
   if(rkFiltro!=='todos') lista=lista.filter(r=>r.sim===rkFiltro);
   else lista=lista.filter(r=>peixeVisivel(r.sim));   // "Todas" esconde os peixes desmarcados no EXIBIR
