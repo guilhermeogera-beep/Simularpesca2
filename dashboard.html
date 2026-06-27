@@ -342,7 +342,11 @@ function atualizarGauge(pct){ pct=Math.max(-100,Math.min(100,pct)); const mag=Ma
   document.getElementById('gaugeVolt').textContent='≈ '+ampMotor(pct).toFixed(1)+' A'; }
 function atualizarSimGauge(idx,pct){ pct=Math.max(-100,Math.min(100,pct)); const p=document.getElementById('simPct'+idx),v=document.getElementById('simVolt'+idx),f=document.getElementById('simFill'+idx); if(!p)return; const mag=Math.abs(pct), pull=pct>0.5, brake=pct<-0.5, cor=pull?'#00d4ff':brake?'#ffa838':'#3d5d7e'; p.textContent=(pull?'+':brake?'−':'')+mag.toFixed(0)+'%'; v.textContent='≈'+ampMotor(pct).toFixed(1)+'A'; f.style.width=mag+'%'; f.style.background=cor; }
 function log(msg,tipo=''){ const el=document.getElementById('log'); const s=document.createElement('span'); s.className=tipo; const n=new Date(); s.textContent=`[${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}:${String(n.getSeconds()).padStart(2,'0')}] ${msg}`; el.prepend(s); while(el.children.length>40) el.removeChild(el.lastChild); }
-document.getElementById('motorSlider').addEventListener('input',e=>aplicarMotor(parseInt(e.target.value)));
+const SLIDER_DZ=10;   // zona morta no centro: |valor| < isso = motor DESLIGADO (facilita parar no zero)
+(function(){ const sl=document.getElementById('motorSlider');
+  sl.addEventListener('input',e=>{ let v=parseInt(e.target.value)||0; if(Math.abs(v)<SLIDER_DZ) v=0; aplicarMotor(v); });   // miolo = 0
+  sl.addEventListener('change',e=>{ if(Math.abs(parseInt(e.target.value)||0)<SLIDER_DZ){ e.target.value=0; aplicarMotor(0); } });   // ao soltar perto do centro, encaixa no zero
+})();
 
 // ══ MODELO DE PONTOS ──────────────────────────────────────────
 const DURACAO=90;
