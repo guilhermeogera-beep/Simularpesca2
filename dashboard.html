@@ -143,7 +143,7 @@ select{background:var(--surface);border:1px solid var(--border);color:var(--text
 
 <!-- CALIBRAÇÃO DO ENCODER -->
 <div class="card">
-  <div class="secao-titulo"><span>📏</span> Encoder — Calibração da Linha (AS5600)</div>
+  <div class="secao-titulo"><span>📏</span> Calibração da Linha (tacômetro do VESC)</div>
   <div class="cal-grid">
     <div class="cal-campo"><label>Metros por volta</label><input type="number" id="calMpv" step="0.0001" min="0" value="0.0854"></div>
     <div class="cal-campo"><label>Vel. motor a 100% (m/s)</label><input type="number" id="calVel" step="0.01" min="0" value="2.5"></div>
@@ -266,38 +266,17 @@ async function ligar(device){
   btUI('conectado','🟢 Conectado'); log('Bluetooth conectado','ok');
 }
 // ── FISGADA FÍSICA (config + teste) ───────────────────────────
-// Config da fisgada física POR PEIXE (inputs fisFisPot/fisFisVoltas/fisFisDur na .gen-row)
-function fisFisCfg(idx){
-  const g=(id,d)=>{ const el=document.getElementById(id+idx); const v=el?parseFloat(el.value):NaN; return isFinite(v)?v:d; };
-  return { pot:Math.max(0,Math.min(100,g('fisFisPot',15))), voltas:Math.max(1,Math.round(g('fisFisVoltas',1))), dur:Math.max(0,g('fisFisDur',5)) };
-}
+// Tempo de INÍCIO da briga gerada (🎲) POR PEIXE: antes desse tempo a curva fica LIVRE pra você
+// desenhar as fisgadas MANUALMENTE (a curva é editável com sinal). Input fisFisDur na .gen-row.
+function fisFisCfg(idx){ const el=document.getElementById('fisFisDur'+idx); const v=el?parseFloat(el.value):NaN; return { dur:Math.max(0,isFinite(v)?v:5) }; }
 function fisFisDurSeg(idx){ return fisFisCfg(idx).dur; }
-// Pontos ESTIMADOS do formato da fisgada física (SUBIDA→RODA→DESCIDA→PAUSA, repetindo por dur) — só pra
-// DESENHAR no gráfico; quem executa é o ESP (a curva do app fica em 0 aqui). RODA é estimado pela velocidade
-// do motor (o tempo exato depende do encoder no ESP, que o app não conhece).
-const FIS_SUB=0.3, FIS_PAUSA=0.2;   // = FIS_RAMPA_MS / FIS_PAUSA_MS do firmware (em s)
-function pontosFisgadaFisica(idx){
-  const c=fisFisCfg(idx);
-  if(!(c.dur>0) || !(c.pot>0)) return [];
-  const vel=velMotor()*(c.pot/100);                                  // m/s estimado nessa potência
-  let roda=(vel>0)?(c.voltas*metrosPorVolta())/vel:0.5; roda=Math.max(0.15,Math.min(2.5,roda));  // tempo girando as voltas
-  const pts=[{t:0,pot:0}]; let t=0;
-  while(t<c.dur-0.05){
-    t+=FIS_SUB;   pts.push({t:Math.min(t,c.dur),pot:c.pot});         // rampa sobe 0→pot
-    t+=roda;      pts.push({t:Math.min(t,c.dur),pot:c.pot});         // roda as voltas (segura no pot)
-    t+=FIS_SUB;   pts.push({t:Math.min(t,c.dur),pot:0});            // rampa desce pot→0
-    t+=FIS_PAUSA; pts.push({t:Math.min(t,c.dur),pot:0});            // pausa
-  }
-  return pts;
-}
-function enviarFisgadaFisica(c){ if(!fisgadaChar){ log('Conecte o Bluetooth (firmware sem fisgada física)','err'); return; } const ms=Math.round(c.dur*1000); const b=new Uint8Array([Math.round(c.pot),Math.round(c.voltas),ms&0xFF,(ms>>8)&0xFF]); try{ fisgadaChar.writeValueWithoutResponse?fisgadaChar.writeValueWithoutResponse(b):fisgadaChar.writeValue(b); }catch(e){} }
 function pararFisgadaFisica(){ if(!fisgadaChar) return; try{ const b=new Uint8Array([0,0,0,0]); fisgadaChar.writeValueWithoutResponse?fisgadaChar.writeValueWithoutResponse(b):fisgadaChar.writeValue(b); }catch(e){} log('Fisgada física parada','info'); }
 async function reconectar(){ if(navigator.bluetooth&&navigator.bluetooth.getDevices){ try{ const d=await navigator.bluetooth.getDevices(); if(d.length) await ligar(d[0]).catch(()=>{}); }catch(e){} } }
 function escreverMotor(pct){ if(!motorChar) return; const b=new Uint8Array([Math.max(0,Math.min(100,Math.round(pct)))]); try{ motorChar.writeValueWithoutResponse?motorChar.writeValueWithoutResponse(b):motorChar.writeValue(b);}catch(e){} }
 function zerarEncoder(){ contagemEncoder=0; contAnt=0; primeiraLeitura=true; metrosGanhos=0; metrosPerdidos=0; travaAtiva=false; atualizarCalLive(); atualizarContadores(); if(linhaChar){ try{ linhaChar.writeValue(new Uint8Array([0])); }catch(e){} } log('Linha do carretel zerada (re-spool)','info'); }
 function atualizarContadores(){ const g=document.getElementById('ctGanhos'); if(!g) return; const net=linhaCarretel(), L=limiteLinha(); g.textContent=metrosGanhos.toFixed(1)+' m'; document.getElementById('ctPerdidos').textContent=metrosPerdidos.toFixed(1)+' m'; const s=document.getElementById('ctSaldo'); s.textContent=net.toFixed(1)+' / '+L.toFixed(0)+' m'; s.style.color=(Math.abs(net)>=Math.abs(L))?'var(--red)':''; }
 function zerarContadores(){ metrosGanhos=0; metrosPerdidos=0; contagemEncoder=0; contAnt=0; primeiraLeitura=true; travaAtiva=false; if(linhaChar){ try{ linhaChar.writeValue(new Uint8Array([0])); }catch(e){} } atualizarCalLive(); atualizarContadores(); log('Contadores + linha do carretel zerados','info'); }
-function inverterLado(){ const novo=!(localStorage.getItem('simpesca_cal_inv')==='1'); localStorage.setItem('simpesca_cal_inv', novo?'1':'0'); const tmp=metrosGanhos; metrosGanhos=metrosPerdidos; metrosPerdidos=tmp; travaAtiva=false; atualizarCalLive(); atualizarContadores(); agendarSync('config'); log('Lado invertido: '+(novo?'INVERTIDO':'normal')+' (ganhos ⇄ perdidos)','info'); }
+function inverterLado(){ const novo=!(localStorage.getItem('simpesca2_cal_inv')==='1'); localStorage.setItem('simpesca2_cal_inv', novo?'1':'0'); const tmp=metrosGanhos; metrosGanhos=metrosPerdidos; metrosPerdidos=tmp; travaAtiva=false; atualizarCalLive(); atualizarContadores(); agendarSync('config'); log('Lado invertido: '+(novo?'INVERTIDO':'normal')+' (ganhos ⇄ perdidos)','info'); }
 // SEGURANÇA (teste): saldo líquido atingiu o limite -> para o motor e a prévia
 let travaAtiva=false;
 function checarLimiteSegurancaDash(){
@@ -308,10 +287,10 @@ function checarLimiteSegurancaDash(){
 }
 
 // ══ CALIBRAÇÃO ────────────────────────────────────────────────
-function metrosPorVolta(){ const v=parseFloat(localStorage.getItem('simpesca_cal_mpv')); return (isFinite(v)&&v>0)?v:0.0854; }
-function limiteLinha(){ const v=parseFloat(localStorage.getItem('simpesca_cal_limite')); return (isFinite(v)&&v!==0)?v:-50; }
-function velMotor(){ const v=parseFloat(localStorage.getItem('simpesca_cal_velmax')); return (isFinite(v)&&v>0)?v:2.5; }   // m/s a 100%
-function offsetMotor(){ const v=parseFloat(localStorage.getItem('simpesca_cal_offset')); return (isFinite(v)&&v>=0&&v<100)?v:15; }   // % mínimo pra o motor girar
+function metrosPorVolta(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_mpv')); return (isFinite(v)&&v>0)?v:0.0854; }
+function limiteLinha(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_limite')); return (isFinite(v)&&v!==0)?v:-50; }
+function velMotor(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_velmax')); return (isFinite(v)&&v>0)?v:2.5; }   // m/s a 100%
+function offsetMotor(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_offset')); return (isFinite(v)&&v>=0&&v<100)?v:15; }   // % mínimo pra o motor girar
 function comOffset(pct){ return pct>0 ? Math.min(100, offsetMotor()+(100-offsetMotor())*pct/100) : 0; }   // 0=desligado; >0 começa no offset
 // ∫ pot dt (0..DURACAO) da curva contínua = "esforço" do peixe em %·s
 function integralPot(pts){
@@ -323,12 +302,12 @@ function integralPot(pts){
 }
 function estimarLinha(pts){ return velMotor()*integralPot(pts)/100; }   // metros que o peixe puxa
 function atualizarEstimativas(){ for(let i=0;i<NSIMS;i++){ const e=document.getElementById('estLinha'+i); if(e) e.textContent='🐟 ≈ '+estimarLinha(SIMS[i].pontos).toFixed(1)+' m'; } }
-function inverterDir(){ return localStorage.getItem('simpesca_cal_inv')==='1'; }
+function inverterDir(){ return localStorage.getItem('simpesca2_cal_inv')==='1'; }
 function contagemParaMetros(c){ let m=(c/4096)*metrosPorVolta(); if(inverterDir()) m=-m; return m; }
 function atualizarCalLive(){ const voltas=contagemEncoder/4096, m=Math.max(0,contagemParaMetros(contagemEncoder)); document.getElementById('calCont').textContent=contagemEncoder; document.getElementById('calVoltas').textContent=voltas.toFixed(2); document.getElementById('calMetros').textContent=m.toFixed(1)+' m'; }
-function salvarCal(){ const mpv=parseFloat(document.getElementById('calMpv').value); if(isFinite(mpv)&&mpv>0) localStorage.setItem('simpesca_cal_mpv',mpv); const vel=parseFloat(document.getElementById('calVel').value); if(isFinite(vel)&&vel>0) localStorage.setItem('simpesca_cal_velmax',vel); const off=parseFloat(document.getElementById('calOffset').value); if(isFinite(off)&&off>=0&&off<100) localStorage.setItem('simpesca_cal_offset',off); atualizarCalLive(); atualizarEstimativas(); agendarSync('config'); log('Calibração salva: '+mpv+' m/volta · motor '+vel+' m/s · offset '+off+'%','ok'); }
-function salvarLimite(){ const lim=parseFloat(document.getElementById('calLimite').value); if(isFinite(lim)&&lim!==0){ localStorage.setItem('simpesca_cal_limite',lim); travaAtiva=false; atualizarContadores(); agendarSync('config'); log('Limite de linha (trava) salvo: '+lim+' m','ok'); } else log('Limite inválido (não pode ser 0/vazio)','err'); }
-function calcularMpv(){ const real=parseFloat(document.getElementById('calReal').value); const voltas=Math.abs(contagemEncoder)/4096; if(!(real>0)){ log('Digite os metros reais recolhidos','err'); return; } if(voltas<0.01){ log('Recolha a linha antes de calcular','err'); return; } const mpv=real/voltas; document.getElementById('calMpv').value=mpv.toFixed(4); localStorage.setItem('simpesca_cal_mpv',mpv); atualizarCalLive(); agendarSync('config'); log('Calibrado: '+mpv.toFixed(4)+' m/volta','ok'); }
+function salvarCal(){ const mpv=parseFloat(document.getElementById('calMpv').value); if(isFinite(mpv)&&mpv>0) localStorage.setItem('simpesca2_cal_mpv',mpv); const vel=parseFloat(document.getElementById('calVel').value); if(isFinite(vel)&&vel>0) localStorage.setItem('simpesca2_cal_velmax',vel); const off=parseFloat(document.getElementById('calOffset').value); if(isFinite(off)&&off>=0&&off<100) localStorage.setItem('simpesca2_cal_offset',off); atualizarCalLive(); atualizarEstimativas(); agendarSync('config'); log('Calibração salva: '+mpv+' m/volta · motor '+vel+' m/s · offset '+off+'%','ok'); }
+function salvarLimite(){ const lim=parseFloat(document.getElementById('calLimite').value); if(isFinite(lim)&&lim!==0){ localStorage.setItem('simpesca2_cal_limite',lim); travaAtiva=false; atualizarContadores(); agendarSync('config'); log('Limite de linha (trava) salvo: '+lim+' m','ok'); } else log('Limite inválido (não pode ser 0/vazio)','err'); }
+function calcularMpv(){ const real=parseFloat(document.getElementById('calReal').value); const voltas=Math.abs(contagemEncoder)/4096; if(!(real>0)){ log('Digite os metros reais recolhidos','err'); return; } if(voltas<0.01){ log('Recolha a linha antes de calcular','err'); return; } const mpv=real/voltas; document.getElementById('calMpv').value=mpv.toFixed(4); localStorage.setItem('simpesca2_cal_mpv',mpv); atualizarCalLive(); agendarSync('config'); log('Calibrado: '+mpv.toFixed(4)+' m/volta','ok'); }
 
 // ══ GAUGES / LOG ──────────────────────────────────────────────
 let ultimoLogTrava=0;
@@ -354,7 +333,7 @@ const ESPECIES=[
   {id:'trairao',  nome:'Trairão'},
   {id:'jau',      nome:'Jaú'}
 ];
-const LETRAS=ESPECIES.map(e=>e.id);    // chaves de storage (simpesca_pontos_<id>)
+const LETRAS=ESPECIES.map(e=>e.id);    // chaves de storage (simpesca2_pontos_<id>)
 const NOMES=ESPECIES.map(e=>e.nome);   // exibição
 const NSIMS=ESPECIES.length;
 // Monta os blocos (1 timeline por peixe) com os mesmos ids indexados (tl0.., curva0.., etc.)
@@ -384,10 +363,7 @@ function montarBlocosSims(){
         '<label title="0% = não cansa · 100% = cansa muito (trancos caem + janelas crescem)">fadiga <input type="number" id="fadiga'+i+'" min="0" max="100" value="50">%</label>'+
         '<label title="Tempo total de motor ligado (puxada). Maior = blocos mais longos, peixe puxa mais linha">puxada <input type="number" id="puxada'+i+'" min="5" max="80" value="55">s</label>'+
         '<label title="Distância entre pontos no tempo: 0 = densos (atual) · 100 = bem espaçados. Maior = o motor físico tem tempo de alcançar cada nível (não vira borrão)">espaço <input type="number" id="espaco'+i+'" min="0" max="100" value="40">/100</label>'+
-        '<span style="opacity:0.85;border-left:1px solid var(--border);padding-left:8px;margin-left:2px;">🎣 fisgada física:</span>'+
-        '<label title="Potência das puxadas da fisgada física (executadas pelo ESP no início da jogada)">pot <input type="number" id="fisFisPot'+i+'" min="0" max="100" value="15" oninput="renderCurva('+i+')">%</label>'+
-        '<label title="Voltas do encoder por puxada da fisgada física">voltas <input type="number" id="fisFisVoltas'+i+'" min="1" max="20" value="1" oninput="renderCurva('+i+')"></label>'+
-        '<label title="Duração total da fisgada física (s) — a briga gerada começa depois disso">dur <input type="number" id="fisFisDur'+i+'" min="0" max="30" step="0.5" value="5" oninput="renderCurva('+i+')">s</label>'+
+        '<label title="Onde a briga gerada pelo 🎲 começa. Antes desse tempo a curva fica livre pra você desenhar as fisgadas MANUALMENTE." style="border-left:1px solid var(--border);padding-left:8px;margin-left:2px;">🎣 início da briga <input type="number" id="fisFisDur'+i+'" min="0" max="30" step="0.5" value="5" oninput="renderCurva('+i+')">s</label>'+
         '<span>🎲 = nova briga com estes ajustes</span>'+
       '</div>'+
       '<div id="tl'+i+'" class="timeline-wrap"><div class="curve-area" id="curva'+i+'"></div><div id="playhead'+i+'" class="tl-playhead"></div></div>';
@@ -407,18 +383,18 @@ let simAtiva=0, selPonto=-1, clip=null, multiSel=[], arrastouPonto=false, simHov
 
 function carregarSim(idx){
   const id=LETRAS[idx]; let pts=null;
-  try{ const r=localStorage.getItem('simpesca_pontos_'+id); if(r){ const d=JSON.parse(r); if(Array.isArray(d)&&d.length) pts=d; } }catch(e){}
+  try{ const r=localStorage.getItem('simpesca2_pontos_'+id); if(r){ const d=JSON.parse(r); if(Array.isArray(d)&&d.length) pts=d; } }catch(e){}
   // 1º: GitHub (curvas.json) — fonte principal quando online
   if(curvasGitHub[id]&&Array.isArray(curvasGitHub[id])&&curvasGitHub[id].length){ pts=curvasGitHub[id]; }
   // 2º: localStorage (curvas editadas localmente / offline)
-  if(!pts){ try{ const r=localStorage.getItem('simpesca_pontos_'+id); if(r){ const d=JSON.parse(r); if(Array.isArray(d)&&d.length) pts=d; } }catch(e){} }
+  if(!pts){ try{ const r=localStorage.getItem('simpesca2_pontos_'+id); if(r){ const d=JSON.parse(r); if(Array.isArray(d)&&d.length) pts=d; } }catch(e){} }
   // migração: curvas antigas das Sims A/B/C
-  if(!pts && idx<3){ try{ const r=localStorage.getItem('simpesca_pontos_'+['A','B','C'][idx]); if(r){ const d=JSON.parse(r); if(Array.isArray(d)&&d.length) pts=d; } }catch(e){} }
+  if(!pts && idx<3){ try{ const r=localStorage.getItem('simpesca2_pontos_'+['A','B','C'][idx]); if(r){ const d=JSON.parse(r); if(Array.isArray(d)&&d.length) pts=d; } }catch(e){} }
   // padrão: gera a briga característica da espécie
   if(!pts){ pts=gerarCurvaEspecie(idx); }
   SIMS[idx].pontos=pts.slice().sort((a,b)=>a.t-b.t);
 }
-function salvarPontos(idx){ try{ localStorage.setItem('simpesca_pontos_'+LETRAS[idx], JSON.stringify(SIMS[idx].pontos)); }catch(e){} agendarSync('curvas'); }
+function salvarPontos(idx){ try{ localStorage.setItem('simpesca2_pontos_'+LETRAS[idx], JSON.stringify(SIMS[idx].pontos)); }catch(e){} agendarSync('curvas'); }
 
 // ══ RENDER DA CURVA ───────────────────────────────────────────
 function renderTicks(idx){
@@ -446,20 +422,13 @@ function renderCurva(idx){
     const line=seq.map(c=>c[0].toFixed(2)+','+yOf(c[1]).toFixed(2)).join(' ');
     inner+=`<polyline points="${line}" fill="none" stroke="#dcefff" stroke-width="1.5" vector-effect="non-scaling-stroke"/>`;
   }
-  if(durFis>0){   // FORMATO (estimado) das puxadas da fisgada física (fica na zona de puxada)
-    const fp=pontosFisgadaFisica(idx);
-    if(fp.length>1){
-      const lp=fp.map(p=>Math.min(100,(p.t/DURACAO)*100).toFixed(2)+','+yOf(p.pot).toFixed(2)).join(' ');
-      inner+=`<polyline points="${lp}" fill="none" stroke="#ffaa00" stroke-width="1.4" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>`;
-    }
-  }
   area.innerHTML=`<svg class="curve-svg" viewBox="0 0 100 100" preserveAspectRatio="none">${inner}</svg>`;
   pts.forEach((p,i)=>{ const h=document.createElement('div'); let cls='ponto-handle'+(p.pot<0?' freio':''); if(idx===simAtiva){ if(multiSel.indexOf(p)>-1) cls+=' multi'; else if(i===selPonto) cls+=' sel'; } h.className=cls; h.style.left=(p.t/DURACAO*100)+'%'; h.style.top=yOf(p.pot)+'%'; h.addEventListener('mousedown',e=>iniciarDragPonto(e,idx,i)); area.appendChild(h); });
   const est=document.getElementById('estLinha'+idx); if(est) est.textContent='🐟 ≈ '+estimarLinha(pts).toFixed(1)+' m';
-  // faixa (fundo listrado) da FISGADA FÍSICA (0..dur)
+  // faixa-marcador: zona ANTES do início da briga gerada (0..durFis) = onde você desenha as fisgadas MANUAIS
   const wrap=document.getElementById('tl'+idx); let band=wrap.querySelector('.fisgada-band');
   if(durFis>0){
-    if(!band){ band=document.createElement('div'); band.className='fisgada-band'; band.innerHTML='<span class="lbl">🎣 fisgada física</span>'; wrap.appendChild(band); }
+    if(!band){ band=document.createElement('div'); band.className='fisgada-band'; band.innerHTML='<span class="lbl">🎣 fisgada manual</span>'; wrap.appendChild(band); }
     band.style.width=Math.min(100,(durFis/DURACAO)*100)+'%'; band.style.display='block';
   } else if(band){ band.style.display='none'; }
 }
@@ -610,7 +579,6 @@ document.addEventListener('keydown',e=>{
 // ══ PLAY / PAUSE / STOP (preview) ─────────────────────────────
 function playSim(idx){ const sim=SIMS[idx]; if(sim.estaRodando) return; sim.estaRodando=true; sim.tempoAtual=0;
   metrosGanhos=0; metrosPerdidos=0; atualizarContadores();   // novo teste: zera Ganhos/Perdidos (a LINHA DO CARRETEL acumula, não zera)
-  if(fisgadaChar) enviarFisgadaFisica(fisFisCfg(idx));   // dispara a fisgada física DESTE peixe (o ESP ignora a curva durante ela)
   const ph=document.getElementById('playhead'+idx), ts=document.getElementById('tsDisplay'+idx);
   sim.t0=performance.now(); let ultMotor=-1;
   const frame=()=>{
@@ -639,7 +607,7 @@ function exportarConfig(){
   const cal={
     mpv: metrosPorVolta(), limite: limiteLinha(),
     velmax: velMotor(), offset: offsetMotor(),
-    inv: localStorage.getItem('simpesca_cal_inv')||'0'
+    inv: localStorage.getItem('simpesca2_cal_inv')||'0'
   };
   const gen={};
   LETRAS.forEach((id,i)=>{
@@ -647,7 +615,7 @@ function exportarConfig(){
     GEN_CAMPOS.forEach(([inp,key])=>{ const el=document.getElementById(inp+i); if(el) gen[id][key]=el.value; });
   });
   const sync={};
-  LETRAS.forEach(id=>{ const v=localStorage.getItem('simpesca_sync_'+id); sync[id]=v||'0'; });
+  LETRAS.forEach(id=>{ const v=localStorage.getItem('simpesca2_sync_'+id); sync[id]=v||'0'; });
   const payload={versao:1,tipo:'config',criado:new Date().toISOString(),cal,gen,sync};
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='config.json'; a.click(); URL.revokeObjectURL(a.href);
@@ -658,13 +626,13 @@ function exportarConfig(){
 const GH_REPO='guilhermeogera-beep/Simularpesca2';      // repo onde o GitHub Pages publica
 const GH_PATH={curvas:'curvas.json', config:'config.json'};   // caminho NO REPO (raiz). Ajuste se estiverem noutra pasta.
 let ghDirty={curvas:false,config:false}, ghTimer=null, ghEnviando=false;
-function ghToken(){ return (localStorage.getItem('simpesca_github_token')||'').trim(); }
-function salvarToken(v){ localStorage.setItem('simpesca_github_token',(v||'').trim()); setSyncBadge(ghToken()?'idle':'notoken'); }
+function ghToken(){ return (localStorage.getItem('simpesca2_github_token')||'').trim(); }
+function salvarToken(v){ localStorage.setItem('simpesca2_github_token',(v||'').trim()); setSyncBadge(ghToken()?'idle':'notoken'); }
 function montarCurvasObj(){ const curvas={}; LETRAS.forEach((id,i)=>{ curvas[id]=SIMS[i].pontos; }); return {versao:1,tipo:'curvas_todas',criado:new Date().toISOString(),curvas}; }
 function montarConfigObj(){
-  const cal={mpv:metrosPorVolta(),limite:limiteLinha(),velmax:velMotor(),offset:offsetMotor(),inv:localStorage.getItem('simpesca_cal_inv')||'0'};
+  const cal={mpv:metrosPorVolta(),limite:limiteLinha(),velmax:velMotor(),offset:offsetMotor(),inv:localStorage.getItem('simpesca2_cal_inv')||'0'};
   const gen={}; LETRAS.forEach((id,i)=>{ gen[id]={}; GEN_CAMPOS.forEach(([inp,key])=>{ const el=document.getElementById(inp+i); if(el) gen[id][key]=el.value; }); });
-  const sync={}; LETRAS.forEach(id=>{ sync[id]=localStorage.getItem('simpesca_sync_'+id)||'0'; });
+  const sync={}; LETRAS.forEach(id=>{ sync[id]=localStorage.getItem('simpesca2_sync_'+id)||'0'; });
   return {versao:1,tipo:'config',criado:new Date().toISOString(),cal,gen,sync};
 }
 async function ghPut(path,obj){
@@ -683,7 +651,7 @@ async function ghPut(path,obj){
 }
 function agendarSync(tipo){                            // 'curvas' | 'config'
   if(!ghToken()) return;                               // sem token (ex.: totem) não publica
-  ghDirty[tipo]=true; localStorage.setItem('simpesca_sync_pend','1');
+  ghDirty[tipo]=true; localStorage.setItem('simpesca2_sync_pend','1');
   setSyncBadge('pend'); clearTimeout(ghTimer); ghTimer=setTimeout(fazerSync,2500);
 }
 async function fazerSync(){
@@ -694,7 +662,7 @@ async function fazerSync(){
   if(ghDirty.curvas){ if(await ghPut(GH_PATH.curvas,montarCurvasObj())) ghDirty.curvas=false; else ok=false; }
   if(ghDirty.config){ if(await ghPut(GH_PATH.config,montarConfigObj())) ghDirty.config=false; else ok=false; }
   ghEnviando=false;
-  if(ok&&!ghDirty.curvas&&!ghDirty.config){ localStorage.removeItem('simpesca_sync_pend'); setSyncBadge('ok'); }
+  if(ok&&!ghDirty.curvas&&!ghDirty.config){ localStorage.removeItem('simpesca2_sync_pend'); setSyncBadge('ok'); }
   else setSyncBadge('err');
 }
 function setSyncBadge(st){
@@ -703,29 +671,29 @@ function setSyncBadge(st){
   const m={idle:['🟢 ligado','#00e676'],pend:['⏳ pendente...','#ffd600'],saving:['☁️ salvando...','#7b8d9e'],ok:['✅ salvo na nuvem','#00e676'],off:['📴 offline — sobe quando voltar','#ffd600'],err:['❌ falha (confira o token)','#ff1744'],notoken:['⚪ desligado (sem token)','#7b8d9e']};
   const [t,c]=m[st]||['','#7b8d9e']; e.textContent=t; e.style.color=c;
 }
-window.addEventListener('online',()=>{ if(localStorage.getItem('simpesca_sync_pend')) fazerSync(); });
+window.addEventListener('online',()=>{ if(localStorage.getItem('simpesca2_sync_pend')) fazerSync(); });
 
 function aplicarConfig(d){
   if(!d) return;
   if(d.cal){
-    if(d.cal.mpv)    { localStorage.setItem('simpesca_cal_mpv',    d.cal.mpv);    document.getElementById('calMpv').value=d.cal.mpv; }
-    if(d.cal.limite) { localStorage.setItem('simpesca_cal_limite', d.cal.limite); document.getElementById('calLimite').value=d.cal.limite; }
-    if(d.cal.velmax) { localStorage.setItem('simpesca_cal_velmax', d.cal.velmax); document.getElementById('calVel').value=d.cal.velmax; }
-    if(d.cal.offset!=null){ localStorage.setItem('simpesca_cal_offset',d.cal.offset); document.getElementById('calOffset').value=d.cal.offset; }
-    if(d.cal.inv!=null)   { localStorage.setItem('simpesca_cal_inv', d.cal.inv); }
+    if(d.cal.mpv)    { localStorage.setItem('simpesca2_cal_mpv',    d.cal.mpv);    document.getElementById('calMpv').value=d.cal.mpv; }
+    if(d.cal.limite) { localStorage.setItem('simpesca2_cal_limite', d.cal.limite); document.getElementById('calLimite').value=d.cal.limite; }
+    if(d.cal.velmax) { localStorage.setItem('simpesca2_cal_velmax', d.cal.velmax); document.getElementById('calVel').value=d.cal.velmax; }
+    if(d.cal.offset!=null){ localStorage.setItem('simpesca2_cal_offset',d.cal.offset); document.getElementById('calOffset').value=d.cal.offset; }
+    if(d.cal.inv!=null)   { localStorage.setItem('simpesca2_cal_inv', d.cal.inv); }
   }
   if(d.gen){
     LETRAS.forEach((id,i)=>{
       if(!d.gen[id]) return;
       GEN_CAMPOS.forEach(([inp,key])=>{
         if(d.gen[id][key]==null) return;
-        localStorage.setItem('simpesca_gen_'+id+'_'+key, d.gen[id][key]);
+        localStorage.setItem('simpesca2_gen_'+id+'_'+key, d.gen[id][key]);
         const el=document.getElementById(inp+i); if(el) el.value=d.gen[id][key];
       });
     });
   }
   if(d.sync){
-    LETRAS.forEach(id=>{ if(d.sync[id]!=null) localStorage.setItem('simpesca_sync_'+id, d.sync[id]); });
+    LETRAS.forEach(id=>{ if(d.sync[id]!=null) localStorage.setItem('simpesca2_sync_'+id, d.sync[id]); });
   }
 }
 function exportarTodasCurvas(){
@@ -1006,16 +974,16 @@ function regerar(idx){
   salvarGenCfg(idx);
   log('🎲 '+NOMES[idx]+' (assinatura '+c.intens+'% · teto '+c.teto+'% · fadiga '+c.fadiga+'% · puxada '+c.puxada+'s · fisgada '+c.fisPico+'%/'+c.fisDur+'× · espaço '+c.espaco+') — nova briga gerada','ok');
 }
-// Persiste/recupera os ajustes do gerador POR PEIXE (simpesca_gen_<id>_<campo>)
-const GEN_CAMPOS=[['teto','teto'],['fadiga','fadiga'],['puxada','puxada'],['fisPico','fispico'],['fisDur','fisdur'],['intens','intens'],['espaco','espaco'],['fisFisPot','fisfispot'],['fisFisVoltas','fisfisvoltas'],['fisFisDur','fisfisdur']];
-const FISFIS_GLOBAL={fisfispot:'simpesca_fisfis_pot', fisfisvoltas:'simpesca_fisfis_voltas', fisfisdur:'simpesca_fisfis_dur'};  // migração da fisgada física global antiga
-function salvarGenCfg(idx){ const id=LETRAS[idx]; GEN_CAMPOS.forEach(([inp,key])=>{ const el=document.getElementById(inp+idx); if(el) localStorage.setItem('simpesca_gen_'+id+'_'+key, el.value); }); agendarSync('config'); }
+// Persiste/recupera os ajustes do gerador POR PEIXE (simpesca2_gen_<id>_<campo>)
+const GEN_CAMPOS=[['teto','teto'],['fadiga','fadiga'],['puxada','puxada'],['fisPico','fispico'],['fisDur','fisdur'],['intens','intens'],['espaco','espaco'],['fisFisDur','fisfisdur']];
+const FISFIS_GLOBAL={fisfisdur:'simpesca2_fisfis_dur'};  // migração antiga (só o tempo de início)
+function salvarGenCfg(idx){ const id=LETRAS[idx]; GEN_CAMPOS.forEach(([inp,key])=>{ const el=document.getElementById(inp+idx); if(el) localStorage.setItem('simpesca2_gen_'+id+'_'+key, el.value); }); agendarSync('config'); }
 function carregarGenCfg(){
   for(let i=0;i<NSIMS;i++){ const id=LETRAS[i];
     GEN_CAMPOS.forEach(([inp,key])=>{
       const el=document.getElementById(inp+i); if(!el) return;
-      let v=localStorage.getItem('simpesca_gen_'+id+'_'+key);
-      if(v===null) v=localStorage.getItem('simpesca_gen_'+key);   // migra dos ajustes globais antigos
+      let v=localStorage.getItem('simpesca2_gen_'+id+'_'+key);
+      if(v===null) v=localStorage.getItem('simpesca2_gen_'+key);   // migra dos ajustes globais antigos
       if(v===null && FISFIS_GLOBAL[key]) v=localStorage.getItem(FISFIS_GLOBAL[key]);   // migra da fisgada física global antiga
       if(v!==null) el.value=v;
       el.addEventListener('change',()=>salvarGenCfg(i));
@@ -1048,9 +1016,9 @@ window.addEventListener('load',async()=>{
   atualizarInterfaceTempo(); renderTodas(); atualizarGauge(0); atualizarCalLive(); atualizarContadores(); atualizarEstimativas();
   reconectar();
   // auto-save GitHub: preenche o token salvo, mostra o status e retoma pendências
-  const tk=localStorage.getItem('simpesca_github_token'); const f=document.getElementById('githubToken'); if(tk&&f) f.value=tk;
-  setSyncBadge(ghToken()?(localStorage.getItem('simpesca_sync_pend')?'pend':'idle'):'notoken');
-  if(ghToken() && navigator.onLine && localStorage.getItem('simpesca_sync_pend')){ ghDirty.curvas=true; ghDirty.config=true; fazerSync(); }
+  const tk=localStorage.getItem('simpesca2_github_token'); const f=document.getElementById('githubToken'); if(tk&&f) f.value=tk;
+  setSyncBadge(ghToken()?(localStorage.getItem('simpesca2_sync_pend')?'pend':'idle'):'notoken');
+  if(ghToken() && navigator.onLine && localStorage.getItem('simpesca2_sync_pend')){ ghDirty.curvas=true; ghDirty.config=true; fazerSync(); }
   log('Dashboard pronto — editor por pontos ('+DURACAO+'s)','ok');
 });
 </script>
