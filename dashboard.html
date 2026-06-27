@@ -365,7 +365,7 @@ function montarBlocosSims(){
         '<label title="Tempo total de motor ligado (puxada). Maior = blocos mais longos, peixe puxa mais linha">puxada <input type="number" id="puxada'+i+'" min="5" max="80" value="55">s</label>'+
         '<label title="Distância entre pontos no tempo: 0 = densos (atual) · 100 = bem espaçados. Maior = o motor físico tem tempo de alcançar cada nível (não vira borrão)">espaço <input type="number" id="espaco'+i+'" min="0" max="100" value="40">/100</label>'+
         '<label title="Freio máximo gerado nas janelas de descanso (negativo). É a profundidade da resistência. No player, o PESO do peixe escala isso.">🛑 freio máx <input type="number" id="freioMax'+i+'" min="0" max="100" value="50">%</label>'+
-        '<label title="Peso MÁXIMO da espécie (kg) = o peixe gigante = 100% da curva. No player, o slider vai de 1 kg a este peso e escala a força.">⚖️ peso máx <input type="number" id="pesoMax'+i+'" min="1" max="500" step="0.5" value="'+(PESO_MAX_DEF[LETRAS[i]]||20)+'">kg</label>'+
+        '<label title="Peso MÁXIMO da espécie (kg), pesquisado = 100% da curva. Mesmo valor no player. Fixo por ora; volta a ser editável na calibração com o VESC.">⚖️ peso máx <input type="number" id="pesoMax'+i+'" value="'+(PESO_MAX_DEF[LETRAS[i]]||20)+'" readonly style="opacity:0.65;cursor:default">kg</label>'+
         '<label title="Onde a briga gerada pelo 🎲 começa. Antes desse tempo a curva fica livre pra você desenhar as fisgadas MANUALMENTE." style="border-left:1px solid var(--border);padding-left:8px;margin-left:2px;">🎣 início da briga <input type="number" id="fisFisDur'+i+'" min="0" max="30" step="0.5" value="5" oninput="renderCurva('+i+')">s</label>'+
         '<span>🎲 = nova briga com estes ajustes</span>'+
       '</div>'+
@@ -997,7 +997,7 @@ function regerar(idx){
   log('🎲 '+NOMES[idx]+' (assinatura '+c.intens+'% · teto '+c.teto+'% · fadiga '+c.fadiga+'% · puxada '+c.puxada+'s · fisgada '+c.fisPico+'%/'+c.fisDur+'× · espaço '+c.espaco+') — nova briga gerada','ok');
 }
 // Persiste/recupera os ajustes do gerador POR PEIXE (simpesca2_gen_<id>_<campo>)
-const GEN_CAMPOS=[['teto','teto'],['fadiga','fadiga'],['puxada','puxada'],['fisPico','fispico'],['fisDur','fisdur'],['intens','intens'],['espaco','espaco'],['freioMax','freiomax'],['pesoMax','pesomax'],['fisFisDur','fisfisdur']];
+const GEN_CAMPOS=[['teto','teto'],['fadiga','fadiga'],['puxada','puxada'],['fisPico','fispico'],['fisDur','fisdur'],['intens','intens'],['espaco','espaco'],['freioMax','freiomax'],['fisFisDur','fisfisdur']];
 const FISFIS_GLOBAL={fisfisdur:'simpesca2_fisfis_dur'};  // migração antiga (só o tempo de início)
 function salvarGenCfg(idx){ const id=LETRAS[idx]; GEN_CAMPOS.forEach(([inp,key])=>{ const el=document.getElementById(inp+idx); if(el) localStorage.setItem('simpesca2_gen_'+id+'_'+key, el.value); }); agendarSync('config'); }
 function carregarGenCfg(){
@@ -1007,7 +1007,6 @@ function carregarGenCfg(){
       let v=localStorage.getItem('simpesca2_gen_'+id+'_'+key);
       if(v===null) v=localStorage.getItem('simpesca2_gen_'+key);   // migra dos ajustes globais antigos
       if(v===null && FISFIS_GLOBAL[key]) v=localStorage.getItem(FISFIS_GLOBAL[key]);   // migra da fisgada física global antiga
-      if(key==='pesomax' && (parseFloat(v)===20 || parseFloat(v)<=1)) v=null;   // ignora valores travados (20 ou ≤1) -> usa o pesquisado
       if(v!==null) el.value=v;
       el.addEventListener('change',()=>salvarGenCfg(i));
     });
