@@ -1,7 +1,7 @@
 {
   "versao": 1,
   "tipo": "config",
-  "criado": "2026-06-27T06:11:25.508Z",
+  "criado": "2026-06-27T06:38:45.826Z",
   "cal": {
     "mpv": 0.0854,
     "limite": -152,
@@ -18,8 +18,7 @@
       "fisdur": "3.2",
       "intens": "100",
       "espaco": "23",
-      "freiomax": "100",
-      "pesomax": "60.5",
+      "freiomax": "86",
       "fisfisdur": "0"
     },
     "tambaqui": {
@@ -31,7 +30,6 @@
       "intens": "100",
       "espaco": "65",
       "freiomax": "100",
-      "pesomax": "35",
       "fisfisdur": "5"
     },
     "tucunare": {
@@ -43,7 +41,6 @@
       "intens": "81",
       "espaco": "40",
       "freiomax": "50",
-      "pesomax": "14",
       "fisfisdur": "5"
     },
     "dourado": {
@@ -55,7 +52,6 @@
       "intens": "100",
       "espaco": "48",
       "freiomax": "50",
-      "pesomax": "30",
       "fisfisdur": "0"
     },
     "trairao": {
@@ -67,7 +63,6 @@
       "intens": "100",
       "espaco": "45",
       "freiomax": "50",
-      "pesomax": "15",
       "fisfisdur": "0"
     },
     "jau": {
@@ -79,7 +74,6 @@
       "intens": "100",
       "espaco": "51",
       "freiomax": "50",
-      "pesomax": "100",
       "fisfisdur": "0"
     }
   },
