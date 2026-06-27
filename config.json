@@ -1,7 +1,7 @@
 {
   "versao": 1,
   "tipo": "config",
-  "criado": "2026-06-27T19:19:07.907Z",
+  "criado": "2026-06-27T19:24:43.531Z",
   "cal": {
     "mpv": 0.0854,
     "limite": -152,
@@ -36,7 +36,7 @@
       "corrida": "1.8",
       "fadiga": "50",
       "puxada": "55",
-      "saque": "2.2",
+      "saque": "14",
       "fisdur": "4",
       "intens": "40",
       "espaco": "40",
