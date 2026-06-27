@@ -1,7 +1,7 @@
 {
   "versao": 1,
   "tipo": "config",
-  "criado": "2026-06-27T02:37:10.613Z",
+  "criado": "2026-06-27T04:09:37.675Z",
   "cal": {
     "mpv": 0.0854,
     "limite": -152,
@@ -18,8 +18,8 @@
       "fisdur": "3.2",
       "intens": "100",
       "espaco": "23",
-      "fisfispot": "15",
-      "fisfisvoltas": "2",
+      "freiomax": "100",
+      "pesomax": "20",
       "fisfisdur": "0"
     },
     "tambaqui": {
@@ -30,8 +30,8 @@
       "fisdur": "2.1",
       "intens": "100",
       "espaco": "65",
-      "fisfispot": "15",
-      "fisfisvoltas": "4",
+      "freiomax": "100",
+      "pesomax": "20",
       "fisfisdur": "5"
     },
     "tucunare": {
@@ -42,8 +42,8 @@
       "fisdur": "2",
       "intens": "81",
       "espaco": "40",
-      "fisfispot": "15",
-      "fisfisvoltas": "2",
+      "freiomax": "50",
+      "pesomax": "20",
       "fisfisdur": "5"
     },
     "dourado": {
@@ -54,8 +54,8 @@
       "fisdur": "2",
       "intens": "100",
       "espaco": "48",
-      "fisfispot": "15",
-      "fisfisvoltas": "2",
+      "freiomax": "50",
+      "pesomax": "20",
       "fisfisdur": "0"
     },
     "trairao": {
@@ -66,8 +66,8 @@
       "fisdur": "4",
       "intens": "100",
       "espaco": "45",
-      "fisfispot": "15",
-      "fisfisvoltas": "2",
+      "freiomax": "50",
+      "pesomax": "20",
       "fisfisdur": "0"
     },
     "jau": {
@@ -78,8 +78,8 @@
       "fisdur": "3",
       "intens": "100",
       "espaco": "51",
-      "fisfispot": "15",
-      "fisfisvoltas": "2",
+      "freiomax": "50",
+      "pesomax": "20",
       "fisfisdur": "0"
     }
   },
