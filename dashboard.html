@@ -196,7 +196,7 @@ select{background:var(--surface);border:1px solid var(--border);color:var(--text
 
 <!-- CONTADORES DE LINHA (teste) -->
 <div class="card">
-  <div class="secao-titulo recolhivel" data-cardkey="linha" onclick="toggleCard(this)"><span class="card-chevron">▾</span><span>🎣</span> Controle de Carretel</div>
+  <div class="secao-titulo recolhivel" data-cardkey="linha" onclick="toggleCard(this)"><span class="card-chevron">▾</span><span>🎣</span> Controle de Carretel<button onclick="event.stopPropagation(); toggleCarretelBtns()" title="Esconder/mostrar os botões (deixa só as 3 caixas de valores)" style="margin-left:auto;background:none;border:1px solid var(--border);border-radius:5px;color:var(--text-dim);cursor:pointer;font-size:0.62rem;padding:3px 9px;text-transform:none;letter-spacing:0;">🔧 botões</button></div>
   <div class="cont3" style="display:flex;gap:14px;flex-wrap:wrap;">
     <div style="flex:1;min-width:120px;background:rgba(0,230,118,0.06);border:1px solid rgba(0,230,118,0.35);border-radius:10px;padding:14px;text-align:center;">
       <div class="cal-sub">⬆ Ganhos (recolheu)</div>
@@ -211,7 +211,7 @@ select{background:var(--surface);border:1px solid var(--border);color:var(--text
       <div class="cal-val cont" id="ctSaldo" style="font-size:2.1rem;margin-top:4px;">0.0 m</div>
     </div>
   </div>
-  <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
+  <div id="carretelCtrls" style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
     <button class="btn btn-yellow" onclick="zerarContadores()">⟲ Zerar contadores</button>
     <button class="btn btn-accent" onclick="inverterLado()" title="Inverte o sentido do encoder (troca ganhos ⇄ perdidos)">⇄ Inverter lado</button>
     <div class="cal-campo"><label>🛑 Limite de linha p/ TRAVA (m)</label><input type="number" id="calLimite" step="1" value="-50"></div>
@@ -415,6 +415,17 @@ function toggleColapso(i){ const corpo=document.getElementById('corpo'+i); if(!c
 // Recolhe/expande um CARD de config inteiro (esconde tudo menos o cabeçalho). Estado salvo por data-cardkey.
 function toggleCard(el){ const card=el.closest('.card'); if(!card) return; const rec=!card.classList.contains('card-colapsado'); card.classList.toggle('card-colapsado',rec); const k=el.dataset.cardkey; if(k) localStorage.setItem('simpesca2_cardcol_'+k, rec?'1':'0'); }
 function aplicarCardCols(){ document.querySelectorAll('[data-cardkey]').forEach(el=>{ if(localStorage.getItem('simpesca2_cardcol_'+el.dataset.cardkey)==='1'){ const c=el.closest('.card'); if(c) c.classList.add('card-colapsado'); } }); }
+// Reordena os cards estáticos: Carretel no TOPO · Controle Manual + Encoder DEPOIS das simulações (antes do export)
+function reordenarCards(){
+  const card=k=>{ const t=document.querySelector('[data-cardkey="'+k+'"]'); return t?t.closest('.card'):null; };
+  const carr=card('linha'), enc=card('calibracao'), exp=card('export'), cm=document.getElementById('gaugeArea');
+  const p=cm&&cm.parentNode; if(!(p&&carr&&enc&&exp&&cm)) return;
+  p.insertBefore(carr, cm);    // Carretel pro topo
+  p.insertBefore(enc, exp);    // Encoder depois das sims, antes do export
+  p.insertBefore(cm, enc);     // Controle Manual logo antes do Encoder
+}
+// Esconde/mostra SÓ os botões do Carretel (mantém as 3 caixas de valores)
+function toggleCarretelBtns(){ const el=document.getElementById('carretelCtrls'); if(!el) return; const ocultar=el.style.display!=='none'; el.style.display=ocultar?'none':''; localStorage.setItem('simpesca2_carretel_btns', ocultar?'0':'1'); }
 function gatilhosParaPontos(gatilhos){
   const p=[];
   gatilhos.slice().sort((a,b)=>a.t-b.t).forEach(g=>{ let t=g.t; p.push({t,pot:g.potIni||0}); t+=(g.sub||0)/1000; p.push({t,pot:g.pot||0}); t+=(g.pico||0)/1000; p.push({t,pot:g.pot||0}); if((g.trans||0)>0){ t+=g.trans/1000; p.push({t,pot:g.pot2||0}); } if((g.pico2||0)>0){ t+=g.pico2/1000; p.push({t,pot:g.pot2||0}); } t+=(g.desc||0)/1000; p.push({t,pot:g.potFim||0}); });
@@ -1116,7 +1127,9 @@ window.addEventListener('load',async()=>{
   carregarGenCfg();            // carrega os ajustes salvos de cada peixe
   for(let i=0;i<NSIMS;i++){ carregarSim(i); setupArea(i); }
   atualizarInterfaceTempo(); renderTodas(); atualizarGauge(0); atualizarCalLive(); atualizarContadores(); atualizarEstimativas();
+  reordenarCards();            // Carretel no topo · Controle Manual + Encoder depois das sims
   aplicarCardCols();           // recolhe os cards de config que estavam recolhidos
+  if(localStorage.getItem('simpesca2_carretel_btns')==='0'){ const cc=document.getElementById('carretelCtrls'); if(cc) cc.style.display='none'; }   // estado salvo do "🔧 botões"
   reconectar();
   // auto-save GitHub: preenche o token salvo, mostra o status e retoma pendências
   const tk=localStorage.getItem('simpesca2_github_token'); const f=document.getElementById('githubToken'); if(tk&&f) f.value=tk;
