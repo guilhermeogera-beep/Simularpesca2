@@ -1,12 +1,12 @@
 {
   "versao": 1,
   "tipo": "config",
-  "criado": "2026-06-27T08:39:03.286Z",
+  "criado": "2026-06-27T08:39:17.948Z",
   "cal": {
     "mpv": 0.0854,
     "limite": -152,
     "velmax": 6.6,
-    "offset": 15,
+    "offset": 1,
     "inv": "0"
   },
   "gen": {
