@@ -361,7 +361,7 @@ function aplicarConfigPlayer(d){
 // ── PESO do peixe (slider por espécie) -> fator de escala da curva (puxa + freia) ──
 const PESO_MAX_DEF={pirarara:60, tambaqui:35, tucunare:14, dourado:30, trairao:15, jau:100};   // peso máx pesquisado (gigante) por espécie; ajustável no dashboard
 const PESO_MIN=1;   // o slider começa em 1 kg
-function pesoMaxEsp(id){ const v=parseFloat(localStorage.getItem('simpesca2_gen_'+id+'_pesomax')); return (isFinite(v)&&v>0)?v:(PESO_MAX_DEF[id]||20); }   // peso que vale 100%
+function pesoMaxEsp(id){ const v=parseFloat(localStorage.getItem('simpesca2_gen_'+id+'_pesomax')); return (isFinite(v)&&v>0&&v!==20)?v:(PESO_MAX_DEF[id]||20); }   // peso que vale 100% (ignora o 20 travado do padrão antigo)
 function pesoEsp(id){ const mx=pesoMaxEsp(id); const v=parseFloat(localStorage.getItem('simpesca2_peso_'+id)); return isFinite(v)?Math.max(PESO_MIN,Math.min(mx,v)):mx; }   // selecionado (padrão = máx)
 function escalaPeso(id){ const mx=pesoMaxEsp(id); return mx>0 ? Math.max(0.15, Math.min(1, pesoEsp(id)/mx)) : 1; }   // peso -> escala (piso 15%); a física real entra depois
 function salvarPeso(id){ const el=document.getElementById('peso_'+id); if(!el) return; localStorage.setItem('simpesca2_peso_'+id, el.value); const lbl=document.getElementById('pesolbl_'+id); if(lbl) lbl.textContent=parseFloat(el.value).toFixed(1)+' kg'; }

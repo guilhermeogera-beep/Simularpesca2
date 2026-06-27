@@ -1007,6 +1007,7 @@ function carregarGenCfg(){
       let v=localStorage.getItem('simpesca2_gen_'+id+'_'+key);
       if(v===null) v=localStorage.getItem('simpesca2_gen_'+key);   // migra dos ajustes globais antigos
       if(v===null && FISFIS_GLOBAL[key]) v=localStorage.getItem(FISFIS_GLOBAL[key]);   // migra da fisgada física global antiga
+      if(key==='pesomax' && parseFloat(v)===20) v=null;   // ignora o 20 travado do padrão antigo -> usa o pesquisado
       if(v!==null) el.value=v;
       el.addEventListener('change',()=>salvarGenCfg(i));
     });
