@@ -1,7 +1,7 @@
 {
   "versao": 1,
   "tipo": "config",
-  "criado": "2026-06-28T03:04:50.734Z",
+  "criado": "2026-06-28T03:04:58.284Z",
   "cal": {
     "mpv": 0.0854,
     "limite": -152,
@@ -29,7 +29,7 @@
       "fisdur": "2.1",
       "intens": "50",
       "espaco": "65",
-      "freiomax": "9",
+      "freiomax": "10",
       "fisfisdur": "5"
     },
     "tucunare": {
