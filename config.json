@@ -1,7 +1,7 @@
 {
   "versao": 1,
   "tipo": "config",
-  "criado": "2026-06-28T03:05:11.313Z",
+  "criado": "2026-06-28T03:05:18.515Z",
   "cal": {
     "mpv": 0.0854,
     "limite": -152,
@@ -73,7 +73,7 @@
       "fisdur": "3",
       "intens": "50",
       "espaco": "51",
-      "freiomax": "18",
+      "freiomax": "16",
       "fisfisdur": "0"
     }
   },
