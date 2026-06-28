@@ -353,7 +353,7 @@ const DURACAO=90;
 const ESC_POS=40;    // topo do gráfico = PUXADA máxima (corrida do peixe)
 const ESC_NEG=-20;   // base do gráfico = FREIO máximo (resistência sustentada)
 const ESC_RANGE=ESC_POS-ESC_NEG;   // faixa total (60). Escala ASSIMÉTRICA: o 0 não fica no meio (fica em yOf(0))
-const FREIO_MAX_DEF={pirarara:13, tambaqui:9, tucunare:5, dourado:8, trairao:5, jau:18};   // freio máx SUSTENTADO (kgf) por espécie
+const FREIO_MAX_DEF={pirarara:11, tambaqui:10, tucunare:5, dourado:8, trairao:5, jau:16};   // tração máx SUSTENTADA (kgf) — recalculada pelos novos pesos (≈0,84·peso^⅔)
 // ── Prévia de PESO no gráfico (mesma escala do player): mostra como a briga fica num peixe mais leve ──
 const PESO_MAX_DEF={pirarara:50, tambaqui:40, tucunare:13, dourado:30, trairao:15, jau:80};   // pesos validados (FishBase/IGFA); trairão = comum (H. lacerdae)   // peso máx (gigante) por espécie — mesma fonte do player
 const PESO_MIN=1;
@@ -1139,6 +1139,11 @@ window.addEventListener('load',async()=>{
     LETRAS.forEach(id=>{ const k='simpesca2_gen_'+id+'_intens'; const v=parseFloat(localStorage.getItem(k)); if(isFinite(v)) localStorage.setItem(k, String(Math.max(0,Math.round(v/2)))); });
     localStorage.setItem('simpesca2_intens_remap','1');
     try{ agendarSync('config'); }catch(e){}   // empurra os valores remapeados pro GitHub (senão o próximo load re-aplica o antigo)
+  }
+  if(localStorage.getItem('simpesca2_forca_remap')!=='1'){   // tração máx (freio) recalculada pelos novos pesos — corrige os valores salvos
+    LETRAS.forEach(id=>{ if(FREIO_MAX_DEF[id]!=null) localStorage.setItem('simpesca2_gen_'+id+'_freiomax', String(FREIO_MAX_DEF[id])); });
+    localStorage.setItem('simpesca2_forca_remap','1');
+    try{ agendarSync('config'); }catch(e){}
   }
   carregarGenCfg();            // carrega os ajustes salvos de cada peixe
   for(let i=0;i<NSIMS;i++){ carregarSim(i); setupArea(i); }
