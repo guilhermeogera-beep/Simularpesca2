@@ -63,7 +63,7 @@ input[type=text]:focus{border-color:var(--accent);}
 #hudEstado.visivel{display:block;}
 #hudEstado.puxando{color:var(--red);border-color:var(--red);background:rgba(255,23,68,0.22);}
 #hudEstado.recolher{color:var(--green);border-color:var(--green);background:rgba(0,230,118,0.22);}
-#hudEstado.fisgada{color:#ffc061;border-color:#ffb84d;background:rgba(255,170,0,0.22);}
+#hudEstado.freando{color:#ffc061;border-color:#ffb84d;background:rgba(255,170,0,0.22);}
 #hudCarretel{position:fixed;top:12px;right:14px;z-index:62;border:2px solid var(--accent);border-radius:14px;padding:8px 14px;font-size:0.95rem;font-weight:800;letter-spacing:1px;display:none;background:rgba(0,0,0,0.45);color:var(--accent);pointer-events:none;}
 #hudCarretel.visivel{display:block;}
 #hudCarretel.travado{color:var(--red);border-color:var(--red);background:rgba(255,23,68,0.22);}
@@ -213,17 +213,16 @@ async function ligar(device){
 }
 // ── Fisgada física (puxadas do motor no início) ───────────────
 const FISFIS_GLOBAL={fisfispot:'simpesca2_fisfis_pot', fisfisvoltas:'simpesca2_fisfis_voltas', fisfisdur:'simpesca2_fisfis_dur'};
-function fisgadaFisicaCfg(id){   // POR PEIXE (simpesca2_gen_<id>_fisfis*), com fallback do global antigo e padrões
+function fisgadaFisicaCfg(id){   // v2: só o INÍCIO DA BRIGA (dur, s) — marca a zona das fisgadas MANUAIS na barra
   const g=(key,d)=>{ let v=parseFloat(localStorage.getItem('simpesca2_gen_'+id+'_'+key)); if(isFinite(v))return v; v=parseFloat(localStorage.getItem(FISFIS_GLOBAL[key])); return isFinite(v)?v:d; };
-  return { pot:Math.max(0,Math.min(100,g('fisfispot',15))), voltas:Math.max(1,Math.round(g('fisfisvoltas',1))), dur:Math.max(0,g('fisfisdur',5)) };
+  return { dur:Math.max(0,g('fisfisdur',5)) };
 }
-function enviarFisgadaFisica(c){ if(!fisgadaChar) return; const ms=Math.round(c.dur*1000); const b=new Uint8Array([Math.round(c.pot), Math.round(c.voltas), ms&0xFF, (ms>>8)&0xFF]); try{ fisgadaChar.writeValueWithoutResponse?fisgadaChar.writeValueWithoutResponse(b):fisgadaChar.writeValue(b); }catch(e){} }
-function pararFisgadaFisica(){ if(!fisgadaChar) return; try{ const b=new Uint8Array([0,0,0,0]); fisgadaChar.writeValueWithoutResponse?fisgadaChar.writeValueWithoutResponse(b):fisgadaChar.writeValue(b); }catch(e){} }
+function pararFisgadaFisica(){ if(!fisgadaChar) return; try{ const b=new Uint8Array([0,0,0,0]); fisgadaChar.writeValueWithoutResponse?fisgadaChar.writeValueWithoutResponse(b):fisgadaChar.writeValue(b); }catch(e){} }   // segurança: cancela qualquer fisgada residual no ESP
 async function tentarReconectar(){
   if(!navigator.bluetooth||!navigator.bluetooth.getDevices) return;
   try{ const d=await navigator.bluetooth.getDevices(); if(d.length){ btUI('','🔵 Reconectando...'); await ligar(d[0]).catch(()=>btUI('','🔵 Conectar')); } }catch(e){}
 }
-function escreverMotorBLE(pct){ if(!motorChar) return; const b=new Uint8Array([Math.max(0,Math.min(100,Math.round(pct)))]); try{ motorChar.writeValueWithoutResponse?motorChar.writeValueWithoutResponse(b):motorChar.writeValue(b); }catch(e){} }
+function escreverMotorBLE(pct){ if(!motorChar) return; const b=new Int8Array([Math.max(-100,Math.min(100,Math.round(pct)))]); try{ motorChar.writeValueWithoutResponse?motorChar.writeValueWithoutResponse(b):motorChar.writeValue(b); }catch(e){} }   // força COM SINAL (int8): + puxa, − freia (firmware VESC)
 // Zera a LINHA do carretel (re-spool): operador usa após re-enrolar a linha na carretilha/molinete
 function zerarEncoder(){ contagemEncoder=0; contAnt=0; primeiraLeitura=true; metrosGanhos=0; metrosPerdidos=0; atualizarLinha(); if(linhaChar){ try{ linhaChar.writeValue(new Uint8Array([0])); }catch(e){} } }
 // Novo jogador: zera só a contagem DESTE jogo (HUD/ranking); a linha do carretel continua acumulada
@@ -246,7 +245,7 @@ function atualizarLinha(){ const m=metrosAtuais(); document.getElementById('linh
 function linhaCarretel(){ return contagemParaMetros(contagemEncoder); }
 // Estimativa de quanto o peixe PUXA na simulação (mesma conta do dashboard: velMotor·∫pot dt/100)
 function velMotor(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_velmax')); return (isFinite(v)&&v>0)?v:2.5; }
-function integralPot(pts){ if(!pts||!pts.length) return 0; const seq=[{t:0,pot:pts[0].pot}].concat(pts).concat([{t:90,pot:pts[pts.length-1].pot}]); let a=0; for(let i=0;i<seq.length-1;i++){ const p=seq[i],q=seq[i+1],dt=q.t-p.t; if(dt>0) a+=(p.pot+q.pot)/2*dt; } return a; }
+function integralPot(pts){ if(!pts||!pts.length) return 0; const seq=[{t:0,pot:pts[0].pot}].concat(pts).concat([{t:90,pot:pts[pts.length-1].pot}]); let a=0; for(let i=0;i<seq.length-1;i++){ const p=seq[i],q=seq[i+1],dt=q.t-p.t; if(dt>0) a+=(Math.max(0,p.pot)+Math.max(0,q.pot))/2*dt; } return a; }   // só a PUXADA (+) consome linha; o freio (−) não desconta
 function estimarLinhaPts(pts){ return velMotor()*integralPot(pts)/100; }
 function linhaDisponivel(){ return Math.abs(limiteLinha()) - Math.abs(linhaCarretel()); }   // o que ainda cabe puxar
 // SEGURANÇA: a linha do carretel atingiu o limite físico -> para o motor
@@ -288,7 +287,7 @@ function carregarPontos(id){
   // fallback: curvas antigas A/B/C (cíclico) ou padrão embutido
   const idx=Math.max(0,ESPECIES.findIndex(e=>e.id===id)), L=['A','B','C'][idx%3];
   try{ const r=localStorage.getItem('simpesca2_pontos_'+L); if(r){ const d=JSON.parse(r); if(Array.isArray(d)&&d.length) return d.slice().sort((a,b)=>a.t-b.t); } }catch(e){}
-  return gatilhosParaPontos(GATILHOS_PADRAO[L]);
+  return gatilhosParaPontos(GATILHOS_PADRAO[L]).map(p=>({t:p.t, pot:Math.round(p.pot*0.4)}));   // escala antiga (0-100) -> nova (0-40)
 }
 function interpolarPontos(pontos, t){
   if(!pontos.length) return 0;
@@ -453,15 +452,14 @@ window.addEventListener('load',async()=>{
 let ultimoToastTrava=0;
 function travado(){ return Math.abs(linhaCarretel()) >= Math.abs(limiteLinha()); }
 function offsetMotor(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_offset')); return (isFinite(v)&&v>=0&&v<100)?v:0; }   // v2: padrão 0 (controle por corrente não tem zona morta)
-function comOffset(pct){ return pct>0 ? Math.min(100, offsetMotor()+(100-offsetMotor())*pct/100) : 0; }  // 0=desligado; >0 começa no offset (mín. pra girar)
-function aplicarMotor(pct){ pct=Math.max(0,Math.min(100,pct));
-  if(travado()){ if(pct>0 && Date.now()-ultimoToastTrava>2500){ ultimoToastTrava=Date.now(); mostrarToast('🛑 Motor travado pelo limite de linha'); } pct=0; }
+function comOffset(pct){ const s=Math.sign(pct), m=Math.abs(pct); return m<0.5?0 : s*Math.min(100, offsetMotor()+(100-offsetMotor())*m/100); }  // mantém o SINAL (puxa/freia); offset 0 = passa direto
+function aplicarMotor(pct){ pct=Math.max(-100,Math.min(100,pct));
+  if(travado() && pct>0){ if(Date.now()-ultimoToastTrava>2500){ ultimoToastTrava=Date.now(); mostrarToast('🛑 Motor travado pelo limite de linha'); } pct=0; }   // trava bloqueia só a PUXADA; o freio (−) não gasta linha
   pct=comOffset(pct);
-  escreverMotorBLE(pct); const b=document.getElementById('motorBadge'); b.textContent='MOTOR '+pct.toFixed(0)+'%'; b.className='badge '+(pct>70?'alto':pct>0?'ativo':'');
-  const est=document.getElementById('hudEstado'); const puxando=pct>=1;
-  est.classList.remove('fisgada');
-  est.classList.toggle('puxando',puxando); est.classList.toggle('recolher',!puxando);
-  est.textContent=puxando?'🐟 PEIXE PUXANDO — segure!':'🎣 RECOLHA A LINHA!'; }
+  escreverMotorBLE(pct); const mag=Math.abs(pct); const b=document.getElementById('motorBadge'); b.textContent=(pct<0?'FREIO ':'MOTOR ')+mag.toFixed(0)+'%'; b.className='badge '+(mag>70?'alto':mag>0?'ativo':'');
+  const est=document.getElementById('hudEstado'); const puxando=pct>=1, freando=pct<=-1;
+  est.classList.toggle('puxando',puxando); est.classList.toggle('freando',freando); est.classList.toggle('recolher',!puxando&&!freando);
+  est.textContent=puxando?'🐟 PEIXE PUXANDO — segure!':freando?'🛑 RESISTINDO — force a recolhida!':'🎣 RECOLHA A LINHA!'; }
 
 // ── BARRA DE ANTECIPAÇÃO (estilo waveform) + visibilidade configurável dos HUDs ──
 let simTocando=null, tlRAF=null, emJogo=false;
@@ -476,31 +474,28 @@ function desenharTimeline(sim){
   const yv=v=>2+((ESC_POS-Math.max(ESC_NEG,Math.min(ESC_POS,v)))/ESC_RANGE)*(H-4);   // força -> Y(px): +ESC_POS topo · 0=centro · -ESC_NEG base
   const y0=yv(0);                                        // Y do zero (centro lógico, ~⅔ pra baixo: escala assimétrica)
   const durFis=fisgadaFisicaCfg(simTocando).dur;
-  const xFis=durFis>0 ? ((durFis-t0)/span)*W : 0;        // borda direita do início da briga
-  const xStart=Math.min(W, Math.max(0, xFis));           // a CURVA só começa aqui (depois do início da briga)
   ctx.clearRect(0,0,W,H);
-  // preenchimentos divididos no ZERO: PUXA (azul, acima) · FREIO (laranja, abaixo) — só a partir do início da briga
-  const fillZona=(clamp,cor)=>{ ctx.beginPath(); ctx.moveTo(xStart,y0); for(let i=0;i<=N;i++){ const x=(i/N)*W; if(x<xStart) continue; ctx.lineTo(x, yv(clamp(interpolarPontos(P,t0+(x/W)*span)))); } ctx.lineTo(W,y0); ctx.closePath(); ctx.fillStyle=cor; ctx.fill(); };
+  // zona das FISGADAS MANUAIS (0..durFis) — faixa laranja ATRÁS da curva (v2: a curva toca desde t=0)
+  if(durFis>0){
+    const xa=Math.max(0,((0-t0)/span)*W), xb=Math.min(W,((durFis-t0)/span)*W);
+    if(xb>xa){
+      ctx.fillStyle='rgba(255,170,0,0.16)'; ctx.fillRect(xa,0,xb-xa,H);
+      ctx.fillStyle='rgba(255,170,0,0.7)'; ctx.fillRect(xb-1,0,2,H);
+      if(xb-xa>60){ ctx.fillStyle='#ffd089'; ctx.font='bold 13px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='top'; ctx.fillText('🎣 fisgada',(xa+xb)/2,4); }
+    }
+  }
+  // preenchimentos divididos no ZERO: PUXA (azul, acima) · FREIO (laranja, abaixo)
+  const fillZona=(clamp,cor)=>{ ctx.beginPath(); ctx.moveTo(0,y0); for(let i=0;i<=N;i++){ const x=(i/N)*W; ctx.lineTo(x, yv(clamp(interpolarPontos(P,t0+(x/W)*span)))); } ctx.lineTo(W,y0); ctx.closePath(); ctx.fillStyle=cor; ctx.fill(); };
   fillZona(v=>Math.max(0,v),'rgba(0,212,255,0.28)');     // PUXA (acima do zero)
   fillZona(v=>Math.min(0,v),'rgba(255,150,30,0.28)');    // FREIO (abaixo do zero)
-  ctx.strokeStyle='rgba(255,255,255,0.22)'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(xStart,y0); ctx.lineTo(W,y0); ctx.stroke();   // linha do zero
-  // linha brilhante, cor pelo ESTADO (3 cores) — só a partir do início da briga
+  ctx.strokeStyle='rgba(255,255,255,0.22)'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(0,y0); ctx.lineTo(W,y0); ctx.stroke();   // linha do zero
+  // linha brilhante, cor pelo ESTADO (3 cores)
   ctx.lineWidth=3; ctx.lineJoin='round'; ctx.save(); ctx.shadowBlur=8;
-  let started=false, px=0, py=0;
-  for(let i=0;i<=N;i++){ const x=(i/N)*W; if(x<xStart) continue; const t=t0+(x/W)*span, pot=interpolarPontos(P,t), y=yv(pot);
-    if(!started){ px=x; py=y; started=true; continue; }
+  let px=0, py=yv(interpolarPontos(P,t0));
+  for(let i=1;i<=N;i++){ const x=(i/N)*W, t=t0+(x/W)*span, pot=interpolarPontos(P,t), y=yv(pot);
     const c = pot>=1 ? '#ff6184' : (pot<=-1 ? '#ffa838' : '#1bffa0');   // 🔴 puxa · 🟠 freia · 🟢 livre
     ctx.strokeStyle=c; ctx.shadowColor=c; ctx.beginPath(); ctx.moveTo(px,py); ctx.lineTo(x,y); ctx.stroke(); px=x; py=y; }
   ctx.restore();
-  // zona da FISGADA FÍSICA (0..durFis) — só a faixa laranja
-  if(durFis>0){
-    const xa=Math.max(0,((0-t0)/span)*W), xb=Math.min(W,xFis);
-    if(xb>xa){
-      ctx.fillStyle='rgba(255,170,0,0.28)'; ctx.fillRect(xa,0,xb-xa,H);
-      ctx.fillStyle='rgba(255,170,0,0.85)'; ctx.fillRect(xb-1.5,0,3,H);
-      if(xb-xa>46){ ctx.fillStyle='#ffd089'; ctx.font='bold 15px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('🎣 fisgada',(xa+xb)/2,H/2); }
-    }
-  }
   // marcador losango "AGORA"
   const xn=(TL_PASSADO/span)*W; ctx.fillStyle='rgba(255,255,255,0.45)'; ctx.fillRect(xn-0.5,0,1,H);
   ctx.save(); ctx.translate(xn,H/2); ctx.rotate(Math.PI/4); ctx.shadowBlur=10; ctx.shadowColor='#fff'; ctx.fillStyle='#fff'; ctx.fillRect(-6,-6,12,12); ctx.restore();
@@ -578,7 +573,7 @@ function montarCfgPeixes(){
 function pedirNome(id){
   carregarVideo(id);   // PRÉ-CARREGA o vídeo já aqui (durante a digitação do nome) -> a contagem roda sem disputar com o load
   // valida se o carretel tem linha suficiente pra ESTA simulação (estimativa de quanto o peixe puxa)
-  const precisa=estimarLinhaPts(carregarPontos(id));
+  const precisa=estimarLinhaPts(carregarPontos(id))*escalaPeso(id);   // peixe menor puxa menos linha (mesma escala do motor)
   if(linhaDisponivel() < precisa){ abrirLinhaOverlay(id, precisa); return; }
   simEmContagem=id; document.getElementById('nomeOverlay').classList.add('visivel'); setTimeout(()=>document.getElementById('inputNome').focus(),100);
 }
@@ -633,8 +628,10 @@ function iniciarContagem(id){
   const t=setInterval(()=>{ n--; if(n<=0){ clearInterval(t); bip(1180,0.26); ov.classList.remove('visivel'); iniciarSim(id); } else tick(); },1000);   // bip diferente no "já"
 }
 function loopSim(sim){
-  // A potência segue a CURVA DE PONTOS, no tempo do vídeo deslocado pela SINCRONIA do peixe
-  return setInterval(()=>{ aplicarMotor(interpolarPontos(sim.pontos, sim.video.currentTime - syncVideo(sim.letra))); },100);
+  // A força segue a CURVA DE PONTOS (com sinal), no tempo do vídeo deslocado pela SINCRONIA,
+  // escalada pelo PESO do peixe selecionado (lei peso^⅔ — afeta puxada E freio)
+  const esc=escalaPeso(sim.letra);
+  return setInterval(()=>{ aplicarMotor(interpolarPontos(sim.pontos, sim.video.currentTime - syncVideo(sim.letra)) * esc); },100);
 }
 function iniciarSim(id){
   const sim=SIMS[id];
@@ -645,20 +642,10 @@ function iniciarSim(id){
   emJogo=true; simTocando=id; atualizarVisibilidadeHUD();
   sim.video.currentTime=0; sim.video.play().catch(()=>{});
   contando=false;                          // durante o atraso de sincronia (intro do vídeo) não conta
-  const fis=fisgadaFisicaCfg(id);
   const sync=Math.max(0, syncVideo(id));   // atraso (s): a sim só começa quando o vídeo chega aqui
-  const comecar=()=>{
-    if(fisgadaChar && fis.dur>0 && fis.pot>0){
-      contando=false;                      // não conta as puxadinhas da fisgada física
-      enviarFisgadaFisica(fis);            // ESP dá as puxadas (rampa-voltas-rampa-pausa)
-      const est=document.getElementById('hudEstado'); est.classList.remove('puxando','recolher'); est.classList.add('fisgada'); est.textContent='🎣 FISGADA! segure...';
-      sim.fisgadaTimer=setTimeout(()=>{ contando=true; sim.intervalo=loopSim(sim); }, fis.dur*1000);  // depois entra a curva
-    } else {
-      contando=true;                       // sem fisgada física: curva já começa
-      sim.intervalo=loopSim(sim);
-    }
-  };
-  if(sync>0) sim.syncTimer=setTimeout(comecar, sync*1000); else comecar();   // espera o intro do vídeo antes de fisgar
+  // v2: SEM fisgada física automática — as fisgadas são DESENHADAS na curva (zona 0..início da briga), então a curva toca desde t=0
+  const comecar=()=>{ contando=true; sim.intervalo=loopSim(sim); };
+  if(sync>0) sim.syncTimer=setTimeout(comecar, sync*1000); else comecar();   // espera o intro do vídeo
 }
 function pausarSim(id){ const sim=SIMS[id]; sim.estaRodando=false; contando=false; clearInterval(sim.intervalo); clearTimeout(sim.fisgadaTimer); clearTimeout(sim.syncTimer); pararFisgadaFisica(); simTocando=null; atualizarVisibilidadeHUD(); sim.video.pause(); aplicarMotor(0); simEmPausa=id; document.getElementById('pauseOverlay').classList.add('visivel'); }
 function continuarSim(){ document.getElementById('pauseOverlay').classList.remove('visivel'); if(!simEmPausa) return; const sim=SIMS[simEmPausa]; sim.estaRodando=true; contando=true; simTocando=simEmPausa; atualizarVisibilidadeHUD(); sim.video.play().catch(()=>{}); sim.intervalo=loopSim(sim); simEmPausa=null; }

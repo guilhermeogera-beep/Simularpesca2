@@ -437,7 +437,7 @@ function toggleCarretelBtns(){ const el=document.getElementById('carretelCtrls')
 function gatilhosParaPontos(gatilhos){
   const p=[];
   gatilhos.slice().sort((a,b)=>a.t-b.t).forEach(g=>{ let t=g.t; p.push({t,pot:g.potIni||0}); t+=(g.sub||0)/1000; p.push({t,pot:g.pot||0}); t+=(g.pico||0)/1000; p.push({t,pot:g.pot||0}); if((g.trans||0)>0){ t+=g.trans/1000; p.push({t,pot:g.pot2||0}); } if((g.pico2||0)>0){ t+=g.pico2/1000; p.push({t,pot:g.pot2||0}); } t+=(g.desc||0)/1000; p.push({t,pot:g.potFim||0}); });
-  return p.map(x=>({t:Math.round(x.t*100)/100,pot:Math.max(0,Math.min(100,Math.round(x.pot)))})).sort((a,b)=>a.t-b.t);
+  return p.map(x=>({t:Math.round(x.t*100)/100,pot:Math.round(Math.max(0,Math.min(100,x.pot))*0.4)})).sort((a,b)=>a.t-b.t);   // escala antiga (0-100) -> nova (0-40)
 }
 function interpolarPontos(pontos,t){ if(!pontos.length) return 0; if(t<=pontos[0].t) return pontos[0].pot; const last=pontos[pontos.length-1]; if(t>=last.t) return last.pot; for(let i=0;i<pontos.length-1;i++){ const a=pontos[i],b=pontos[i+1]; if(t>=a.t&&t<=b.t) return b.t===a.t?b.pot:a.pot+(b.pot-a.pot)*((t-a.t)/(b.t-a.t)); } return last.pot; }
 const round2=v=>Math.round(v*100)/100;
