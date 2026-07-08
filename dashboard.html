@@ -149,6 +149,7 @@ select{background:var(--surface);border:1px solid var(--border);color:var(--text
   <div style="margin-top:25px;border-top:1px solid var(--border);padding-top:20px;">
     <div class="secao-titulo" style="justify-content:center;"><span>⚙️</span> Teste Manual (puxa + / freia −)</div>
     <input type="range" id="motorSlider" min="-40" max="40" value="0">
+    <button type="button" onclick="pararMotorManual()" style="display:block;margin:10px auto 0;background:#c1121f;color:#fff;border:none;border-radius:7px;padding:6px 20px;font-size:0.74rem;font-weight:700;letter-spacing:0.5px;cursor:pointer;">⏹ PARAR (0)</button>
     <div class="cal-campo" style="align-items:center;margin-top:14px;" title="Força/corrente MÍNIMA pra o motor começar a girar (vence o atrito). No controle por corrente do VESC, deixe 0 = sem piso. Afeta o gerador (piso da puxada) e a saída do motor.">
       <label>Offset motor (mín. p/ girar)</label>
       <input type="number" id="calOffset" step="1" min="0" max="90" value="0" onchange="salvarCal()">
@@ -342,9 +343,12 @@ function atualizarGauge(pct){ pct=Math.max(-100,Math.min(100,pct)); const mag=Ma
   document.getElementById('gaugeVolt').textContent='≈ '+ampMotor(pct).toFixed(1)+' A'; }
 function atualizarSimGauge(idx,pct){ pct=Math.max(-100,Math.min(100,pct)); const p=document.getElementById('simPct'+idx),v=document.getElementById('simVolt'+idx),f=document.getElementById('simFill'+idx); if(!p)return; const mag=Math.abs(pct), pull=pct>0.5, brake=pct<-0.5, cor=pull?'#00d4ff':brake?'#ffa838':'#3d5d7e'; p.textContent=(pull?'+':brake?'−':'')+mag.toFixed(0)+'%'; v.textContent='≈'+ampMotor(pct).toFixed(1)+'A'; f.style.width=mag+'%'; f.style.background=cor; }
 function log(msg,tipo=''){ const el=document.getElementById('log'); const s=document.createElement('span'); s.className=tipo; const n=new Date(); s.textContent=`[${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}:${String(n.getSeconds()).padStart(2,'0')}] ${msg}`; el.prepend(s); while(el.children.length>40) el.removeChild(el.lastChild); }
+const SL_DZ=8, SL_MAX=40;   // zona morta no centro (fácil voltar ao 0) + rampa SUAVE a partir da borda (sem salto)
+function slForca(v){ const m=Math.abs(v); return m<=SL_DZ ? 0 : Math.sign(v)*(m-SL_DZ)/(SL_MAX-SL_DZ)*SL_MAX; }   // ±8=0 · ±40=±40, linear no meio
+function pararMotorManual(){ const sl=document.getElementById('motorSlider'); sl.value=0; aplicarMotor(0); }   // botão PARAR: zera na hora
 (function(){ const sl=document.getElementById('motorSlider');
-  sl.addEventListener('input',e=>aplicarMotor(parseInt(e.target.value)||0));   // valor DIRETO: começa em 0 e vai suave até ±40 (sem salto)
-  sl.addEventListener('change',e=>{ if(Math.abs(parseInt(e.target.value)||0)<=2){ e.target.value=0; aplicarMotor(0); } });   // ao soltar bem no centro, encaixa no 0 (desliga limpo)
+  sl.addEventListener('input',e=>aplicarMotor(slForca(parseInt(e.target.value)||0)));
+  sl.addEventListener('change',e=>{ if(Math.abs(parseInt(e.target.value)||0)<=SL_DZ){ e.target.value=0; aplicarMotor(0); } });   // soltou na zona morta -> thumb encaixa no centro
 })();
 
 // ══ MODELO DE PONTOS ──────────────────────────────────────────
