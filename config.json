@@ -1,16 +1,17 @@
 {
   "versao": 2,
   "tipo": "config",
-  "criado": "2026-07-10T20:37:27.483Z",
+  "criado": "2026-07-10T00:00:00.000Z",
   "cal": {
     "mpv": 24,
-    "limite": -150,
+    "limite": -50,
     "offset": 7,
     "rpmmin": 1000,
-    "rpmmax": 3700,
+    "rpmmax": 3000,
     "freioa": 12,
-    "freiorep": 3,
-    "inv": "1"
+    "freiorepmin": 1,
+    "freiorepmax": 4,
+    "inv": "0"
   },
   "gen": {
     "pirarara": {
@@ -22,7 +23,7 @@
       "intens": "50",
       "espaco": "40",
       "freiomax": "11",
-      "fisfisdur": "0"
+      "fisfisdur": "5"
     },
     "tambaqui": {
       "corrida": "18",

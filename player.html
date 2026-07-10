@@ -220,11 +220,13 @@ function fisgadaFisicaCfg(id){   // v2: só o INÍCIO DA BRIGA (dur, s) — marc
 function pararFisgadaFisica(){}   // obsoleto no v2 (não há fisgada física); mantido só pra não quebrar chamadas antigas
 // ── CONFIG do motor (RPM mín/máx) — enviada ao ESP ao conectar ──
 // O ESP mapeia o valor da curva (0..40) pra rotação: valor baixo→RPM mín, valor 40→RPM máx (capa os metros).
-function rpmMin(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_rpmmin')); return (isFinite(v)&&v>=0)?v:500; }
-function rpmMax(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_rpmmax')); return (isFinite(v)&&v>0)?v:8000; }
-function freioMaxA(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_freioa')); return (isFinite(v)&&v>0)?v:25; }   // corrente (A) do FREIO máximo (base do gráfico -20) — calibrada no dashboard, vai pro ESP
-function freioRepousoA(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_freiorep')); return (isFinite(v)&&v>=0)?v:2; }   // corrente (A) do FREIO DE REPOUSO (segura o eixo durante a jogada); 0 = desligado
-function enviarConfigRPM(){ if(!configChar) return; const u16=v=>Math.max(0,Math.min(65535,Math.round(v))); const lo=u16(rpmMin()), hi=u16(rpmMax()), fa=u16(freioMaxA()), fr=u16(freioRepousoA()*10); const b=new Uint8Array([lo&0xFF,(lo>>8)&0xFF,hi&0xFF,(hi>>8)&0xFF,fa&0xFF,(fa>>8)&0xFF,fr&0xFF,(fr>>8)&0xFF]); try{ configChar.writeValueWithoutResponse?configChar.writeValueWithoutResponse(b):configChar.writeValue(b); }catch(e){} }   // 8 bytes: RPM mín, RPM máx, freio máx (A), freio repouso (deci-A)
+function rpmMin(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_rpmmin')); return (isFinite(v)&&v>=0)?v:1000; }
+function rpmMax(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_rpmmax')); return (isFinite(v)&&v>0)?v:3000; }
+function freioMaxA(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_freioa')); return (isFinite(v)&&v>0)?v:12; }   // corrente (A) do FREIO máximo (base do gráfico -20) — calibrada no dashboard, vai pro ESP
+function freioRepMin(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_freiorepmin')); return (isFinite(v)&&v>=0)?v:1; }   // freio de repouso do peixe MENOR
+function freioRepMax(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_freiorepmax')); return (isFinite(v)&&v>=0)?v:4; }   // freio de repouso do peixe MAIOR
+function freioRepousoEscalado(id){ const e=escalaPeso(id); return freioRepMin() + e*(freioRepMax()-freioRepMin()); }   // varia com o PESO: peixe menor→mín, maior→máx
+function enviarConfigRPM(frA){ if(!configChar) return; const u16=v=>Math.max(0,Math.min(65535,Math.round(v))); const lo=u16(rpmMin()), hi=u16(rpmMax()), fa=u16(freioMaxA()), fr=u16((frA!=null?frA:freioRepMax())*10); const b=new Uint8Array([lo&0xFF,(lo>>8)&0xFF,hi&0xFF,(hi>>8)&0xFF,fa&0xFF,(fa>>8)&0xFF,fr&0xFF,(fr>>8)&0xFF]); try{ configChar.writeValueWithoutResponse?configChar.writeValueWithoutResponse(b):configChar.writeValue(b); }catch(e){} }   // 8 bytes: RPM mín/máx, freio máx (A), freio repouso (deci-A) — frA = valor do peixe (senão o máx)
 function enviarRepouso(ativo){ if(!configChar) return; const b=new Uint8Array([ativo?1:0]); try{ configChar.writeValueWithoutResponse?configChar.writeValueWithoutResponse(b):configChar.writeValue(b); }catch(e){} }   // 1 byte: liga/desliga o freio de repouso (jogada começou/acabou)
 async function tentarReconectar(){
   if(!navigator.bluetooth||!navigator.bluetooth.getDevices) return;
@@ -238,7 +240,7 @@ function novoJogoContadores(){ metrosGanhos=0; metrosPerdidos=0; contAnt=contage
 function resetarLinha(){ if(confirm('Zerar a linha acumulada do carretel?\nFaça isso só DEPOIS de re-enrolar a linha na carretilha/molinete.')){ zerarEncoder(); mostrarToast('Linha do carretel zerada'); } }
 
 // ══ CALIBRAÇÃO / LINHA ────────────────────────────────────────
-function metrosPorVolta(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_mpv')); return (isFinite(v)&&v>0)?v:0.0854; }
+function metrosPorVolta(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_mpv')); return (isFinite(v)&&v>0)?v:24; }   // padrão calibrado no v2 (VESC)
 function limiteLinha(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_limite')); return (isFinite(v)&&v!==0)?v:-50; }
 function inverterDir(){ return localStorage.getItem('simpesca2_cal_inv')==='1'; }
 function contagemParaMetros(c){ let m=(c/4096)*metrosPorVolta(); if(inverterDir()) m=-m; return m; }
@@ -378,7 +380,8 @@ function aplicarConfigPlayer(d){
   if(c.rpmmin!=null) localStorage.setItem('simpesca2_cal_rpmmin', c.rpmmin);
   if(c.rpmmax!=null) localStorage.setItem('simpesca2_cal_rpmmax', c.rpmmax);
   if(c.freioa!=null) localStorage.setItem('simpesca2_cal_freioa', c.freioa);
-  if(c.freiorep!=null) localStorage.setItem('simpesca2_cal_freiorep', c.freiorep);
+  if(c.freiorepmin!=null) localStorage.setItem('simpesca2_cal_freiorepmin', c.freiorepmin);
+  if(c.freiorepmax!=null) localStorage.setItem('simpesca2_cal_freiorepmax', c.freiorepmax);
   enviarConfigRPM();   // reenvia RPM + freio máx + freio repouso pro ESP (caso já esteja conectado quando o config do GitHub chega)
   if(c.inv!=null)    localStorage.setItem('simpesca2_cal_inv', c.inv);
   const s=d.sync||{};
@@ -485,7 +488,7 @@ window.addEventListener('load',async()=>{
 // ══ MOTOR ═════════════════════════════════════════════════════
 let ultimoToastTrava=0;
 function travado(){ return Math.abs(linhaCarretel()) >= Math.abs(limiteLinha()); }
-function offsetMotor(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_offset')); return (isFinite(v)&&v>=0&&v<100)?v:0; }   // v2: padrão 0 (controle por corrente não tem zona morta)
+function offsetMotor(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_offset')); return (isFinite(v)&&v>=0&&v<100)?v:7; }   // v2: comOffset é passa-direto; padrão do print
 function comOffset(pct){ const m=Math.abs(pct); return m<0.5?0 : Math.max(-100,Math.min(100,pct)); }  // v2 (RPM/corrente): SEM zona morta — passa direto; o piso da puxada é o MIN_RPM no ESP (o offset do v1 distorcia o mapa 0..40)
 function aplicarMotor(pct){ pct=Math.max(-100,Math.min(100,pct));
   if(travado() && pct>0){ if(Date.now()-ultimoToastTrava>2500){ ultimoToastTrava=Date.now(); mostrarToast('🛑 Motor travado pelo limite de linha'); } pct=0; }   // trava bloqueia só a PUXADA; o freio (−) não gasta linha
@@ -672,7 +675,7 @@ function iniciarSim(id){
   const sim=SIMS[id];
   sim.pontos=carregarPontos(id);          // recarrega a curva (GitHub manda; pega a versão publicada)
   sim.estaRodando=true;
-  enviarRepouso(true);                     // jogada começou -> ESP segura o eixo na zona morta (freio de repouso), nunca livre
+  enviarConfigRPM(freioRepousoEscalado(id)); enviarRepouso(true);   // jogada começou -> manda o freio de repouso ESCALADO pelo peso do peixe + ativa (eixo nunca livre)
   sim.overlay.classList.add('oculto');
   novoJogoContadores();                    // novo jogador: zera só a contagem do jogo; a linha do carretel acumula
   emJogo=true; simTocando=id; atualizarVisibilidadeHUD();
@@ -684,7 +687,7 @@ function iniciarSim(id){
   if(sync>0) sim.syncTimer=setTimeout(comecar, sync*1000); else comecar();   // espera o intro do vídeo
 }
 function pausarSim(id){ const sim=SIMS[id]; sim.estaRodando=false; contando=false; clearInterval(sim.intervalo); clearTimeout(sim.fisgadaTimer); clearTimeout(sim.syncTimer); pararFisgadaFisica(); simTocando=null; atualizarVisibilidadeHUD(); sim.video.pause(); enviarRepouso(false); aplicarMotor(0); simEmPausa=id; document.getElementById('pauseOverlay').classList.add('visivel'); }   // pausou -> libera o eixo
-function continuarSim(){ document.getElementById('pauseOverlay').classList.remove('visivel'); if(!simEmPausa) return; const sim=SIMS[simEmPausa]; sim.estaRodando=true; enviarRepouso(true); contando=true; simTocando=simEmPausa; atualizarVisibilidadeHUD(); sim.video.play().catch(()=>{}); sim.intervalo=loopSim(sim); simEmPausa=null; }   // voltou -> segura o eixo de novo
+function continuarSim(){ document.getElementById('pauseOverlay').classList.remove('visivel'); if(!simEmPausa) return; const sim=SIMS[simEmPausa]; sim.estaRodando=true; enviarConfigRPM(freioRepousoEscalado(simEmPausa)); enviarRepouso(true); contando=true; simTocando=simEmPausa; atualizarVisibilidadeHUD(); sim.video.play().catch(()=>{}); sim.intervalo=loopSim(sim); simEmPausa=null; }   // voltou -> segura o eixo de novo
 function reiniciarSim(){ document.getElementById('pauseOverlay').classList.remove('visivel'); if(!simEmPausa) return; encerrarSim(simEmPausa,true,false); simEmPausa=null; }
 function encerrarSim(id, sairFS, salvar){
   const sim=SIMS[id]; clearInterval(sim.intervalo); clearTimeout(sim.fisgadaTimer); clearTimeout(sim.syncTimer); pararFisgadaFisica();
