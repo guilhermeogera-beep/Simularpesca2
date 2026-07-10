@@ -317,7 +317,7 @@ let travaAtiva=false;
 function checarLimiteSegurancaDash(){
   const net=linhaCarretel(), L=limiteLinha();
   if(Math.abs(net)>=Math.abs(L)){
-    if(!travaAtiva){ travaAtiva=true; SIMS.forEach((s,i)=>{ if(s.estaRodando) stopSim(i); }); aplicarMotor(0); document.getElementById('motorSlider').value=0; log('🛑 Limite de linha ('+L+'m) atingido — motor parado','err'); }
+    if(!travaAtiva){ travaAtiva=true; SIMS.forEach((s,i)=>{ if(s.estaRodando) stopSim(i); }); manualForca=0; aplicarMotor(0); document.getElementById('motorSlider').value=0; log('🛑 Limite de linha ('+L+'m) atingido — motor parado','err'); }
   } else travaAtiva=false;
 }
 
@@ -373,7 +373,7 @@ function pararMotorManual(){ const sl=document.getElementById('motorSlider'); sl
   sl.addEventListener('input',e=>{ manualForca=slForca(parseInt(e.target.value)||0); aplicarMotor(manualForca); });
   sl.addEventListener('change',e=>{ if(Math.abs(parseInt(e.target.value)||0)<=SL_DZ){ e.target.value=0; manualForca=0; aplicarMotor(0); } });   // soltou na zona morta -> thumb encaixa no centro
   // KEEPALIVE: o firmware zera o motor após 1,2s sem comando; reenvia a força manual ~3x/s (só quando NENHUMA prévia está rodando)
-  setInterval(()=>{ if(motorChar && manualForca!==0 && !Object.keys(SIMS).some(k=>SIMS[k].estaRodando)) aplicarMotor(manualForca); }, 400);
+  setInterval(()=>{ if(motorChar && manualForca!==0 && !SIMS.some(s=>s&&s.estaRodando)) aplicarMotor(manualForca); }, 300);
 })();
 
 // ══ MODELO DE PONTOS ──────────────────────────────────────────
