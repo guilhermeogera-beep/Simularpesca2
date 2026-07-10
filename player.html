@@ -248,10 +248,18 @@ function atualizarLinha(){ const m=metrosAtuais(); document.getElementById('linh
   atualizarLinhaOverlay(); }
 // Linha ABSOLUTA do carretel (posição líquida do encoder) — ACUMULA entre jogadores, NÃO zera por jogo
 function linhaCarretel(){ return contagemParaMetros(contagemEncoder); }
-// Estimativa de quanto o peixe PUXA na simulação (mesma conta do dashboard: velMotor·∫pot dt/100)
-function velMotor(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_velmax')); return (isFinite(v)&&v>0)?v:2.5; }
-function integralPot(pts){ if(!pts||!pts.length) return 0; const seq=[{t:0,pot:pts[0].pot}].concat(pts).concat([{t:90,pot:pts[pts.length-1].pot}]); let a=0; for(let i=0;i<seq.length-1;i++){ const p=seq[i],q=seq[i+1],dt=q.t-p.t; if(dt>0) a+=(Math.max(0,p.pot)+Math.max(0,q.pot))/2*dt; } return a; }   // só a PUXADA (+) consome linha; o freio (−) não desconta
-function estimarLinhaPts(pts){ return velMotor()*integralPot(pts)/100; }
+// Estimativa de quanto o peixe PUXA na sim, DERIVADA DO RPM (v2 controla a puxada por ROTAÇÃO):
+// a puxada (0..40) vira ERPM (rpmAlvo, mesmo mapa do firmware) e o ERPM vira m/s pela MESMA calibração da
+// linha (mpv + 4096 contagens/volta). VESC: tacômetro = 6 passos/rev ELÉTRICA → contagens/s = ERPM/10 →
+// m/s = ERPM·mpv/(10·4096). Assim a precisão vem só do mpv (que o assistente já calibra) — sem "velmax".
+function rpmAlvo(pct){ const v=Math.min(ESC_POS, Math.max(0,pct)); return rpmMin() + (v/ESC_POS)*(rpmMax()-rpmMin()); }
+function rpmParaMs(erpm){ return Math.abs(erpm)/10/4096*metrosPorVolta(); }   // ERPM -> m/s (mesma escala 4096+mpv da linha)
+function estimarLinhaPts(pts, esc=1){   // metros que o peixe puxa: integra a velocidade (do RPM) só na PUXADA (pot·esc>0.5, igual ao motor real)
+  if(!pts||!pts.length) return 0;
+  let m=0; const dt=0.1;
+  for(let t=0;t<90;t+=dt){ const pot=interpolarPontos(pts,t)*esc; if(pot>0.5) m+=rpmParaMs(rpmAlvo(pot))*dt; }
+  return m;
+}
 function linhaDisponivel(){ return Math.abs(limiteLinha()) - Math.abs(linhaCarretel()); }   // o que ainda cabe puxar
 // SEGURANÇA: a linha do carretel atingiu o limite físico -> para o motor
 function checarLimiteSeguranca(){
@@ -286,13 +294,19 @@ function carregarPontos(id){
   const ehEditor = !!(localStorage.getItem('simpesca2_github_token')||'').trim();   // só o PC de edição tem token
   let local=null; try{ const r=localStorage.getItem('simpesca2_pontos_'+id); if(r){ const d=JSON.parse(r); if(Array.isArray(d)&&d.length) local=d.slice().sort((a,b)=>a.t-b.t); } }catch(e){}
   const gh=(curvasGitHub[id]&&Array.isArray(curvasGitHub[id])&&curvasGitHub[id].length) ? curvasGitHub[id].slice().sort((a,b)=>a.t-b.t) : null;
-  if(ehEditor && local) return local;   // EDITOR (tem token): o edit LOCAL vence = feedback imediato no player
-  if(gh) return gh;                      // TOTEM (sem token): GitHub é a fonte de verdade
-  if(local) return local;                // offline/sem GitHub: usa o local
+  if(ehEditor && local) return sanearCurva(local);   // EDITOR (tem token): o edit LOCAL vence = feedback imediato no player
+  if(gh) return sanearCurva(gh);                      // TOTEM (sem token): GitHub é a fonte de verdade
+  if(local) return sanearCurva(local);                // offline/sem GitHub: usa o local
   // fallback: curvas antigas A/B/C (cíclico) ou padrão embutido
   const idx=Math.max(0,ESPECIES.findIndex(e=>e.id===id)), L=['A','B','C'][idx%3];
-  try{ const r=localStorage.getItem('simpesca2_pontos_'+L); if(r){ const d=JSON.parse(r); if(Array.isArray(d)&&d.length) return d.slice().sort((a,b)=>a.t-b.t); } }catch(e){}
+  try{ const r=localStorage.getItem('simpesca2_pontos_'+L); if(r){ const d=JSON.parse(r); if(Array.isArray(d)&&d.length) return sanearCurva(d.slice().sort((a,b)=>a.t-b.t)); } }catch(e){}
   return gatilhosParaPontos(GATILHOS_PADRAO[L]).map(p=>({t:p.t, pot:Math.round(p.pot*0.4)}));   // escala antiga (0-100) -> nova (0-40)
+}
+function sanearCurva(pts){   // garante a escala v2 (−20..+40): curva antiga (0-100) reescalada ×0,4; excesso clampado (senão o motor crava no RPM máx)
+  if(!Array.isArray(pts)||!pts.length) return pts;
+  const maxPot=Math.max.apply(null, pts.map(p=>+p.pot||0));
+  const fator=maxPot>ESC_POS ? 0.4 : 1;
+  return pts.map(p=>({t:+p.t||0, pot:Math.max(ESC_NEG,Math.min(ESC_POS, Math.round((+p.pot||0)*fator)))}));
 }
 function interpolarPontos(pontos, t){
   if(!pontos.length) return 0;
@@ -357,14 +371,15 @@ function aplicarConfigPlayer(d){
   const c=d.cal||{};
   if(c.mpv)          localStorage.setItem('simpesca2_cal_mpv', c.mpv);
   if(c.limite)       localStorage.setItem('simpesca2_cal_limite', c.limite);
-  if(c.velmax)       localStorage.setItem('simpesca2_cal_velmax', c.velmax);
-  if(c.offset!=null) localStorage.setItem('simpesca2_cal_offset', c.offset);
+  // velmax não é mais usado no v2 (linha derivada de RPM+mpv); offset é vestigial (RPM/corrente sem zona morta) — não importa do config
   if(c.rpmmin!=null) localStorage.setItem('simpesca2_cal_rpmmin', c.rpmmin);
   if(c.rpmmax!=null) localStorage.setItem('simpesca2_cal_rpmmax', c.rpmmax);
   enviarConfigRPM();   // reenvia pro ESP (caso já esteja conectado quando o config do GitHub chega)
   if(c.inv!=null)    localStorage.setItem('simpesca2_cal_inv', c.inv);
   const s=d.sync||{};
   ESPECIES.forEach(e=>{ if(s[e.id]!=null) localStorage.setItem('simpesca2_sync_'+e.id, s[e.id]); });
+  const g=d.gen||{};   // o player usa só gen.fisfisdur (início da briga = faixa laranja da barra); aplica pro totem casar com o editor
+  ESPECIES.forEach(e=>{ if(g[e.id]&&g[e.id].fisfisdur!=null) localStorage.setItem('simpesca2_gen_'+e.id+'_fisfisdur', g[e.id].fisfisdur); });
 }
 // ── PESO do peixe (slider por espécie) -> fator de escala da curva (puxa + freia) ──
 const PESO_MAX_DEF={pirarara:50, tambaqui:40, tucunare:13, dourado:30, trairao:15, jau:80};   // pesos validados (FishBase/IGFA); trairão = comum (H. lacerdae)   // peso máx pesquisado (gigante) por espécie; ajustável no dashboard
@@ -373,6 +388,12 @@ function pesoMaxEsp(id){ return PESO_MAX_DEF[id]||20; }   // peso que vale 100% 
 function pesoEsp(id){ const mx=pesoMaxEsp(id); const v=parseFloat(localStorage.getItem('simpesca2_peso_'+id)); return isFinite(v)?Math.max(PESO_MIN,Math.min(mx,v)):mx; }   // selecionado (padrão = máx)
 function escalaPeso(id){ const mx=pesoMaxEsp(id), w=pesoEsp(id); return mx>0 ? Math.min(1, Math.pow(w/mx, 2/3)) : 1; }   // peso -> escala pela lei FÍSICA peso^⅔ (arrasto ∝ área ∝ peso^⅔): 1kg≈0,85kgf (base) · gigante=100% (freio máx) · meio na curva; sem piso
 function salvarPeso(id){ const el=document.getElementById('peso_'+id); if(!el) return; localStorage.setItem('simpesca2_peso_'+id, el.value); const lbl=document.getElementById('pesolbl_'+id); if(lbl) lbl.textContent=parseFloat(el.value).toFixed(1)+' kg'; }
+// Se o PESO mudar em OUTRA aba (ex.: o dashboard no mesmo PC), reflete no slider/rótulo do card na hora
+window.addEventListener('storage', e=>{
+  if(!e.key || e.key.indexOf('simpesca2_peso_')!==0) return;
+  const id=e.key.slice('simpesca2_peso_'.length), el=document.getElementById('peso_'+id), lbl=document.getElementById('pesolbl_'+id);
+  if(el) el.value=pesoEsp(id); if(lbl) lbl.textContent=pesoEsp(id).toFixed(1)+' kg';
+});
 
 // ── AUTO-SAVE da sincronia no GitHub (só num PC com token; o totem não tem token → só lê) ──
 const GH_REPO='guilhermeogera-beep/Simularpesca2', GH_CONFIG='config.json';
@@ -460,12 +481,12 @@ window.addEventListener('load',async()=>{
 let ultimoToastTrava=0;
 function travado(){ return Math.abs(linhaCarretel()) >= Math.abs(limiteLinha()); }
 function offsetMotor(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_offset')); return (isFinite(v)&&v>=0&&v<100)?v:0; }   // v2: padrão 0 (controle por corrente não tem zona morta)
-function comOffset(pct){ const s=Math.sign(pct), m=Math.abs(pct); return m<0.5?0 : s*Math.min(100, offsetMotor()+(100-offsetMotor())*m/100); }  // mantém o SINAL (puxa/freia); offset 0 = passa direto
+function comOffset(pct){ const m=Math.abs(pct); return m<0.5?0 : Math.max(-100,Math.min(100,pct)); }  // v2 (RPM/corrente): SEM zona morta — passa direto; o piso da puxada é o MIN_RPM no ESP (o offset do v1 distorcia o mapa 0..40)
 function aplicarMotor(pct){ pct=Math.max(-100,Math.min(100,pct));
   if(travado() && pct>0){ if(Date.now()-ultimoToastTrava>2500){ ultimoToastTrava=Date.now(); mostrarToast('🛑 Motor travado pelo limite de linha'); } pct=0; }   // trava bloqueia só a PUXADA; o freio (−) não gasta linha
   pct=comOffset(pct);
   escreverMotorBLE(pct); const mag=Math.abs(pct); const b=document.getElementById('motorBadge'); b.textContent=(pct<0?'FREIO ':'MOTOR ')+mag.toFixed(0)+'%'; b.className='badge '+(mag>70?'alto':mag>0?'ativo':'');
-  const est=document.getElementById('hudEstado'); const puxando=pct>=1, freando=pct<=-1;
+  const est=document.getElementById('hudEstado'); const fio=Math.round(pct); const puxando=fio>0.5, freando=fio<-0.5;   // mesmo limiar do firmware (±0.5) sobre o valor ARREDONDADO que vai pro fio
   est.classList.toggle('puxando',puxando); est.classList.toggle('freando',freando); est.classList.toggle('recolher',!puxando&&!freando);
   est.textContent=puxando?'🐟 PEIXE PUXANDO — segure!':freando?'🛑 RESISTINDO — force a recolhida!':'🎣 RECOLHA A LINHA!'; }
 
@@ -581,7 +602,7 @@ function montarCfgPeixes(){
 function pedirNome(id){
   carregarVideo(id);   // PRÉ-CARREGA o vídeo já aqui (durante a digitação do nome) -> a contagem roda sem disputar com o load
   // valida se o carretel tem linha suficiente pra ESTA simulação (estimativa de quanto o peixe puxa)
-  const precisa=estimarLinhaPts(carregarPontos(id))*escalaPeso(id);   // peixe menor puxa menos linha (mesma escala do motor)
+  const precisa=estimarLinhaPts(carregarPontos(id), escalaPeso(id));   // peso entra DENTRO do mapa de RPM (não multiplica o total) — peixe menor puxa menos linha, igual ao motor
   if(linhaDisponivel() < precisa){ abrirLinhaOverlay(id, precisa); return; }
   simEmContagem=id; document.getElementById('nomeOverlay').classList.add('visivel'); setTimeout(()=>document.getElementById('inputNome').focus(),100);
 }
@@ -639,7 +660,8 @@ function loopSim(sim){
   // A força segue a CURVA DE PONTOS (com sinal), no tempo do vídeo deslocado pela SINCRONIA,
   // escalada pelo PESO do peixe selecionado (lei peso^⅔ — afeta puxada E freio)
   const esc=escalaPeso(sim.letra);
-  return setInterval(()=>{ aplicarMotor(interpolarPontos(sim.pontos, sim.video.currentTime - syncVideo(sim.letra)) * esc); },100);
+  return setInterval(()=>{ const pts=sim.pontos, tef=sim.video.currentTime - syncVideo(sim.letra), fim=pts.length?pts[pts.length-1].t:0;
+    aplicarMotor(tef>=fim ? 0 : interpolarPontos(pts, tef) * esc); },100);   // depois do último ponto o motor PARA (evita curva manual terminada em >0 puxar até o fim do vídeo)
 }
 function iniciarSim(id){
   const sim=SIMS[id];

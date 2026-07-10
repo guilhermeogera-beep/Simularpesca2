@@ -1,6 +1,6 @@
 // Cache do SHELL do app (HTML/JS/JSON/ícones). Os VÍDEOS não passam por aqui:
 // ficam no IndexedDB do navegador (importados manualmente em index.html).
-const SHELL_CACHE = 'simpesca2-shell-v3';
+const SHELL_CACHE = 'simpesca2-shell-v4';
 
 const APP_SHELL = [
   '/Simularpesca2/',
@@ -38,15 +38,21 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
   const url = event.request.url;
+  const mesmaOrigem = url.startsWith(self.location.origin);
 
-  // App (HTML/JS/JSON/ícones): rede-primeiro (pega versão nova online),
-  // cai pro cache quando offline.
+  // VÍDEOS nunca passam pelo cache do shell (ficam no IndexedDB) — senão encheriam o
+  // armazenamento do totem (o motivo de o v1 ter tirado vídeo do SW). Deixa o browser buscar direto.
+  if (/\.mp4($|\?)/i.test(url)) return;
+
+  // App (HTML/JS/JSON/ícones): rede-primeiro (pega versão nova online), cai pro cache quando offline.
   event.respondWith(
     fetch(event.request).then(net => {
-      if (net && net.ok && url.startsWith(self.location.origin)) {
+      if (net && net.ok && mesmaOrigem) {   // só cacheia o shell same-origin (não cacheia api.github/fonts)
         const c = net.clone(); caches.open(SHELL_CACHE).then(x => x.put(event.request, c));
       }
       return net;
-    }).catch(() => caches.match(event.request).then(r => r || caches.match('/Simularpesca2/index.html')))
+    }).catch(() => caches.match(event.request).then(r =>
+      r || (event.request.mode === 'navigate' ? caches.match('/Simularpesca2/index.html') : Response.error())   // index.html só como fallback de NAVEGAÇÃO (não devolve HTML pra fetch de JSON/fonte)
+    ))
   );
 });
