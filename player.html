@@ -226,7 +226,8 @@ function freioMaxA(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_fre
 function freioRepMin(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_freiorepmin')); return (isFinite(v)&&v>=0)?v:1; }   // freio de repouso do peixe MENOR
 function freioRepMax(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_freiorepmax')); return (isFinite(v)&&v>=0)?v:4; }   // freio de repouso do peixe MAIOR
 function freioRepousoEscalado(id){ const e=escalaPeso(id); return freioRepMin() + e*(freioRepMax()-freioRepMin()); }   // varia com o PESO: peixe menor→mín, maior→máx
-function enviarConfigRPM(frA){ if(!configChar) return; const u16=v=>Math.max(0,Math.min(65535,Math.round(v))); const lo=u16(rpmMin()), hi=u16(rpmMax()), fa=u16(freioMaxA()), fr=u16((frA!=null?frA:freioRepMax())*10); const b=new Uint8Array([lo&0xFF,(lo>>8)&0xFF,hi&0xFF,(hi>>8)&0xFF,fa&0xFF,(fa>>8)&0xFF,fr&0xFF,(fr>>8)&0xFF]); try{ configChar.writeValueWithoutResponse?configChar.writeValueWithoutResponse(b):configChar.writeValue(b); }catch(e){} }   // 8 bytes: RPM mín/máx, freio máx (A), freio repouso (deci-A) — frA = valor do peixe (senão o máx)
+function freioPosSimA(id){ return freioMaxA()*escalaPeso(id); }   // FREIO do hold pós-sim = a MAIOR corrente do peixe (freio máx × peso)
+function enviarConfigRPM(frA, fpsA){ if(!configChar) return; const u16=v=>Math.max(0,Math.min(65535,Math.round(v))); const lo=u16(rpmMin()), hi=u16(rpmMax()), fa=u16(freioMaxA()), fr=u16((frA!=null?frA:freioRepMax())*10), fps=u16((fpsA!=null?fpsA:freioMaxA())*10); const b=new Uint8Array([lo&0xFF,(lo>>8)&0xFF,hi&0xFF,(hi>>8)&0xFF,fa&0xFF,(fa>>8)&0xFF,fr&0xFF,(fr>>8)&0xFF,fps&0xFF,(fps>>8)&0xFF]); try{ configChar.writeValueWithoutResponse?configChar.writeValueWithoutResponse(b):configChar.writeValue(b); }catch(e){} }   // 10 bytes: RPM mín/máx, freio máx (A), freio repouso, freio pós-sim (deci-A)
 function enviarRepouso(ativo){ if(!configChar) return; const b=new Uint8Array([ativo?1:0]); try{ configChar.writeValueWithoutResponse?configChar.writeValueWithoutResponse(b):configChar.writeValue(b); }catch(e){} }   // 1 byte: liga/desliga o freio de repouso (jogada começou/acabou)
 async function tentarReconectar(){
   if(!navigator.bluetooth||!navigator.bluetooth.getDevices) return;
@@ -675,7 +676,7 @@ function iniciarSim(id){
   const sim=SIMS[id];
   sim.pontos=carregarPontos(id);          // recarrega a curva (GitHub manda; pega a versão publicada)
   sim.estaRodando=true;
-  enviarConfigRPM(freioRepousoEscalado(id)); enviarRepouso(true);   // jogada começou -> manda o freio de repouso ESCALADO pelo peso do peixe + ativa (eixo nunca livre)
+  enviarConfigRPM(freioRepousoEscalado(id), freioPosSimA(id)); enviarRepouso(true);   // jogada começou -> manda freio de repouso + freio pós-sim (ambos por peso) + ativa
   sim.overlay.classList.add('oculto');
   novoJogoContadores();                    // novo jogador: zera só a contagem do jogo; a linha do carretel acumula
   emJogo=true; simTocando=id; atualizarVisibilidadeHUD();
@@ -687,7 +688,7 @@ function iniciarSim(id){
   if(sync>0) sim.syncTimer=setTimeout(comecar, sync*1000); else comecar();   // espera o intro do vídeo
 }
 function pausarSim(id){ const sim=SIMS[id]; sim.estaRodando=false; contando=false; clearInterval(sim.intervalo); clearTimeout(sim.fisgadaTimer); clearTimeout(sim.syncTimer); pararFisgadaFisica(); simTocando=null; atualizarVisibilidadeHUD(); sim.video.pause(); enviarRepouso(false); aplicarMotor(0); simEmPausa=id; document.getElementById('pauseOverlay').classList.add('visivel'); }   // pausou -> libera o eixo
-function continuarSim(){ document.getElementById('pauseOverlay').classList.remove('visivel'); if(!simEmPausa) return; const sim=SIMS[simEmPausa]; sim.estaRodando=true; enviarConfigRPM(freioRepousoEscalado(simEmPausa)); enviarRepouso(true); contando=true; simTocando=simEmPausa; atualizarVisibilidadeHUD(); sim.video.play().catch(()=>{}); sim.intervalo=loopSim(sim); simEmPausa=null; }   // voltou -> segura o eixo de novo
+function continuarSim(){ document.getElementById('pauseOverlay').classList.remove('visivel'); if(!simEmPausa) return; const sim=SIMS[simEmPausa]; sim.estaRodando=true; enviarConfigRPM(freioRepousoEscalado(simEmPausa), freioPosSimA(simEmPausa)); enviarRepouso(true); contando=true; simTocando=simEmPausa; atualizarVisibilidadeHUD(); sim.video.play().catch(()=>{}); sim.intervalo=loopSim(sim); simEmPausa=null; }   // voltou -> segura o eixo de novo
 function reiniciarSim(){ document.getElementById('pauseOverlay').classList.remove('visivel'); if(!simEmPausa) return; encerrarSim(simEmPausa,true,false); simEmPausa=null; }
 function encerrarSim(id, sairFS, salvar){
   const sim=SIMS[id]; clearInterval(sim.intervalo); clearTimeout(sim.fisgadaTimer); clearTimeout(sim.syncTimer); pararFisgadaFisica();

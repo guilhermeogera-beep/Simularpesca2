@@ -316,7 +316,8 @@ function freioMaxA(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_fre
 function freioRepMin(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_freiorepmin')); return (isFinite(v)&&v>=0)?v:1; }   // freio de repouso do peixe MENOR (escalaPeso≈0)
 function freioRepMax(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_freiorepmax')); return (isFinite(v)&&v>=0)?v:4; }   // freio de repouso do peixe MAIOR (escalaPeso=1)
 function freioRepousoEscalado(idx){ const e=escalaPeso(LETRAS[idx], pesoSimValor(idx)); return freioRepMin() + e*(freioRepMax()-freioRepMin()); }   // varia com o PESO: peixe menor→mín, maior→máx
-function enviarConfigRPM(frA){ if(!configChar) return; const u16=v=>Math.max(0,Math.min(65535,Math.round(v))); const lo=u16(rpmMin()), hi=u16(rpmMax()), fa=u16(freioMaxA()), fr=u16((frA!=null?frA:freioRepMax())*10); const b=new Uint8Array([lo&0xFF,(lo>>8)&0xFF,hi&0xFF,(hi>>8)&0xFF,fa&0xFF,(fa>>8)&0xFF,fr&0xFF,(fr>>8)&0xFF]); try{ configChar.writeValueWithoutResponse?configChar.writeValueWithoutResponse(b):configChar.writeValue(b); }catch(e){} }   // 8 bytes: RPM mín/máx, freio máx (A), freio repouso (deci-A) — frA = valor do peixe (senão o máx)
+function freioPosSimA(idx){ return freioMaxA()*escalaPeso(LETRAS[idx], pesoSimValor(idx)); }   // FREIO do hold pós-sim = a MAIOR corrente do peixe (freio máx × peso)
+function enviarConfigRPM(frA, fpsA){ if(!configChar) return; const u16=v=>Math.max(0,Math.min(65535,Math.round(v))); const lo=u16(rpmMin()), hi=u16(rpmMax()), fa=u16(freioMaxA()), fr=u16((frA!=null?frA:freioRepMax())*10), fps=u16((fpsA!=null?fpsA:freioMaxA())*10); const b=new Uint8Array([lo&0xFF,(lo>>8)&0xFF,hi&0xFF,(hi>>8)&0xFF,fa&0xFF,(fa>>8)&0xFF,fr&0xFF,(fr>>8)&0xFF,fps&0xFF,(fps>>8)&0xFF]); try{ configChar.writeValueWithoutResponse?configChar.writeValueWithoutResponse(b):configChar.writeValue(b); }catch(e){} }   // 10 bytes: RPM mín/máx, freio máx (A), freio repouso, freio pós-sim (deci-A)
 function enviarRepouso(ativo){ if(!configChar) return; const b=new Uint8Array([ativo?1:0]); try{ configChar.writeValueWithoutResponse?configChar.writeValueWithoutResponse(b):configChar.writeValue(b); }catch(e){} }   // 1 byte: liga/desliga o freio de repouso (sim começou/acabou)
 async function reconectar(){ if(navigator.bluetooth&&navigator.bluetooth.getDevices){ try{ const d=await navigator.bluetooth.getDevices(); if(d.length) await ligar(d[0]).catch(()=>{}); }catch(e){} } }
 function escreverMotor(pct){ if(!motorChar) return; const b=new Int8Array([Math.max(-100,Math.min(100,Math.round(pct)))]); try{ motorChar.writeValueWithoutResponse?motorChar.writeValueWithoutResponse(b):motorChar.writeValue(b);}catch(e){} }   // força COM SINAL: + puxa, − freia
@@ -699,7 +700,7 @@ document.addEventListener('keydown',e=>{
 
 // ══ PLAY / PAUSE / STOP (preview) ─────────────────────────────
 function playSim(idx){ const sim=SIMS[idx]; if(sim.estaRodando) return; sim.estaRodando=true; sim.tempoAtual=0;
-  enviarConfigRPM(freioRepousoEscalado(idx)); enviarRepouso(true);   // sim começou -> manda o freio de repouso ESCALADO pelo peso do peixe + ativa (eixo nunca livre)
+  enviarConfigRPM(freioRepousoEscalado(idx), freioPosSimA(idx)); enviarRepouso(true);   // sim começou -> manda freio de repouso + freio pós-sim (ambos por peso) + ativa
   metrosGanhos=0; metrosPerdidos=0; atualizarContadores();   // novo teste: zera Ganhos/Perdidos (a LINHA DO CARRETEL acumula, não zera)
   const ph=document.getElementById('playhead'+idx), ts=document.getElementById('tsDisplay'+idx);
   sim.t0=performance.now();
