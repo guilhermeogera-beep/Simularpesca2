@@ -1,14 +1,14 @@
 {
   "versao": 2,
   "tipo": "config",
-  "criado": "2026-07-10T19:37:59.157Z",
+  "criado": "2026-07-10T19:50:27.488Z",
   "cal": {
     "mpv": 24.0296,
     "limite": -200,
     "offset": 7,
     "rpmmin": 1000,
     "rpmmax": 3000,
-    "freioa": 6,
+    "freioa": 12,
     "inv": "1"
   },
   "gen": {
