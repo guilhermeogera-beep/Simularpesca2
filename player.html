@@ -223,7 +223,9 @@ function pararFisgadaFisica(){}   // obsoleto no v2 (não há fisgada física); 
 function rpmMin(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_rpmmin')); return (isFinite(v)&&v>=0)?v:500; }
 function rpmMax(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_rpmmax')); return (isFinite(v)&&v>0)?v:8000; }
 function freioMaxA(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_freioa')); return (isFinite(v)&&v>0)?v:25; }   // corrente (A) do FREIO máximo (base do gráfico -20) — calibrada no dashboard, vai pro ESP
-function enviarConfigRPM(){ if(!configChar) return; const u16=v=>Math.max(0,Math.min(65535,Math.round(v))); const lo=u16(rpmMin()), hi=u16(rpmMax()), fa=u16(freioMaxA()); const b=new Uint8Array([lo&0xFF,(lo>>8)&0xFF,hi&0xFF,(hi>>8)&0xFF,fa&0xFF,(fa>>8)&0xFF]); try{ configChar.writeValueWithoutResponse?configChar.writeValueWithoutResponse(b):configChar.writeValue(b); }catch(e){} }   // 6 bytes: RPM mín, RPM máx, freio máx (A)
+function freioRepousoA(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_freiorep')); return (isFinite(v)&&v>=0)?v:2; }   // corrente (A) do FREIO DE REPOUSO (segura o eixo durante a jogada); 0 = desligado
+function enviarConfigRPM(){ if(!configChar) return; const u16=v=>Math.max(0,Math.min(65535,Math.round(v))); const lo=u16(rpmMin()), hi=u16(rpmMax()), fa=u16(freioMaxA()), fr=u16(freioRepousoA()*10); const b=new Uint8Array([lo&0xFF,(lo>>8)&0xFF,hi&0xFF,(hi>>8)&0xFF,fa&0xFF,(fa>>8)&0xFF,fr&0xFF,(fr>>8)&0xFF]); try{ configChar.writeValueWithoutResponse?configChar.writeValueWithoutResponse(b):configChar.writeValue(b); }catch(e){} }   // 8 bytes: RPM mín, RPM máx, freio máx (A), freio repouso (deci-A)
+function enviarRepouso(ativo){ if(!configChar) return; const b=new Uint8Array([ativo?1:0]); try{ configChar.writeValueWithoutResponse?configChar.writeValueWithoutResponse(b):configChar.writeValue(b); }catch(e){} }   // 1 byte: liga/desliga o freio de repouso (jogada começou/acabou)
 async function tentarReconectar(){
   if(!navigator.bluetooth||!navigator.bluetooth.getDevices) return;
   try{ const d=await navigator.bluetooth.getDevices(); if(d.length){ btUI('','🔵 Reconectando...'); await ligar(d[0]).catch(()=>btUI('','🔵 Conectar')); } }catch(e){}
@@ -376,7 +378,8 @@ function aplicarConfigPlayer(d){
   if(c.rpmmin!=null) localStorage.setItem('simpesca2_cal_rpmmin', c.rpmmin);
   if(c.rpmmax!=null) localStorage.setItem('simpesca2_cal_rpmmax', c.rpmmax);
   if(c.freioa!=null) localStorage.setItem('simpesca2_cal_freioa', c.freioa);
-  enviarConfigRPM();   // reenvia RPM + freio pro ESP (caso já esteja conectado quando o config do GitHub chega)
+  if(c.freiorep!=null) localStorage.setItem('simpesca2_cal_freiorep', c.freiorep);
+  enviarConfigRPM();   // reenvia RPM + freio máx + freio repouso pro ESP (caso já esteja conectado quando o config do GitHub chega)
   if(c.inv!=null)    localStorage.setItem('simpesca2_cal_inv', c.inv);
   const s=d.sync||{};
   ESPECIES.forEach(e=>{ if(s[e.id]!=null) localStorage.setItem('simpesca2_sync_'+e.id, s[e.id]); });
@@ -669,6 +672,7 @@ function iniciarSim(id){
   const sim=SIMS[id];
   sim.pontos=carregarPontos(id);          // recarrega a curva (GitHub manda; pega a versão publicada)
   sim.estaRodando=true;
+  enviarRepouso(true);                     // jogada começou -> ESP segura o eixo na zona morta (freio de repouso), nunca livre
   sim.overlay.classList.add('oculto');
   novoJogoContadores();                    // novo jogador: zera só a contagem do jogo; a linha do carretel acumula
   emJogo=true; simTocando=id; atualizarVisibilidadeHUD();
@@ -679,12 +683,12 @@ function iniciarSim(id){
   const comecar=()=>{ contando=true; sim.intervalo=loopSim(sim); };
   if(sync>0) sim.syncTimer=setTimeout(comecar, sync*1000); else comecar();   // espera o intro do vídeo
 }
-function pausarSim(id){ const sim=SIMS[id]; sim.estaRodando=false; contando=false; clearInterval(sim.intervalo); clearTimeout(sim.fisgadaTimer); clearTimeout(sim.syncTimer); pararFisgadaFisica(); simTocando=null; atualizarVisibilidadeHUD(); sim.video.pause(); aplicarMotor(0); simEmPausa=id; document.getElementById('pauseOverlay').classList.add('visivel'); }
-function continuarSim(){ document.getElementById('pauseOverlay').classList.remove('visivel'); if(!simEmPausa) return; const sim=SIMS[simEmPausa]; sim.estaRodando=true; contando=true; simTocando=simEmPausa; atualizarVisibilidadeHUD(); sim.video.play().catch(()=>{}); sim.intervalo=loopSim(sim); simEmPausa=null; }
+function pausarSim(id){ const sim=SIMS[id]; sim.estaRodando=false; contando=false; clearInterval(sim.intervalo); clearTimeout(sim.fisgadaTimer); clearTimeout(sim.syncTimer); pararFisgadaFisica(); simTocando=null; atualizarVisibilidadeHUD(); sim.video.pause(); enviarRepouso(false); aplicarMotor(0); simEmPausa=id; document.getElementById('pauseOverlay').classList.add('visivel'); }   // pausou -> libera o eixo
+function continuarSim(){ document.getElementById('pauseOverlay').classList.remove('visivel'); if(!simEmPausa) return; const sim=SIMS[simEmPausa]; sim.estaRodando=true; enviarRepouso(true); contando=true; simTocando=simEmPausa; atualizarVisibilidadeHUD(); sim.video.play().catch(()=>{}); sim.intervalo=loopSim(sim); simEmPausa=null; }   // voltou -> segura o eixo de novo
 function reiniciarSim(){ document.getElementById('pauseOverlay').classList.remove('visivel'); if(!simEmPausa) return; encerrarSim(simEmPausa,true,false); simEmPausa=null; }
 function encerrarSim(id, sairFS, salvar){
   const sim=SIMS[id]; clearInterval(sim.intervalo); clearTimeout(sim.fisgadaTimer); clearTimeout(sim.syncTimer); pararFisgadaFisica();
-  sim.estaRodando=false; contando=false; emJogo=false; simTocando=null; atualizarVisibilidadeHUD(); sim.video.pause(); aplicarMotor(0);  // fim dos 90s
+  sim.estaRodando=false; contando=false; emJogo=false; simTocando=null; atualizarVisibilidadeHUD(); sim.video.pause(); enviarRepouso(false); aplicarMotor(0);  // fim da jogada -> libera o eixo (volta a ficar livre)
   const metros=metrosAtuais();
   if(sairFS){ if(document.exitFullscreen) document.exitFullscreen(); else if(document.webkitExitFullscreen) document.webkitExitFullscreen(); }
   devolverOverlays();

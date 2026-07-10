@@ -166,6 +166,10 @@ select{background:var(--surface);border:1px solid var(--border);color:var(--text
       <label>🛑 Freio máx (A)</label>
       <input type="number" id="calFreioA" step="1" min="0" value="25" onchange="salvarCal()">
     </div>
+    <div class="cal-campo" style="align-items:center;margin-top:10px;" title="Corrente (A) do FREIO DE REPOUSO: durante a simulação, segura o eixo (arrasto leve) sempre que a força cai a zero — o eixo NUNCA fica livre. Ao acabar a sim, solta. 0 = desligado.">
+      <label>🔒 Freio de repouso (A)</label>
+      <input type="number" id="calFreioRep" step="0.1" min="0" value="2" onchange="salvarCal()">
+    </div>
   </div>
 </div>
 
@@ -305,7 +309,9 @@ function pararFisgadaFisica(){}   // obsoleto no v2 (não há fisgada física); 
 function rpmMin(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_rpmmin')); return (isFinite(v)&&v>=0)?v:500; }
 function rpmMax(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_rpmmax')); return (isFinite(v)&&v>0)?v:8000; }
 function freioMaxA(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_freioa')); return (isFinite(v)&&v>0)?v:25; }   // corrente (A) do FREIO máximo = base do gráfico (-20). Calibrável; vai pro ESP.
-function enviarConfigRPM(){ if(!configChar) return; const u16=v=>Math.max(0,Math.min(65535,Math.round(v))); const lo=u16(rpmMin()), hi=u16(rpmMax()), fa=u16(freioMaxA()); const b=new Uint8Array([lo&0xFF,(lo>>8)&0xFF,hi&0xFF,(hi>>8)&0xFF,fa&0xFF,(fa>>8)&0xFF]); try{ configChar.writeValueWithoutResponse?configChar.writeValueWithoutResponse(b):configChar.writeValue(b); }catch(e){} }   // 6 bytes: RPM mín, RPM máx, freio máx (A)
+function freioRepousoA(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_freiorep')); return (isFinite(v)&&v>=0)?v:2; }   // corrente (A) do FREIO DE REPOUSO (segura o eixo na sim); 0 = desligado
+function enviarConfigRPM(){ if(!configChar) return; const u16=v=>Math.max(0,Math.min(65535,Math.round(v))); const lo=u16(rpmMin()), hi=u16(rpmMax()), fa=u16(freioMaxA()), fr=u16(freioRepousoA()*10); const b=new Uint8Array([lo&0xFF,(lo>>8)&0xFF,hi&0xFF,(hi>>8)&0xFF,fa&0xFF,(fa>>8)&0xFF,fr&0xFF,(fr>>8)&0xFF]); try{ configChar.writeValueWithoutResponse?configChar.writeValueWithoutResponse(b):configChar.writeValue(b); }catch(e){} }   // 8 bytes: RPM mín, RPM máx, freio máx (A), freio repouso (deci-A)
+function enviarRepouso(ativo){ if(!configChar) return; const b=new Uint8Array([ativo?1:0]); try{ configChar.writeValueWithoutResponse?configChar.writeValueWithoutResponse(b):configChar.writeValue(b); }catch(e){} }   // 1 byte: liga/desliga o freio de repouso (sim começou/acabou)
 async function reconectar(){ if(navigator.bluetooth&&navigator.bluetooth.getDevices){ try{ const d=await navigator.bluetooth.getDevices(); if(d.length) await ligar(d[0]).catch(()=>{}); }catch(e){} } }
 function escreverMotor(pct){ if(!motorChar) return; const b=new Int8Array([Math.max(-100,Math.min(100,Math.round(pct)))]); try{ motorChar.writeValueWithoutResponse?motorChar.writeValueWithoutResponse(b):motorChar.writeValue(b);}catch(e){} }   // força COM SINAL: + puxa, − freia
 function zerarEncoder(){ contagemEncoder=0; contAnt=0; primeiraLeitura=true; metrosGanhos=0; metrosPerdidos=0; travaAtiva=false; atualizarCalLive(); atualizarContadores(); if(linhaChar){ try{ linhaChar.writeValue(new Uint8Array([0])); }catch(e){} } log('Linha do carretel zerada (re-spool)','info'); }
@@ -346,8 +352,9 @@ function salvarCal(){ const mpv=parseFloat(document.getElementById('calMpv').val
   const rmin=parseFloat(document.getElementById('calRpmMin').value); if(isFinite(rmin)&&rmin>=0) localStorage.setItem('simpesca2_cal_rpmmin',rmin);
   const rmax=parseFloat(document.getElementById('calRpmMax').value); if(isFinite(rmax)&&rmax>0) localStorage.setItem('simpesca2_cal_rpmmax',rmax);
   const fa=parseFloat(document.getElementById('calFreioA').value); if(isFinite(fa)&&fa>0) localStorage.setItem('simpesca2_cal_freioa',fa);
-  enviarConfigRPM();   // manda RPM mín/máx + freio máx pro ESP na hora (se conectado)
-  atualizarCalLive(); atualizarEstimativas(); agendarSync('config'); log('Calibração salva: '+mpv+' m/volta · offset '+off+'% · RPM '+rmin+'–'+rmax+' · freio '+fa+'A','ok'); }
+  const fr=parseFloat(document.getElementById('calFreioRep').value); if(isFinite(fr)&&fr>=0) localStorage.setItem('simpesca2_cal_freiorep',fr);
+  enviarConfigRPM();   // manda RPM mín/máx + freio máx + freio repouso pro ESP na hora (se conectado)
+  atualizarCalLive(); atualizarEstimativas(); agendarSync('config'); log('Calibração salva: '+mpv+' m/volta · offset '+off+'% · RPM '+rmin+'–'+rmax+' · freio '+fa+'A · repouso '+fr+'A','ok'); }
 function salvarLimite(){ const lim=parseFloat(document.getElementById('calLimite').value); if(isFinite(lim)&&lim!==0){ localStorage.setItem('simpesca2_cal_limite',lim); travaAtiva=false; atualizarContadores(); agendarSync('config'); log('Limite de linha (trava) salvo: '+lim+' m','ok'); } else log('Limite inválido (não pode ser 0/vazio)','err'); }
 function calcularMpv(){ const real=parseFloat(document.getElementById('calReal').value); const voltas=Math.abs(contagemEncoder)/4096; if(!(real>0)){ log('Digite os metros reais recolhidos','err'); return; } if(voltas<0.01){ log('Recolha a linha antes de calcular','err'); return; } const mpv=real/voltas; document.getElementById('calMpv').value=mpv.toFixed(4); localStorage.setItem('simpesca2_cal_mpv',mpv); atualizarCalLive(); agendarSync('config'); log('Calibrado: '+mpv.toFixed(4)+' m/volta','ok'); }
 
@@ -685,6 +692,7 @@ document.addEventListener('keydown',e=>{
 
 // ══ PLAY / PAUSE / STOP (preview) ─────────────────────────────
 function playSim(idx){ const sim=SIMS[idx]; if(sim.estaRodando) return; sim.estaRodando=true; sim.tempoAtual=0;
+  enviarRepouso(true);   // sim começou -> ESP segura o eixo na zona morta (freio de repouso), nunca livre
   metrosGanhos=0; metrosPerdidos=0; atualizarContadores();   // novo teste: zera Ganhos/Perdidos (a LINHA DO CARRETEL acumula, não zera)
   const ph=document.getElementById('playhead'+idx), ts=document.getElementById('tsDisplay'+idx);
   sim.t0=performance.now();
@@ -703,8 +711,8 @@ function playSim(idx){ const sim=SIMS[idx]; if(sim.estaRodando) return; sim.esta
     if(t>=DURACAO) stopSim(idx);
   },100);
 }
-function pauseSim(idx){ const sim=SIMS[idx]; sim.estaRodando=false; cancelAnimationFrame(sim.raf); clearInterval(sim.intervalo); pararFisgadaFisica(); aplicarMotor(0); atualizarSimGauge(idx,0); }   // zera o motor na pausa (senão o VESC segura a força até o watchdog cortar em 1,2s)
-function stopSim(idx){ const sim=SIMS[idx]; sim.estaRodando=false; cancelAnimationFrame(sim.raf); clearInterval(sim.intervalo); pararFisgadaFisica(); sim.tempoAtual=0; atualizarInterfaceTempo(); atualizarSimGauge(idx,0); aplicarMotor(0); }
+function pauseSim(idx){ const sim=SIMS[idx]; sim.estaRodando=false; cancelAnimationFrame(sim.raf); clearInterval(sim.intervalo); pararFisgadaFisica(); enviarRepouso(false); aplicarMotor(0); atualizarSimGauge(idx,0); }   // sim parou -> libera o eixo + zera o motor
+function stopSim(idx){ const sim=SIMS[idx]; sim.estaRodando=false; cancelAnimationFrame(sim.raf); clearInterval(sim.intervalo); pararFisgadaFisica(); enviarRepouso(false); sim.tempoAtual=0; atualizarInterfaceTempo(); atualizarSimGauge(idx,0); aplicarMotor(0); }   // sim acabou -> libera o eixo (volta a ficar livre)
 function fmt(s){ return `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`; }
 function atualizarInterfaceTempo(){ for(let i=0;i<NSIMS;i++){ const el=document.getElementById('tsDisplay'+i); if(el) el.textContent=`${fmt(SIMS[i].tempoAtual)} / ${fmt(DURACAO)}`; const ph=document.getElementById('playhead'+i); if(ph) ph.style.left=`${(SIMS[i].tempoAtual/DURACAO)*100}%`; } }
 
@@ -715,7 +723,7 @@ function exportarConfig(){
   const cal={
     mpv: metrosPorVolta(), limite: limiteLinha(),
     offset: offsetMotor(),
-    rpmmin: rpmMin(), rpmmax: rpmMax(), freioa: freioMaxA(),
+    rpmmin: rpmMin(), rpmmax: rpmMax(), freioa: freioMaxA(), freiorep: freioRepousoA(),
     inv: localStorage.getItem('simpesca2_cal_inv')||'0'
   };
   const gen={};
@@ -739,7 +747,7 @@ function ghToken(){ return (localStorage.getItem('simpesca2_github_token')||'').
 function salvarToken(v){ localStorage.setItem('simpesca2_github_token',(v||'').trim()); setSyncBadge(ghToken()?'idle':'notoken'); }
 function montarCurvasObj(){ const curvas={}; LETRAS.forEach((id,i)=>{ curvas[id]=SIMS[i].pontos; }); return {versao:1,tipo:'curvas_todas',criado:new Date().toISOString(),curvas}; }
 function montarConfigObj(){
-  const cal={mpv:metrosPorVolta(),limite:limiteLinha(),offset:offsetMotor(),rpmmin:rpmMin(),rpmmax:rpmMax(),freioa:freioMaxA(),inv:localStorage.getItem('simpesca2_cal_inv')||'0'};
+  const cal={mpv:metrosPorVolta(),limite:limiteLinha(),offset:offsetMotor(),rpmmin:rpmMin(),rpmmax:rpmMax(),freioa:freioMaxA(),freiorep:freioRepousoA(),inv:localStorage.getItem('simpesca2_cal_inv')||'0'};
   const gen={}; LETRAS.forEach((id,i)=>{ gen[id]={}; GEN_CAMPOS.forEach(([inp,key])=>{ const el=document.getElementById(inp+i); if(el) gen[id][key]=el.value; }); });
   const sync={}; LETRAS.forEach(id=>{ sync[id]=localStorage.getItem('simpesca2_sync_'+id)||'0'; });
   return {versao:2,tipo:'config',criado:new Date().toISOString(),cal,gen,sync};
@@ -792,6 +800,7 @@ function aplicarConfig(d){
     if(d.cal.rpmmin!=null){ localStorage.setItem('simpesca2_cal_rpmmin',d.cal.rpmmin); const e=document.getElementById('calRpmMin'); if(e) e.value=d.cal.rpmmin; }
     if(d.cal.rpmmax!=null){ localStorage.setItem('simpesca2_cal_rpmmax',d.cal.rpmmax); const e=document.getElementById('calRpmMax'); if(e) e.value=d.cal.rpmmax; }
     if(d.cal.freioa!=null){ localStorage.setItem('simpesca2_cal_freioa',d.cal.freioa); const e=document.getElementById('calFreioA'); if(e) e.value=d.cal.freioa; }
+    if(d.cal.freiorep!=null){ localStorage.setItem('simpesca2_cal_freiorep',d.cal.freiorep); const e=document.getElementById('calFreioRep'); if(e) e.value=d.cal.freiorep; }
     if(d.cal.inv!=null)   { localStorage.setItem('simpesca2_cal_inv', d.cal.inv); }
   }
   if(d.gen && (d.versao||0)>=2){   // só aplica gen do esquema NOVO (v1 tinha teto/fispico e intens na escala velha)
@@ -1182,6 +1191,7 @@ window.addEventListener('load',async()=>{
   document.getElementById('calRpmMin').value=rpmMin();
   document.getElementById('calRpmMax').value=rpmMax();
   document.getElementById('calFreioA').value=freioMaxA();
+  document.getElementById('calFreioRep').value=freioRepousoA();
   montarBlocosSims();          // cria os blocos (inputs por peixe, incl. fisgada física)
   if(localStorage.getItem('simpesca2_intens_remap')!=='1'){   // remap da ASSINATURA: escala dobrou (ig=intens/25), então 100 vira 50 (mantém o efeito, com folga pra subir)
     LETRAS.forEach(id=>{ const k='simpesca2_gen_'+id+'_intens'; const v=parseFloat(localStorage.getItem(k)); if(isFinite(v)) localStorage.setItem(k, String(Math.max(0,Math.round(v/2)))); });
