@@ -1,7 +1,7 @@
 {
   "versao": 2,
   "tipo": "config",
-  "criado": "2026-07-10T22:52:51.579Z",
+  "criado": "2026-07-10T22:53:25.363Z",
   "cal": {
     "mpv": 24,
     "limite": -150,
@@ -23,7 +23,7 @@
       "intens": "50",
       "espaco": "40",
       "freiomax": "11",
-      "fisfisdur": "5"
+      "fisfisdur": "0"
     },
     "tambaqui": {
       "corrida": "18",
