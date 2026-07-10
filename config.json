@@ -1,7 +1,7 @@
 {
   "versao": 2,
   "tipo": "config",
-  "criado": "2026-07-10T23:03:31.904Z",
+  "criado": "2026-07-10T23:03:59.843Z",
   "cal": {
     "mpv": 24,
     "limite": -150,
@@ -37,7 +37,7 @@
       "fisfisdur": "5"
     },
     "tucunare": {
-      "corrida": "9",
+      "corrida": "15",
       "fadiga": "50",
       "puxada": "55",
       "saque": "30",
