@@ -222,7 +222,8 @@ function pararFisgadaFisica(){}   // obsoleto no v2 (não há fisgada física); 
 // O ESP mapeia o valor da curva (0..40) pra rotação: valor baixo→RPM mín, valor 40→RPM máx (capa os metros).
 function rpmMin(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_rpmmin')); return (isFinite(v)&&v>=0)?v:500; }
 function rpmMax(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_rpmmax')); return (isFinite(v)&&v>0)?v:8000; }
-function enviarConfigRPM(){ if(!configChar) return; const lo=Math.max(0,Math.min(65535,Math.round(rpmMin()))), hi=Math.max(0,Math.min(65535,Math.round(rpmMax()))); const b=new Uint8Array([lo&0xFF,(lo>>8)&0xFF,hi&0xFF,(hi>>8)&0xFF]); try{ configChar.writeValueWithoutResponse?configChar.writeValueWithoutResponse(b):configChar.writeValue(b); }catch(e){} }
+function freioMaxA(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_freioa')); return (isFinite(v)&&v>0)?v:25; }   // corrente (A) do FREIO máximo (base do gráfico -20) — calibrada no dashboard, vai pro ESP
+function enviarConfigRPM(){ if(!configChar) return; const u16=v=>Math.max(0,Math.min(65535,Math.round(v))); const lo=u16(rpmMin()), hi=u16(rpmMax()), fa=u16(freioMaxA()); const b=new Uint8Array([lo&0xFF,(lo>>8)&0xFF,hi&0xFF,(hi>>8)&0xFF,fa&0xFF,(fa>>8)&0xFF]); try{ configChar.writeValueWithoutResponse?configChar.writeValueWithoutResponse(b):configChar.writeValue(b); }catch(e){} }   // 6 bytes: RPM mín, RPM máx, freio máx (A)
 async function tentarReconectar(){
   if(!navigator.bluetooth||!navigator.bluetooth.getDevices) return;
   try{ const d=await navigator.bluetooth.getDevices(); if(d.length){ btUI('','🔵 Reconectando...'); await ligar(d[0]).catch(()=>btUI('','🔵 Conectar')); } }catch(e){}
@@ -374,7 +375,8 @@ function aplicarConfigPlayer(d){
   // velmax não é mais usado no v2 (linha derivada de RPM+mpv); offset é vestigial (RPM/corrente sem zona morta) — não importa do config
   if(c.rpmmin!=null) localStorage.setItem('simpesca2_cal_rpmmin', c.rpmmin);
   if(c.rpmmax!=null) localStorage.setItem('simpesca2_cal_rpmmax', c.rpmmax);
-  enviarConfigRPM();   // reenvia pro ESP (caso já esteja conectado quando o config do GitHub chega)
+  if(c.freioa!=null) localStorage.setItem('simpesca2_cal_freioa', c.freioa);
+  enviarConfigRPM();   // reenvia RPM + freio pro ESP (caso já esteja conectado quando o config do GitHub chega)
   if(c.inv!=null)    localStorage.setItem('simpesca2_cal_inv', c.inv);
   const s=d.sync||{};
   ESPECIES.forEach(e=>{ if(s[e.id]!=null) localStorage.setItem('simpesca2_sync_'+e.id, s[e.id]); });
