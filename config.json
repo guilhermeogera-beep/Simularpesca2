@@ -1,12 +1,12 @@
 {
   "versao": 2,
   "tipo": "config",
-  "criado": "2026-07-10T18:33:16.888Z",
+  "criado": "2026-07-10T18:33:29.976Z",
   "cal": {
     "mpv": 28.03,
     "limite": -200,
     "offset": 7,
-    "rpmmin": 1,
+    "rpmmin": 100,
     "rpmmax": 3000,
     "inv": "0"
   },
