@@ -323,7 +323,7 @@ function limiteLinha(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_l
 function offsetMotor(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_offset')); return (isFinite(v)&&v>=0&&v<100)?v:0; }   // mínimo pra o motor girar (v2: padrão 0 — controle por corrente não tem zona morta)
 function comOffset(pct){ const m=Math.abs(pct); return m<0.5?0 : Math.max(-100,Math.min(100,pct)); }   // v2 (RPM/corrente): SEM zona morta — passa direto; o piso da puxada é o MIN_RPM no ESP (o offset do v1 distorcia o mapa 0..40)
 const MAX_PUXADA_A=30, MAX_FREIO_A=25;   // corrente (A) na força ±100 (igual ao firmware do VESC) — estimativa do display
-function ampMotor(pct){ const m=Math.abs(pct)/100; return pct>=0 ? m*MAX_PUXADA_A : m*MAX_FREIO_A; }
+function ampMotor(pct){ const m=Math.abs(pct); return pct>=0 ? m/100*MAX_PUXADA_A : Math.min(1,m/20)*MAX_FREIO_A; }   // freio: -20 (base do gráfico) = MAX_FREIO_A (igual ao firmware)
 function rpmAlvo(pct){ const v=Math.min(ESC_POS, Math.max(0,pct)); return rpmMin() + (v/ESC_POS)*(rpmMax()-rpmMin()); }   // espelha o mapa do firmware: valor 0..40 -> RPM mín..máx
 function rpmParaMs(erpm){ return Math.abs(erpm)/10/4096*metrosPorVolta(); }   // ERPM -> m/s: VESC tem 6 passos/rev elétrica (contagens/s=ERPM/10) e a linha usa 4096+mpv
 // metros que o peixe puxa = ∫ v(t) dt, com v derivada do RPM comandado (mesma conta do player); esc = escala do PESO (entra DENTRO do mapa, não multiplica o total)
@@ -718,7 +718,7 @@ function exportarConfig(){
   });
   const sync={};
   LETRAS.forEach(id=>{ const v=localStorage.getItem('simpesca2_sync_'+id); sync[id]=v||'0'; });
-  const payload={versao:1,tipo:'config',criado:new Date().toISOString(),cal,gen,sync};
+  const payload={versao:2,tipo:'config',criado:new Date().toISOString(),cal,gen,sync};
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='config.json'; a.click(); URL.revokeObjectURL(a.href);
   log('config.json exportado (backup manual)','ok');
@@ -735,7 +735,7 @@ function montarConfigObj(){
   const cal={mpv:metrosPorVolta(),limite:limiteLinha(),offset:offsetMotor(),rpmmin:rpmMin(),rpmmax:rpmMax(),inv:localStorage.getItem('simpesca2_cal_inv')||'0'};
   const gen={}; LETRAS.forEach((id,i)=>{ gen[id]={}; GEN_CAMPOS.forEach(([inp,key])=>{ const el=document.getElementById(inp+i); if(el) gen[id][key]=el.value; }); });
   const sync={}; LETRAS.forEach(id=>{ sync[id]=localStorage.getItem('simpesca2_sync_'+id)||'0'; });
-  return {versao:1,tipo:'config',criado:new Date().toISOString(),cal,gen,sync};
+  return {versao:2,tipo:'config',criado:new Date().toISOString(),cal,gen,sync};
 }
 async function ghPut(path,obj){
   const tk=ghToken(); if(!tk) return false;
@@ -781,12 +781,12 @@ function aplicarConfig(d){
     if(d.cal.mpv)    { localStorage.setItem('simpesca2_cal_mpv',    d.cal.mpv);    document.getElementById('calMpv').value=d.cal.mpv; }
     if(d.cal.limite) { localStorage.setItem('simpesca2_cal_limite', d.cal.limite); document.getElementById('calLimite').value=d.cal.limite; }
     // velmax removido no v2 (linha derivada de RPM+mpv) — ignora o campo se vier de um config.json antigo
-    if(d.cal.offset!=null){ localStorage.setItem('simpesca2_cal_offset',d.cal.offset); document.getElementById('calOffset').value=d.cal.offset; }
+    if(d.cal.offset!=null && (d.versao||0)>=2){ localStorage.setItem('simpesca2_cal_offset',d.cal.offset); document.getElementById('calOffset').value=d.cal.offset; }   // ignora offset de config ANTIGO (v1 tinha offset:15 que distorcia o mapa 0..40)
     if(d.cal.rpmmin!=null){ localStorage.setItem('simpesca2_cal_rpmmin',d.cal.rpmmin); const e=document.getElementById('calRpmMin'); if(e) e.value=d.cal.rpmmin; }
     if(d.cal.rpmmax!=null){ localStorage.setItem('simpesca2_cal_rpmmax',d.cal.rpmmax); const e=document.getElementById('calRpmMax'); if(e) e.value=d.cal.rpmmax; }
     if(d.cal.inv!=null)   { localStorage.setItem('simpesca2_cal_inv', d.cal.inv); }
   }
-  if(d.gen){
+  if(d.gen && (d.versao||0)>=2){   // só aplica gen do esquema NOVO (v1 tinha teto/fispico e intens na escala velha)
     LETRAS.forEach((id,i)=>{
       if(!d.gen[id]) return;
       GEN_CAMPOS.forEach(([inp,key])=>{

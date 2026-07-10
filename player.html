@@ -378,7 +378,7 @@ function aplicarConfigPlayer(d){
   if(c.inv!=null)    localStorage.setItem('simpesca2_cal_inv', c.inv);
   const s=d.sync||{};
   ESPECIES.forEach(e=>{ if(s[e.id]!=null) localStorage.setItem('simpesca2_sync_'+e.id, s[e.id]); });
-  const g=d.gen||{};   // o player usa só gen.fisfisdur (início da briga = faixa laranja da barra); aplica pro totem casar com o editor
+  const g=(d.versao||0)>=2 ? (d.gen||{}) : {};   // o player usa só gen.fisfisdur (faixa de fisgada da barra); só do esquema NOVO (v2)
   ESPECIES.forEach(e=>{ if(g[e.id]&&g[e.id].fisfisdur!=null) localStorage.setItem('simpesca2_gen_'+e.id+'_fisfisdur', g[e.id].fisfisdur); });
 }
 // ── PESO do peixe (slider por espécie) -> fator de escala da curva (puxa + freia) ──
@@ -401,7 +401,7 @@ function ghToken(){ return (localStorage.getItem('simpesca2_github_token')||'').
 let ghSyncTimer=null, ghSyncEnviando=false;
 function agendarSyncPlayer(){
   if(!ghToken()) return;                                  // sem token (totem): não publica
-  localStorage.setItem('simpesca2_sync_pend','1');
+  localStorage.setItem('simpesca2_sync_pend_player','1');
   clearTimeout(ghSyncTimer); ghSyncTimer=setTimeout(enviarSyncPlayer, 2500);
 }
 async function enviarSyncPlayer(){
@@ -422,10 +422,10 @@ async function enviarSyncPlayer(){
   const body={message:'auto: sincronia',content}; if(sha) body.sha=sha;
   let ok=false; try{ const r=await fetch(url,{method:'PUT',headers,body:JSON.stringify(body)}); ok=r.ok; }catch(e){}
   ghSyncEnviando=false;
-  if(ok){ localStorage.removeItem('simpesca2_sync_pend'); mostrarToast('☁️ sincronia salva na nuvem'); }
+  if(ok){ localStorage.removeItem('simpesca2_sync_pend_player'); mostrarToast('☁️ sincronia salva na nuvem'); }
   else mostrarToast('⏳ sincronia: sobe quando tiver internet');
 }
-window.addEventListener('online',()=>{ if(ghToken() && localStorage.getItem('simpesca2_sync_pend')) enviarSyncPlayer(); });
+window.addEventListener('online',()=>{ if(ghToken() && localStorage.getItem('simpesca2_sync_pend_player')) enviarSyncPlayer(); });
 
 window.addEventListener('load',async()=>{
   // GitHub é a fonte de verdade: curvas (curvas.json) + calibração/sincronia (config.json)
@@ -473,7 +473,7 @@ window.addEventListener('load',async()=>{
   document.getElementById('inputNome').value=localStorage.getItem('simpesca2_ultimo_nome')||'';
   carregarHudCfg();
   if('serviceWorker' in navigator) navigator.serviceWorker.register('service-worker.js').catch(()=>{});
-  if(ghToken() && navigator.onLine && localStorage.getItem('simpesca2_sync_pend')) enviarSyncPlayer();   // retoma sincronia pendente
+  if(ghToken() && navigator.onLine && localStorage.getItem('simpesca2_sync_pend_player')) enviarSyncPlayer();   // retoma sincronia pendente
   tentarReconectar();
 });
 
