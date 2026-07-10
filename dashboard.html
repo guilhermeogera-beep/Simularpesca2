@@ -687,20 +687,21 @@ document.addEventListener('keydown',e=>{
 function playSim(idx){ const sim=SIMS[idx]; if(sim.estaRodando) return; sim.estaRodando=true; sim.tempoAtual=0;
   metrosGanhos=0; metrosPerdidos=0; atualizarContadores();   // novo teste: zera Ganhos/Perdidos (a LINHA DO CARRETEL acumula, não zera)
   const ph=document.getElementById('playhead'+idx), ts=document.getElementById('tsDisplay'+idx);
-  sim.t0=performance.now(); let ultMotor=-1;
-  const frame=()=>{
-    if(!sim.estaRodando) return;
-    const t=Math.min((performance.now()-sim.t0)/1000, DURACAO);
-    sim.tempoAtual=t;
-    if(ph) ph.style.left=(t/DURACAO*100)+'%';                          // playhead SUAVE: todo quadro (~60fps), pelo relógio real
-    if(ultMotor<0 || t-ultMotor>=0.1){ ultMotor=t;                     // motor/gauge/texto: ~10Hz (não precisa de 60)
-      const pot=interpolarPontos(sim.pontos,t)*escalaPeso(LETRAS[idx],pesoSimValor(idx)); aplicarMotor(pot); atualizarSimGauge(idx,pot);   // escala pelo PESO (peixe menor puxa/freia menos) — lê ao vivo
-      if(ts) ts.textContent=`${fmt(t)} / ${fmt(DURACAO)}`;
-    }
-    if(t>=DURACAO){ stopSim(idx); return; }
-    sim.raf=requestAnimationFrame(frame);
-  };
+  sim.t0=performance.now();
+  const tempo=()=>Math.min((performance.now()-sim.t0)/1000, DURACAO);
+  // PLAYHEAD: só visual, no requestAnimationFrame (~60fps, suave)
+  const frame=()=>{ if(!sim.estaRodando) return; if(ph) ph.style.left=(tempo()/DURACAO*100)+'%'; sim.raf=requestAnimationFrame(frame); };
   sim.raf=requestAnimationFrame(frame);
+  // MOTOR/gauge/tempo: setInterval 100ms — SOBREVIVE à aba fora de foco (o rAF congela e o watchdog do ESP cortaria;
+  // o timer no máximo degrada pra ~1s em background, ainda dentro dos 1,2s do watchdog)
+  clearInterval(sim.intervalo);
+  sim.intervalo=setInterval(()=>{
+    if(!sim.estaRodando) return;
+    const t=tempo(); sim.tempoAtual=t;
+    const pot=interpolarPontos(sim.pontos,t)*escalaPeso(LETRAS[idx],pesoSimValor(idx)); aplicarMotor(pot); atualizarSimGauge(idx,pot);   // escala pelo PESO — lê ao vivo
+    if(ts) ts.textContent=`${fmt(t)} / ${fmt(DURACAO)}`;
+    if(t>=DURACAO) stopSim(idx);
+  },100);
 }
 function pauseSim(idx){ const sim=SIMS[idx]; sim.estaRodando=false; cancelAnimationFrame(sim.raf); clearInterval(sim.intervalo); pararFisgadaFisica(); aplicarMotor(0); atualizarSimGauge(idx,0); }   // zera o motor na pausa (senão o VESC segura a força até o watchdog cortar em 1,2s)
 function stopSim(idx){ const sim=SIMS[idx]; sim.estaRodando=false; cancelAnimationFrame(sim.raf); clearInterval(sim.intervalo); pararFisgadaFisica(); sim.tempoAtual=0; atualizarInterfaceTempo(); atualizarSimGauge(idx,0); aplicarMotor(0); }
