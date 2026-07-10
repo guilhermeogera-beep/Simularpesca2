@@ -1,7 +1,7 @@
 {
   "versao": 2,
   "tipo": "config",
-  "criado": "2026-07-10T19:22:22.041Z",
+  "criado": "2026-07-10T19:32:33.719Z",
   "cal": {
     "mpv": 28.03,
     "limite": -200,
@@ -9,7 +9,7 @@
     "rpmmin": 1000,
     "rpmmax": 3000,
     "freioa": 6,
-    "inv": "0"
+    "inv": "1"
   },
   "gen": {
     "pirarara": {
