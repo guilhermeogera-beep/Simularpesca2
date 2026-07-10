@@ -1,7 +1,7 @@
 {
   "versao": 2,
   "tipo": "config",
-  "criado": "2026-07-10T22:54:23.620Z",
+  "criado": "2026-07-10T23:02:59.635Z",
   "cal": {
     "mpv": 24,
     "limite": -150,
@@ -9,8 +9,8 @@
     "rpmmin": 1000,
     "rpmmax": 3000,
     "freioa": 12,
-    "freiorepmin": 2,
-    "freiorepmax": 6,
+    "freiorepmin": 1,
+    "freiorepmax": 4,
     "inv": "1"
   },
   "gen": {
@@ -45,7 +45,7 @@
       "intens": "50",
       "espaco": "40",
       "freiomax": "5",
-      "fisfisdur": "5"
+      "fisfisdur": "0"
     },
     "dourado": {
       "corrida": "14",
