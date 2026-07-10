@@ -145,7 +145,7 @@ select{background:var(--surface);border:1px solid var(--border);color:var(--text
   <div id="gaugeLabel" class="secao-titulo recolhivel" data-cardkey="motor" onclick="toggleCard(this)"><span class="card-chevron">▾</span><span>🎚️</span> Controle Manual</div>
   <div id="gaugePct">0%</div>
   <div id="gaugeBar"><div id="gaugeBarFill"></div></div>
-  <div id="gaugeVolt">≈ 0.0 A</div>
+  <div id="gaugeVolt">solto</div>
   <div style="margin-top:25px;border-top:1px solid var(--border);padding-top:20px;">
     <div class="secao-titulo" style="justify-content:center;"><span>⚙️</span> Teste Manual (puxa + / freia −)</div>
     <input type="range" id="motorSlider" min="-40" max="40" value="0">
@@ -153,6 +153,14 @@ select{background:var(--surface);border:1px solid var(--border);color:var(--text
     <div class="cal-campo" style="align-items:center;margin-top:14px;" title="Força/corrente MÍNIMA pra o motor começar a girar (vence o atrito). No controle por corrente do VESC, deixe 0 = sem piso. Afeta o gerador (piso da puxada) e a saída do motor.">
       <label>Offset motor (mín. p/ girar)</label>
       <input type="number" id="calOffset" step="1" min="0" max="90" value="0" onchange="salvarCal()">
+    </div>
+    <div class="cal-campo" style="align-items:center;margin-top:10px;" title="Rotação (ERPM) da corrida MAIS FRACA (valor baixo da curva). Garante que o motor gira em valor baixo sem travar. Vai pro ESP por Bluetooth ao conectar/salvar.">
+      <label>🐢 RPM mín (corrida fraca)</label>
+      <input type="number" id="calRpmMin" step="50" min="0" value="500" onchange="salvarCal()">
+    </div>
+    <div class="cal-campo" style="align-items:center;margin-top:10px;" title="Rotação (ERPM) da corrida NO TALO (valor 40). É a CAPA dos metros: menor = o peixe leva MENOS linha por corrida; maior = leva MAIS. Vai pro ESP por Bluetooth.">
+      <label>🐇 RPM máx (capa os metros)</label>
+      <input type="number" id="calRpmMax" step="100" min="0" value="8000" onchange="salvarCal()">
     </div>
   </div>
 </div>
@@ -260,8 +268,8 @@ select{background:var(--surface);border:1px solid var(--border);color:var(--text
 const SERVICE_UUID="a1b2c3d4-0001-4a5b-8c6d-1234567890ab";
 const CHAR_MOTOR_UUID="a1b2c3d4-0002-4a5b-8c6d-1234567890ab";
 const CHAR_LINHA_UUID="a1b2c3d4-0003-4a5b-8c6d-1234567890ab";
-const CHAR_FISGADA_UUID="a1b2c3d4-0004-4a5b-8c6d-1234567890ab";
-let bleDevice=null, motorChar=null, linhaChar=null, fisgadaChar=null, contagemEncoder=0;
+const CHAR_CONFIG_UUID="a1b2c3d4-0004-4a5b-8c6d-1234567890ab";
+let bleDevice=null, motorChar=null, linhaChar=null, configChar=null, contagemEncoder=0;
 let contAnt=0, primeiraLeitura=true, metrosGanhos=0, metrosPerdidos=0;
 function btUI(cls,txt){ const b=document.getElementById('btnBT'); b.className=cls; b.textContent=txt; }
 async function conectarBLE(){
@@ -270,7 +278,7 @@ async function conectarBLE(){
 }
 async function ligar(device){
   bleDevice=device;
-  device.addEventListener('gattserverdisconnected',()=>{ motorChar=null; linhaChar=null; fisgadaChar=null; btUI('','🔵 Reconectar'); log('Bluetooth desconectado','err'); });
+  device.addEventListener('gattserverdisconnected',()=>{ motorChar=null; linhaChar=null; configChar=null; btUI('','🔵 Reconectar'); log('Bluetooth desconectado','err'); });
   const server=await device.gatt.connect(); const service=await server.getPrimaryService(SERVICE_UUID);
   motorChar=await service.getCharacteristic(CHAR_MOTOR_UUID);
   try{ linhaChar=await service.getCharacteristic(CHAR_LINHA_UUID); await linhaChar.startNotifications(); linhaChar.addEventListener('characteristicvaluechanged',e=>{
@@ -280,7 +288,7 @@ async function ligar(device){
         if(dM>0) metrosGanhos+=dM; else metrosPerdidos+=-dM;
         contagemEncoder=nova; atualizarCalLive(); atualizarContadores(); checarLimiteSegurancaDash();
       }); }catch(e){ log('Encoder não disponível neste firmware','err'); }
-  try{ fisgadaChar=await service.getCharacteristic(CHAR_FISGADA_UUID); }catch(e){ fisgadaChar=null; }
+  try{ configChar=await service.getCharacteristic(CHAR_CONFIG_UUID); enviarConfigRPM(); }catch(e){ configChar=null; }
   btUI('conectado','🟢 Conectado'); log('Bluetooth conectado','ok');
 }
 // ── FISGADA FÍSICA (config + teste) ───────────────────────────
@@ -288,7 +296,12 @@ async function ligar(device){
 // desenhar as fisgadas MANUALMENTE (a curva é editável com sinal). Input fisFisDur na .gen-row.
 function fisFisCfg(idx){ const el=document.getElementById('fisFisDur'+idx); const v=el?parseFloat(el.value):NaN; return { dur:Math.max(0,isFinite(v)?v:5) }; }
 function fisFisDurSeg(idx){ return fisFisCfg(idx).dur; }
-function pararFisgadaFisica(){ if(!fisgadaChar) return; try{ const b=new Uint8Array([0,0,0,0]); fisgadaChar.writeValueWithoutResponse?fisgadaChar.writeValueWithoutResponse(b):fisgadaChar.writeValue(b); }catch(e){} log('Fisgada física parada','info'); }
+function pararFisgadaFisica(){}   // obsoleto no v2 (não há fisgada física); mantido só pra não quebrar chamadas antigas
+// ── CONFIG do motor (RPM mín/máx) enviada ao ESP ──────────────
+// O valor da curva (0..40) vira ROTAÇÃO no ESP: valor baixo→RPM mín, valor 40→RPM máx. RPM máx "capa" os metros.
+function rpmMin(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_rpmmin')); return (isFinite(v)&&v>=0)?v:500; }
+function rpmMax(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_rpmmax')); return (isFinite(v)&&v>0)?v:8000; }
+function enviarConfigRPM(){ if(!configChar) return; const lo=Math.max(0,Math.min(65535,Math.round(rpmMin()))), hi=Math.max(0,Math.min(65535,Math.round(rpmMax()))); const b=new Uint8Array([lo&0xFF,(lo>>8)&0xFF,hi&0xFF,(hi>>8)&0xFF]); try{ configChar.writeValueWithoutResponse?configChar.writeValueWithoutResponse(b):configChar.writeValue(b); }catch(e){} }
 async function reconectar(){ if(navigator.bluetooth&&navigator.bluetooth.getDevices){ try{ const d=await navigator.bluetooth.getDevices(); if(d.length) await ligar(d[0]).catch(()=>{}); }catch(e){} } }
 function escreverMotor(pct){ if(!motorChar) return; const b=new Int8Array([Math.max(-100,Math.min(100,Math.round(pct)))]); try{ motorChar.writeValueWithoutResponse?motorChar.writeValueWithoutResponse(b):motorChar.writeValue(b);}catch(e){} }   // força COM SINAL: + puxa, − freia
 function zerarEncoder(){ contagemEncoder=0; contAnt=0; primeiraLeitura=true; metrosGanhos=0; metrosPerdidos=0; travaAtiva=false; atualizarCalLive(); atualizarContadores(); if(linhaChar){ try{ linhaChar.writeValue(new Uint8Array([0])); }catch(e){} } log('Linha do carretel zerada (re-spool)','info'); }
@@ -312,6 +325,7 @@ function offsetMotor(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_o
 function comOffset(pct){ const s=Math.sign(pct), m=Math.abs(pct); return m<0.5?0 : s*Math.min(100, offsetMotor()+(100-offsetMotor())*m/100); }   // mantém o SINAL (puxa/freia); offset 0 = passa direto
 const MAX_PUXADA_A=30, MAX_FREIO_A=25;   // corrente (A) na força ±100 (igual ao firmware do VESC) — estimativa do display
 function ampMotor(pct){ const m=Math.abs(pct)/100; return pct>=0 ? m*MAX_PUXADA_A : m*MAX_FREIO_A; }
+function rpmAlvo(pct){ const v=Math.min(ESC_POS, Math.max(0,pct)); return rpmMin() + (v/ESC_POS)*(rpmMax()-rpmMin()); }   // espelha o mapa do firmware: valor 0..40 -> RPM mín..máx
 // ∫ pot dt (0..DURACAO) da curva contínua = "esforço" do peixe em %·s
 function integralPot(pts){
   if(!pts||!pts.length) return 0;
@@ -325,7 +339,11 @@ function atualizarEstimativas(){ for(let i=0;i<NSIMS;i++){ const e=document.getE
 function inverterDir(){ return localStorage.getItem('simpesca2_cal_inv')==='1'; }
 function contagemParaMetros(c){ let m=(c/4096)*metrosPorVolta(); if(inverterDir()) m=-m; return m; }
 function atualizarCalLive(){ const voltas=contagemEncoder/4096, m=Math.max(0,contagemParaMetros(contagemEncoder)); document.getElementById('calCont').textContent=contagemEncoder; document.getElementById('calVoltas').textContent=voltas.toFixed(2); document.getElementById('calMetros').textContent=m.toFixed(1)+' m'; }
-function salvarCal(){ const mpv=parseFloat(document.getElementById('calMpv').value); if(isFinite(mpv)&&mpv>0) localStorage.setItem('simpesca2_cal_mpv',mpv); const vel=parseFloat(document.getElementById('calVel').value); if(isFinite(vel)&&vel>0) localStorage.setItem('simpesca2_cal_velmax',vel); const off=parseFloat(document.getElementById('calOffset').value); if(isFinite(off)&&off>=0&&off<100) localStorage.setItem('simpesca2_cal_offset',off); atualizarCalLive(); atualizarEstimativas(); agendarSync('config'); log('Calibração salva: '+mpv+' m/volta · motor '+vel+' m/s · offset '+off+'%','ok'); }
+function salvarCal(){ const mpv=parseFloat(document.getElementById('calMpv').value); if(isFinite(mpv)&&mpv>0) localStorage.setItem('simpesca2_cal_mpv',mpv); const vel=parseFloat(document.getElementById('calVel').value); if(isFinite(vel)&&vel>0) localStorage.setItem('simpesca2_cal_velmax',vel); const off=parseFloat(document.getElementById('calOffset').value); if(isFinite(off)&&off>=0&&off<100) localStorage.setItem('simpesca2_cal_offset',off);
+  const rmin=parseFloat(document.getElementById('calRpmMin').value); if(isFinite(rmin)&&rmin>=0) localStorage.setItem('simpesca2_cal_rpmmin',rmin);
+  const rmax=parseFloat(document.getElementById('calRpmMax').value); if(isFinite(rmax)&&rmax>0) localStorage.setItem('simpesca2_cal_rpmmax',rmax);
+  enviarConfigRPM();   // manda RPM mín/máx pro ESP na hora (se conectado)
+  atualizarCalLive(); atualizarEstimativas(); agendarSync('config'); log('Calibração salva: '+mpv+' m/volta · motor '+vel+' m/s · offset '+off+'% · RPM '+rmin+'–'+rmax,'ok'); }
 function salvarLimite(){ const lim=parseFloat(document.getElementById('calLimite').value); if(isFinite(lim)&&lim!==0){ localStorage.setItem('simpesca2_cal_limite',lim); travaAtiva=false; atualizarContadores(); agendarSync('config'); log('Limite de linha (trava) salvo: '+lim+' m','ok'); } else log('Limite inválido (não pode ser 0/vazio)','err'); }
 function calcularMpv(){ const real=parseFloat(document.getElementById('calReal').value); const voltas=Math.abs(contagemEncoder)/4096; if(!(real>0)){ log('Digite os metros reais recolhidos','err'); return; } if(voltas<0.01){ log('Recolha a linha antes de calcular','err'); return; } const mpv=real/voltas; document.getElementById('calMpv').value=mpv.toFixed(4); localStorage.setItem('simpesca2_cal_mpv',mpv); atualizarCalLive(); agendarSync('config'); log('Calibrado: '+mpv.toFixed(4)+' m/volta','ok'); }
 
@@ -340,8 +358,8 @@ function aplicarMotor(pct){ pct=Math.max(-100,Math.min(100,pct));
 function atualizarGauge(pct){ pct=Math.max(-100,Math.min(100,pct)); const mag=Math.abs(pct), pull=pct>0.5, brake=pct<-0.5, cor=pull?'#00d4ff':brake?'#ffa838':'var(--text-dim)';
   const p=document.getElementById('gaugePct'); p.textContent=(pull?'🔵 PUXA ':brake?'🟠 FREIA ':'')+mag.toFixed(0)+'%'; p.style.color=cor;
   document.getElementById('gaugeBarFill').style.width=mag+'%'; document.getElementById('gaugeBarFill').style.background=cor;
-  document.getElementById('gaugeVolt').textContent='≈ '+ampMotor(pct).toFixed(1)+' A'; }
-function atualizarSimGauge(idx,pct){ pct=Math.max(-100,Math.min(100,pct)); const p=document.getElementById('simPct'+idx),v=document.getElementById('simVolt'+idx),f=document.getElementById('simFill'+idx); if(!p)return; const mag=Math.abs(pct), pull=pct>0.5, brake=pct<-0.5, cor=pull?'#00d4ff':brake?'#ffa838':'#3d5d7e'; p.textContent=(pull?'+':brake?'−':'')+mag.toFixed(0)+'%'; v.textContent='≈'+ampMotor(pct).toFixed(1)+'A'; f.style.width=mag+'%'; f.style.background=cor; }
+  document.getElementById('gaugeVolt').textContent = pull ? '≈ '+Math.round(rpmAlvo(pct))+' RPM' : brake ? '≈ '+ampMotor(pct).toFixed(1)+' A' : 'solto'; }   // puxa = rotação · freia = corrente
+function atualizarSimGauge(idx,pct){ pct=Math.max(-100,Math.min(100,pct)); const p=document.getElementById('simPct'+idx),v=document.getElementById('simVolt'+idx),f=document.getElementById('simFill'+idx); if(!p)return; const mag=Math.abs(pct), pull=pct>0.5, brake=pct<-0.5, cor=pull?'#00d4ff':brake?'#ffa838':'#3d5d7e'; p.textContent=(pull?'+':brake?'−':'')+mag.toFixed(0)+'%'; v.textContent=pull?'≈'+Math.round(rpmAlvo(pct))+'RPM':brake?'≈'+ampMotor(pct).toFixed(1)+'A':''; f.style.width=mag+'%'; f.style.background=cor; }
 function log(msg,tipo=''){ const el=document.getElementById('log'); const s=document.createElement('span'); s.className=tipo; const n=new Date(); s.textContent=`[${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}:${String(n.getSeconds()).padStart(2,'0')}] ${msg}`; el.prepend(s); while(el.children.length>40) el.removeChild(el.lastChild); }
 const SL_DZ=8, SL_MAX=40;   // zona morta no centro (fácil voltar ao 0) + rampa SUAVE a partir da borda (sem salto)
 function slForca(v){ const m=Math.abs(v); return m<=SL_DZ ? 0 : Math.sign(v)*(m-SL_DZ)/(SL_MAX-SL_DZ)*SL_MAX; }   // ±8=0 · ±40=±40, linear no meio
@@ -682,6 +700,7 @@ function exportarConfig(){
   const cal={
     mpv: metrosPorVolta(), limite: limiteLinha(),
     velmax: velMotor(), offset: offsetMotor(),
+    rpmmin: rpmMin(), rpmmax: rpmMax(),
     inv: localStorage.getItem('simpesca2_cal_inv')||'0'
   };
   const gen={};
@@ -705,7 +724,7 @@ function ghToken(){ return (localStorage.getItem('simpesca2_github_token')||'').
 function salvarToken(v){ localStorage.setItem('simpesca2_github_token',(v||'').trim()); setSyncBadge(ghToken()?'idle':'notoken'); }
 function montarCurvasObj(){ const curvas={}; LETRAS.forEach((id,i)=>{ curvas[id]=SIMS[i].pontos; }); return {versao:1,tipo:'curvas_todas',criado:new Date().toISOString(),curvas}; }
 function montarConfigObj(){
-  const cal={mpv:metrosPorVolta(),limite:limiteLinha(),velmax:velMotor(),offset:offsetMotor(),inv:localStorage.getItem('simpesca2_cal_inv')||'0'};
+  const cal={mpv:metrosPorVolta(),limite:limiteLinha(),velmax:velMotor(),offset:offsetMotor(),rpmmin:rpmMin(),rpmmax:rpmMax(),inv:localStorage.getItem('simpesca2_cal_inv')||'0'};
   const gen={}; LETRAS.forEach((id,i)=>{ gen[id]={}; GEN_CAMPOS.forEach(([inp,key])=>{ const el=document.getElementById(inp+i); if(el) gen[id][key]=el.value; }); });
   const sync={}; LETRAS.forEach(id=>{ sync[id]=localStorage.getItem('simpesca2_sync_'+id)||'0'; });
   return {versao:1,tipo:'config',criado:new Date().toISOString(),cal,gen,sync};
@@ -755,6 +774,8 @@ function aplicarConfig(d){
     if(d.cal.limite) { localStorage.setItem('simpesca2_cal_limite', d.cal.limite); document.getElementById('calLimite').value=d.cal.limite; }
     if(d.cal.velmax) { localStorage.setItem('simpesca2_cal_velmax', d.cal.velmax); document.getElementById('calVel').value=d.cal.velmax; }
     if(d.cal.offset!=null){ localStorage.setItem('simpesca2_cal_offset',d.cal.offset); document.getElementById('calOffset').value=d.cal.offset; }
+    if(d.cal.rpmmin!=null){ localStorage.setItem('simpesca2_cal_rpmmin',d.cal.rpmmin); const e=document.getElementById('calRpmMin'); if(e) e.value=d.cal.rpmmin; }
+    if(d.cal.rpmmax!=null){ localStorage.setItem('simpesca2_cal_rpmmax',d.cal.rpmmax); const e=document.getElementById('calRpmMax'); if(e) e.value=d.cal.rpmmax; }
     if(d.cal.inv!=null)   { localStorage.setItem('simpesca2_cal_inv', d.cal.inv); }
   }
   if(d.gen){
@@ -1137,6 +1158,8 @@ window.addEventListener('load',async()=>{
   document.getElementById('calLimite').value=limiteLinha();
   document.getElementById('calVel').value=velMotor();
   document.getElementById('calOffset').value=offsetMotor();
+  document.getElementById('calRpmMin').value=rpmMin();
+  document.getElementById('calRpmMax').value=rpmMax();
   montarBlocosSims();          // cria os blocos (inputs por peixe, incl. fisgada física)
   if(localStorage.getItem('simpesca2_intens_remap')!=='1'){   // remap da ASSINATURA: escala dobrou (ig=intens/25), então 100 vira 50 (mantém o efeito, com folga pra subir)
     LETRAS.forEach(id=>{ const k='simpesca2_gen_'+id+'_intens'; const v=parseFloat(localStorage.getItem(k)); if(isFinite(v)) localStorage.setItem(k, String(Math.max(0,Math.round(v/2)))); });

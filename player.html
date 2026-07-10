@@ -178,8 +178,8 @@ input[type=text]:focus{border-color:var(--accent);}
 const SERVICE_UUID="a1b2c3d4-0001-4a5b-8c6d-1234567890ab";
 const CHAR_MOTOR_UUID="a1b2c3d4-0002-4a5b-8c6d-1234567890ab";
 const CHAR_LINHA_UUID="a1b2c3d4-0003-4a5b-8c6d-1234567890ab";
-const CHAR_FISGADA_UUID="a1b2c3d4-0004-4a5b-8c6d-1234567890ab";
-let bleDevice=null, motorChar=null, linhaChar=null, fisgadaChar=null, contagemEncoder=0;
+const CHAR_CONFIG_UUID="a1b2c3d4-0004-4a5b-8c6d-1234567890ab";
+let bleDevice=null, motorChar=null, linhaChar=null, configChar=null, contagemEncoder=0;
 let contAnt=0, primeiraLeitura=true, metrosGanhos=0, metrosPerdidos=0, contando=false;
 function btUI(c,t){ const b=document.getElementById('btnBT'); b.className=c; b.textContent=t; }
 async function conectarBLE(){
@@ -190,7 +190,7 @@ async function conectarBLE(){
 async function ligar(device){
   bleDevice=device;
   device.addEventListener('gattserverdisconnected',()=>{
-    motorChar=null; linhaChar=null; btUI('erro','🔵 Reconectar'); mostrarToast('⚠ Bluetooth caiu — motor travado');
+    motorChar=null; linhaChar=null; configChar=null; btUI('erro','🔵 Reconectar'); mostrarToast('⚠ Bluetooth caiu — motor travado');
     // SEGURANÇA: pausa qualquer simulação em andamento ao perder a conexão
     Object.keys(SIMS).forEach(id=>{ if(SIMS[id].estaRodando) pausarSim(id); });
   });
@@ -208,7 +208,7 @@ async function ligar(device){
       contAnt=nova; contagemEncoder=nova; atualizarLinha();
     });
   }catch(e){}
-  try{ fisgadaChar=await service.getCharacteristic(CHAR_FISGADA_UUID); }catch(e){ fisgadaChar=null; }
+  try{ configChar=await service.getCharacteristic(CHAR_CONFIG_UUID); enviarConfigRPM(); }catch(e){ configChar=null; }
   btUI('conectado','🟢 Conectado'); mostrarToast('Bluetooth conectado');
 }
 // ── Fisgada física (puxadas do motor no início) ───────────────
@@ -217,7 +217,12 @@ function fisgadaFisicaCfg(id){   // v2: só o INÍCIO DA BRIGA (dur, s) — marc
   const g=(key,d)=>{ let v=parseFloat(localStorage.getItem('simpesca2_gen_'+id+'_'+key)); if(isFinite(v))return v; v=parseFloat(localStorage.getItem(FISFIS_GLOBAL[key])); return isFinite(v)?v:d; };
   return { dur:Math.max(0,g('fisfisdur',5)) };
 }
-function pararFisgadaFisica(){ if(!fisgadaChar) return; try{ const b=new Uint8Array([0,0,0,0]); fisgadaChar.writeValueWithoutResponse?fisgadaChar.writeValueWithoutResponse(b):fisgadaChar.writeValue(b); }catch(e){} }   // segurança: cancela qualquer fisgada residual no ESP
+function pararFisgadaFisica(){}   // obsoleto no v2 (não há fisgada física); mantido só pra não quebrar chamadas antigas
+// ── CONFIG do motor (RPM mín/máx) — enviada ao ESP ao conectar ──
+// O ESP mapeia o valor da curva (0..40) pra rotação: valor baixo→RPM mín, valor 40→RPM máx (capa os metros).
+function rpmMin(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_rpmmin')); return (isFinite(v)&&v>=0)?v:500; }
+function rpmMax(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_rpmmax')); return (isFinite(v)&&v>0)?v:8000; }
+function enviarConfigRPM(){ if(!configChar) return; const lo=Math.max(0,Math.min(65535,Math.round(rpmMin()))), hi=Math.max(0,Math.min(65535,Math.round(rpmMax()))); const b=new Uint8Array([lo&0xFF,(lo>>8)&0xFF,hi&0xFF,(hi>>8)&0xFF]); try{ configChar.writeValueWithoutResponse?configChar.writeValueWithoutResponse(b):configChar.writeValue(b); }catch(e){} }
 async function tentarReconectar(){
   if(!navigator.bluetooth||!navigator.bluetooth.getDevices) return;
   try{ const d=await navigator.bluetooth.getDevices(); if(d.length){ btUI('','🔵 Reconectando...'); await ligar(d[0]).catch(()=>btUI('','🔵 Conectar')); } }catch(e){}
@@ -354,6 +359,9 @@ function aplicarConfigPlayer(d){
   if(c.limite)       localStorage.setItem('simpesca2_cal_limite', c.limite);
   if(c.velmax)       localStorage.setItem('simpesca2_cal_velmax', c.velmax);
   if(c.offset!=null) localStorage.setItem('simpesca2_cal_offset', c.offset);
+  if(c.rpmmin!=null) localStorage.setItem('simpesca2_cal_rpmmin', c.rpmmin);
+  if(c.rpmmax!=null) localStorage.setItem('simpesca2_cal_rpmmax', c.rpmmax);
+  enviarConfigRPM();   // reenvia pro ESP (caso já esteja conectado quando o config do GitHub chega)
   if(c.inv!=null)    localStorage.setItem('simpesca2_cal_inv', c.inv);
   const s=d.sync||{};
   ESPECIES.forEach(e=>{ if(s[e.id]!=null) localStorage.setItem('simpesca2_sync_'+e.id, s[e.id]); });
