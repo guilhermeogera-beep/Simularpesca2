@@ -150,10 +150,6 @@ select{background:var(--surface);border:1px solid var(--border);color:var(--text
     <div class="secao-titulo" style="justify-content:center;"><span>⚙️</span> Teste Manual (puxa + / freia −)</div>
     <input type="range" id="motorSlider" min="-20" max="40" value="0">
     <button type="button" onclick="pararMotorManual()" style="display:block;margin:10px auto 0;background:#c1121f;color:#fff;border:none;border-radius:7px;padding:6px 20px;font-size:0.74rem;font-weight:700;letter-spacing:0.5px;cursor:pointer;">⏹ PARAR (0)</button>
-    <div class="cal-campo" style="align-items:center;margin-top:14px;" title="Força/corrente MÍNIMA pra o motor começar a girar (vence o atrito). No controle por corrente do VESC, deixe 0 = sem piso. Afeta o gerador (piso da puxada) e a saída do motor.">
-      <label>Offset motor (mín. p/ girar)</label>
-      <input type="number" id="calOffset" step="1" min="0" max="90" value="0" onchange="salvarCal()">
-    </div>
     <div class="cal-campo" style="align-items:center;margin-top:10px;" title="Rotação (ERPM) da corrida MAIS FRACA (valor baixo da curva). Garante que o motor gira em valor baixo sem travar. Vai pro ESP por Bluetooth ao conectar/salvar.">
       <label>🐢 RPM mín (corrida fraca)</label>
       <input type="number" id="calRpmMin" step="50" min="0" value="500" onchange="salvarCal()">
@@ -338,8 +334,8 @@ function checarLimiteSegurancaDash(){
 function metrosPorVolta(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_mpv')); return (isFinite(v)&&v>0)?v:24; }   // padrão calibrado no v2 (VESC)
 function limiteLinha(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_limite')); return (isFinite(v)&&v!==0)?v:-50; }
 // velMotor (m/s a 100%) foi REMOVIDO no v2: a velocidade agora vem do RPM comandado (rpmAlvo) + mpv — ver estimarLinha
-function offsetMotor(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_offset')); return (isFinite(v)&&v>=0&&v<100)?v:7; }   // v2: só piso do gerador (comOffset é passa-direto); padrão do print
-function comOffset(pct){ const m=Math.abs(pct); return m<0.5?0 : Math.max(-100,Math.min(100,pct)); }   // v2 (RPM/corrente): SEM zona morta — passa direto; o piso da puxada é o MIN_RPM no ESP (o offset do v1 distorcia o mapa 0..40)
+// offsetMotor REMOVIDO no v2: virou "Valor mínimo de puxada" POR PEIXE (input minpux na .gen-row → genMinPux no finalizarFight)
+function comOffset(pct){ const m=Math.abs(pct); return m<0.5?0 : Math.max(-100,Math.min(100,pct)); }   // v2 (RPM/corrente): SEM zona morta — passa direto; o piso da puxada é o MIN_RPM no ESP
 const MAX_PUXADA_A=30;   // corrente (A) da puxada a 100% — só display legado (puxada real = RPM). Freio máx = freioMaxA() (calibrável).
 function ampMotor(pct){ const m=Math.abs(pct); return pct>=0 ? m/100*MAX_PUXADA_A : Math.min(1,m/20)*freioMaxA(); }   // freio: -20 (base do gráfico) = freio máx (A), calibrável (igual ao firmware)
 function rpmAlvo(pct){ const v=Math.min(ESC_POS, Math.max(0,pct)); return rpmMin() + (v/ESC_POS)*(rpmMax()-rpmMin()); }   // espelha o mapa do firmware: valor 0..40 -> RPM mín..máx
@@ -355,14 +351,14 @@ function atualizarEstimativas(){ for(let i=0;i<NSIMS;i++){ const e=document.getE
 function inverterDir(){ return localStorage.getItem('simpesca2_cal_inv')==='1'; }
 function contagemParaMetros(c){ let m=(c/4096)*metrosPorVolta(); if(inverterDir()) m=-m; return m; }
 function atualizarCalLive(){ const voltas=contagemEncoder/4096, m=Math.max(0,contagemParaMetros(contagemEncoder)); document.getElementById('calCont').textContent=contagemEncoder; document.getElementById('calVoltas').textContent=voltas.toFixed(2); document.getElementById('calMetros').textContent=m.toFixed(1)+' m'; }
-function salvarCal(){ const mpv=parseFloat(document.getElementById('calMpv').value); if(isFinite(mpv)&&mpv>0) localStorage.setItem('simpesca2_cal_mpv',mpv); const off=parseFloat(document.getElementById('calOffset').value); if(isFinite(off)&&off>=0&&off<100) localStorage.setItem('simpesca2_cal_offset',off);
+function salvarCal(){ const mpv=parseFloat(document.getElementById('calMpv').value); if(isFinite(mpv)&&mpv>0) localStorage.setItem('simpesca2_cal_mpv',mpv);
   const rmin=parseFloat(document.getElementById('calRpmMin').value); if(isFinite(rmin)&&rmin>=0) localStorage.setItem('simpesca2_cal_rpmmin',rmin);
   const rmax=parseFloat(document.getElementById('calRpmMax').value); if(isFinite(rmax)&&rmax>0) localStorage.setItem('simpesca2_cal_rpmmax',rmax);
   const fa=parseFloat(document.getElementById('calFreioA').value); if(isFinite(fa)&&fa>0) localStorage.setItem('simpesca2_cal_freioa',fa);
   const frn=parseFloat(document.getElementById('calFreioRepMin').value); if(isFinite(frn)&&frn>=0) localStorage.setItem('simpesca2_cal_freiorepmin',frn);
   const frx=parseFloat(document.getElementById('calFreioRepMax').value); if(isFinite(frx)&&frx>=0) localStorage.setItem('simpesca2_cal_freiorepmax',frx);
   enviarConfigRPM();   // manda RPM mín/máx + freio máx + freio repouso (máx, baseline) pro ESP na hora (se conectado)
-  atualizarCalLive(); atualizarEstimativas(); agendarSync('config'); log('Calibração salva: '+mpv+' m/volta · offset '+off+'% · RPM '+rmin+'–'+rmax+' · freio '+fa+'A · repouso '+frn+'–'+frx+'A','ok'); }
+  atualizarCalLive(); atualizarEstimativas(); agendarSync('config'); log('Calibração salva: '+mpv+' m/volta · RPM '+rmin+'–'+rmax+' · freio '+fa+'A · repouso '+frn+'–'+frx+'A','ok'); }
 function salvarLimite(){ const lim=parseFloat(document.getElementById('calLimite').value); if(isFinite(lim)&&lim!==0){ localStorage.setItem('simpesca2_cal_limite',lim); travaAtiva=false; atualizarContadores(); agendarSync('config'); log('Limite de linha (trava) salvo: '+lim+' m','ok'); } else log('Limite inválido (não pode ser 0/vazio)','err'); }
 function calcularMpv(){ const real=parseFloat(document.getElementById('calReal').value); const voltas=Math.abs(contagemEncoder)/4096; if(!(real>0)){ log('Digite os metros reais recolhidos','err'); return; } if(voltas<0.01){ log('Recolha a linha antes de calcular','err'); return; } const mpv=real/voltas; document.getElementById('calMpv').value=mpv.toFixed(4); localStorage.setItem('simpesca2_cal_mpv',mpv); atualizarCalLive(); agendarSync('config'); log('Calibrado: '+mpv.toFixed(4)+' m/volta','ok'); }
 
@@ -456,6 +452,7 @@ function montarBlocosSims(){
         '<label title="Pico do SAQUE (fisgada), na escala do gráfico (0 a +40). O peso do peixe escala isso no player. Padrão sugerido = força × 2,2.">🎣 saque <input type="number" id="saque'+i+'" min="0" max="40" step="1" value="'+Math.round((FREIO_MAX_DEF[LETRAS[i]]||10)*2.2)+'"></label>'+
         '<label title="Alonga (>1) ou encurta (<1) a duração da fisgada">dur <input type="number" id="fisDur'+i+'" min="0.2" max="4" step="0.1" value="2">×</label>'+
         '<label title="Pico da PUXADA (quando o peixe dispara), na escala do gráfico (0 a +40). O peso do peixe escala isso no player. Padrão sugerido = força × 1,8.">🏃 corrida <input type="number" id="corrida'+i+'" min="0" max="40" step="1" value="'+Math.round((FREIO_MAX_DEF[LETRAS[i]]||10)*1.8)+'"></label>'+
+        '<label title="Valor MÍNIMO de puxada (piso): nenhuma puxada gerada por este peixe fica abaixo disso (evita puxadas fracas demais). Descanso (0) e freio (<0) passam inteiros. 0 = sem piso. Regenere (🎲) pra aplicar.">⬇ mín. puxada <input type="number" id="minpux'+i+'" min="0" max="40" step="1" value="7"></label>'+
         '<label title="0% = não cansa · 100% = cansa muito (trancos caem + janelas crescem)">fadiga <input type="number" id="fadiga'+i+'" min="0" max="100" value="50">%</label>'+
         '<label title="Tempo total de motor ligado (puxada). Maior = blocos mais longos, peixe puxa mais linha">puxada <input type="number" id="puxada'+i+'" min="5" max="80" value="55">s</label>'+
         '<label title="Distância entre pontos no tempo: 0 = densos (atual) · 100 = bem espaçados. Maior = o motor físico tem tempo de alcançar cada nível (não vira borrão)">espaço <input type="number" id="espaco'+i+'" min="0" max="100" value="40">/100</label>'+
@@ -730,7 +727,6 @@ function exportarJSON(){ const idx=parseInt(document.getElementById('selSimAcao'
 function exportarConfig(){
   const cal={
     mpv: metrosPorVolta(), limite: limiteLinha(),
-    offset: offsetMotor(),
     rpmmin: rpmMin(), rpmmax: rpmMax(), freioa: freioMaxA(), freiorepmin: freioRepMin(), freiorepmax: freioRepMax(),
     inv: localStorage.getItem('simpesca2_cal_inv')||'0'
   };
@@ -755,7 +751,7 @@ function ghToken(){ return (localStorage.getItem('simpesca2_github_token')||'').
 function salvarToken(v){ localStorage.setItem('simpesca2_github_token',(v||'').trim()); setSyncBadge(ghToken()?'idle':'notoken'); }
 function montarCurvasObj(){ const curvas={}; LETRAS.forEach((id,i)=>{ curvas[id]=SIMS[i].pontos; }); return {versao:1,tipo:'curvas_todas',criado:new Date().toISOString(),curvas}; }
 function montarConfigObj(){
-  const cal={mpv:metrosPorVolta(),limite:limiteLinha(),offset:offsetMotor(),rpmmin:rpmMin(),rpmmax:rpmMax(),freioa:freioMaxA(),freiorepmin:freioRepMin(),freiorepmax:freioRepMax(),inv:localStorage.getItem('simpesca2_cal_inv')||'0'};
+  const cal={mpv:metrosPorVolta(),limite:limiteLinha(),rpmmin:rpmMin(),rpmmax:rpmMax(),freioa:freioMaxA(),freiorepmin:freioRepMin(),freiorepmax:freioRepMax(),inv:localStorage.getItem('simpesca2_cal_inv')||'0'};
   const gen={}; LETRAS.forEach((id,i)=>{ gen[id]={}; GEN_CAMPOS.forEach(([inp,key])=>{ const el=document.getElementById(inp+i); if(el) gen[id][key]=el.value; }); });
   const sync={}; LETRAS.forEach(id=>{ sync[id]=localStorage.getItem('simpesca2_sync_'+id)||'0'; });
   return {versao:2,tipo:'config',criado:new Date().toISOString(),cal,gen,sync};
@@ -804,7 +800,6 @@ function aplicarConfig(d){
     if(d.cal.mpv)    { localStorage.setItem('simpesca2_cal_mpv',    d.cal.mpv);    document.getElementById('calMpv').value=d.cal.mpv; }
     if(d.cal.limite) { localStorage.setItem('simpesca2_cal_limite', d.cal.limite); document.getElementById('calLimite').value=d.cal.limite; }
     // velmax removido no v2 (linha derivada de RPM+mpv) — ignora o campo se vier de um config.json antigo
-    if(d.cal.offset!=null && (d.versao||0)>=2){ localStorage.setItem('simpesca2_cal_offset',d.cal.offset); document.getElementById('calOffset').value=d.cal.offset; }   // ignora offset de config ANTIGO (v1 tinha offset:15 que distorcia o mapa 0..40)
     if(d.cal.rpmmin!=null){ localStorage.setItem('simpesca2_cal_rpmmin',d.cal.rpmmin); const e=document.getElementById('calRpmMin'); if(e) e.value=d.cal.rpmmin; }
     if(d.cal.rpmmax!=null){ localStorage.setItem('simpesca2_cal_rpmmax',d.cal.rpmmax); const e=document.getElementById('calRpmMax'); if(e) e.value=d.cal.rpmmax; }
     if(d.cal.freioa!=null){ localStorage.setItem('simpesca2_cal_freioa',d.cal.freioa); const e=document.getElementById('calFreioA'); if(e) e.value=d.cal.freioa; }
@@ -887,7 +882,7 @@ function espacar(pts, dmin){
   out.push(pts[pts.length-1]); return out;
 }
 function finalizarFight(pts){
-  const piso=offsetMotor();   // puxada mínima = OFFSET do motor (0 = sem piso; só força um mínimo se offset > 0)
+  const piso=genMinPux;   // "Valor mínimo de puxada" POR PEIXE (setado em gerarCurvaEspecie). 0 = sem piso; só força um mínimo se > 0
   return pts.filter(p=>p.t<=DURACAO).map(p=>{
     let pot=Math.max(ESC_NEG,Math.min(ESC_POS,Math.round(p.pot)));
     if(pot>0 && pot<piso) pot=piso;          // piso só na PUXADA; 0 = parado; <0 = FREIO (passa direto)
@@ -1122,15 +1117,17 @@ function cfgGerador(idx){
   // PUXADA e SAQUE: VALORES DIRETOS na escala do gráfico (0..+ESC_POS). Padrão sugerido por peixe = força (freio máx) × fator.
   let corrida=g('corrida', Math.round(freioMax*1.8)); corrida=Math.max(0,Math.min(ESC_POS,corrida));   // pico da PUXADA (direto)
   let saque=g('saque', Math.round(freioMax*2.2));     saque=Math.max(0,Math.min(ESC_POS,saque));       // pico do SAQUE (direto)
+  let minpux=g('minpux', 7); minpux=Math.max(0,Math.min(ESC_POS,minpux));   // VALOR MÍNIMO de puxada (piso das puxadas geradas) — por peixe
   const teto=Math.max(1, corrida);
   const fisPico=Math.max(1, saque);
   const durFis=fisFisCfg(idx).dur;   // tempo de início da briga gerada (antes = fisgada manual)
   const freioQuad=!!(document.getElementById('freioQuad'+idx)||{}).checked;   // SIM = freio quadrado · NÃO = característico
-  return {teto,fadiga,puxada,fisPico,fisDur,intens,espaco,durFis,freioMax,freioQuad,corrida,saque};
+  return {teto,fadiga,puxada,fisPico,fisDur,intens,espaco,durFis,freioMax,freioQuad,corrida,saque,minpux};
 }
 let genFreioMax=0;   // freio máx do peixe sendo gerado (buildFight lê daqui, sem passar por todos os wrappers)
 let genFreioQuad=false, genFreioFad=0;   // modo do freio: quadrado? · fadiga (0-1) p/ o freio CARACTERÍSTICO afrouxar
-function gerarCurvaEspecie(idx){ const c=cfgGerador(idx); genFreioMax=c.freioMax; genFreioQuad=c.freioQuad; genFreioFad=(c.fadiga||0)/100; return (FIGHTS[LETRAS[idx]]||fightTucunare)(c.teto,c.fadiga,c.puxada,c.fisDur,c.fisPico,c.intens,c.espaco,c.durFis); }
+let genMinPux=7;     // valor MÍNIMO de puxada do peixe sendo gerado (finalizarFight lê daqui) — POR PEIXE
+function gerarCurvaEspecie(idx){ const c=cfgGerador(idx); genFreioMax=c.freioMax; genFreioQuad=c.freioQuad; genFreioFad=(c.fadiga||0)/100; genMinPux=c.minpux; return (FIGHTS[LETRAS[idx]]||fightTucunare)(c.teto,c.fadiga,c.puxada,c.fisDur,c.fisPico,c.intens,c.espaco,c.durFis); }
 function regerar(idx){
   const c=cfgGerador(idx);
   SIMS[idx].pontos=gerarCurvaEspecie(idx); salvarPontos(idx); simAtiva=idx; selPonto=-1; multiSel=[]; fecharEditorPonto(); renderCurva(idx);
@@ -1142,7 +1139,7 @@ function regerar(idx){
 function gerarPositivo(idx){
   const c=cfgGerador(idx);
   const negExist = SIMS[idx].pontos.filter(p=>p.pot<0);   // freio atual: preservado
-  genFreioMax = 0;                                         // gera SÓ a puxada (sem freio novo)
+  genFreioMax = 0; genMinPux = c.minpux;                   // gera SÓ a puxada (sem freio novo); piso da puxada = mín. do peixe
   const novo = (FIGHTS[LETRAS[idx]]||fightTucunare)(c.teto,c.fadiga,c.puxada,c.fisDur,c.fisPico,c.intens,c.espaco,c.durFis);
   SIMS[idx].pontos = finalizarFight(novo.concat(negExist));   // mescla puxada nova + freio antigo, clampa e ordena
   salvarPontos(idx); simAtiva=idx; selPonto=-1; multiSel=[]; fecharEditorPonto(); renderCurva(idx); salvarGenCfg(idx);
@@ -1153,7 +1150,7 @@ function gerarNegativo(idx){
   const c=cfgGerador(idx);
   let base = SIMS[idx].pontos.filter(p=>p.pot>=0).slice().sort((a,b)=>a.t-b.t);   // puxada + descansos
   if(!base.some(p=>p.pot>0)) base=[{t:0,pot:0},{t:c.durFis||0,pot:0},{t:DURACAO,pot:0}];   // sem puxada ainda: freio cobre tudo
-  genFreioMax = c.freioMax; genFreioQuad=c.freioQuad; genFreioFad=(c.fadiga||0)/100;
+  genFreioMax = c.freioMax; genFreioQuad=c.freioQuad; genFreioFad=(c.fadiga||0)/100; genMinPux = c.minpux;
   SIMS[idx].pontos = finalizarFight(preencherFreioJanelas(base, c.durFis));   // só adiciona o freio nas janelas (modo quadrado/característico)
   salvarPontos(idx); simAtiva=idx; selPonto=-1; multiSel=[]; fecharEditorPonto(); renderCurva(idx); salvarGenCfg(idx);
   log('🎲− '+NOMES[idx]+' — FREIO gerado (freio máx '+c.freioMax+' kgf)','ok');
@@ -1161,7 +1158,7 @@ function gerarNegativo(idx){
 function limparPositivo(idx){ SIMS[idx].pontos = SIMS[idx].pontos.filter(p=>p.pot<=0); salvarPontos(idx); selPonto=-1; multiSel=[]; fecharEditorPonto(); renderCurva(idx); log('🧹+ '+NOMES[idx]+' — PUXADA apagada','info'); }
 function limparNegativo(idx){ SIMS[idx].pontos = SIMS[idx].pontos.filter(p=>p.pot>=0); salvarPontos(idx); selPonto=-1; multiSel=[]; fecharEditorPonto(); renderCurva(idx); log('🧹− '+NOMES[idx]+' — FREIO apagado','info'); }
 // Persiste/recupera os ajustes do gerador POR PEIXE (simpesca2_gen_<id>_<campo>)
-const GEN_CAMPOS=[['corrida','corrida'],['fadiga','fadiga'],['puxada','puxada'],['saque','saque'],['fisDur','fisdur'],['intens','intens'],['espaco','espaco'],['freioMax','freiomax'],['fisFisDur','fisfisdur']];
+const GEN_CAMPOS=[['corrida','corrida'],['minpux','minpux'],['fadiga','fadiga'],['puxada','puxada'],['saque','saque'],['fisDur','fisdur'],['intens','intens'],['espaco','espaco'],['freioMax','freiomax'],['fisFisDur','fisfisdur']];
 const FISFIS_GLOBAL={fisfisdur:'simpesca2_fisfis_dur'};  // migração antiga (só o tempo de início)
 function salvarGenCfg(idx){ const id=LETRAS[idx]; GEN_CAMPOS.forEach(([inp,key])=>{ const el=document.getElementById(inp+idx); if(el) localStorage.setItem('simpesca2_gen_'+id+'_'+key, el.value); }); agendarSync('config'); }
 function togFreioQuad(i){ const el=document.getElementById('freioQuad'+i); if(el) localStorage.setItem('simpesca2_gen_'+LETRAS[i]+'_freioquad', el.checked?'1':'0'); }   // modo do freio (local; o totem não gera)
@@ -1196,7 +1193,6 @@ window.addEventListener('load',async()=>{
   }catch(e){}
   document.getElementById('calMpv').value=metrosPorVolta();
   document.getElementById('calLimite').value=limiteLinha();
-  document.getElementById('calOffset').value=offsetMotor();
   document.getElementById('calRpmMin').value=rpmMin();
   document.getElementById('calRpmMax').value=rpmMax();
   document.getElementById('calFreioA').value=freioMaxA();
