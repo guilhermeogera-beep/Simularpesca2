@@ -2,14 +2,14 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>SimPesca — Player</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#040810">
 <style>
 :root{--bg:#040810;--card:#080f18;--border:#0e1e30;--accent:#00d4ff;--green:#00e676;--red:#ff1744;--text:#c8d8e8;--dim:#2a4060;}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-body{background:var(--bg);color:var(--text);font-family:'Courier New',monospace;min-height:100dvh;display:flex;flex-direction:column;padding:16px;gap:14px;overflow-x:hidden;}
+body{background:var(--bg);color:var(--text);font-family:'Courier New',monospace;min-height:100dvh;display:flex;flex-direction:column;padding:16px;gap:14px;overflow-x:hidden;touch-action:manipulation;}
 header{display:flex;align-items:center;justify-content:space-between;padding-bottom:12px;border-bottom:1px solid var(--border);gap:8px;flex-wrap:wrap;}
 header h1{font-size:1rem;letter-spacing:4px;color:var(--accent);text-transform:uppercase;}
 .header-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
@@ -229,6 +229,18 @@ function freioRepousoEscalado(id){ const e=escalaPeso(id); return freioRepMin() 
 function freioPosSimA(id){ return freioMaxA()*escalaPeso(id); }   // FREIO do hold pós-sim = a MAIOR corrente do peixe (freio máx × peso)
 function enviarConfigRPM(frA, fpsA){ if(!configChar) return; const u16=v=>Math.max(0,Math.min(65535,Math.round(v))); const lo=u16(rpmMin()), hi=u16(rpmMax()), fa=u16(freioMaxA()), fr=u16((frA!=null?frA:freioRepMax())*10), fps=u16((fpsA!=null?fpsA:freioMaxA())*10); const b=new Uint8Array([lo&0xFF,(lo>>8)&0xFF,hi&0xFF,(hi>>8)&0xFF,fa&0xFF,(fa>>8)&0xFF,fr&0xFF,(fr>>8)&0xFF,fps&0xFF,(fps>>8)&0xFF]); try{ configChar.writeValueWithoutResponse?configChar.writeValueWithoutResponse(b):configChar.writeValue(b); }catch(e){} }   // 10 bytes: RPM mín/máx, freio máx (A), freio repouso, freio pós-sim (deci-A)
 function enviarRepouso(ativo){ if(!configChar) return; const b=new Uint8Array([ativo?1:0]); try{ configChar.writeValueWithoutResponse?configChar.writeValueWithoutResponse(b):configChar.writeValue(b); }catch(e){} }   // 1 byte: liga/desliga o freio de repouso (jogada começou/acabou)
+// ── HOLD PÓS-SIM feito pelo APP: ao acabar a jogada, mantém o FREIO máx do peixe por HOLD_POS_SIM_MS e depois solta ──
+// (segurança: eixo não solta de repente. Feito no app -> funciona com o firmware atual, sem regravar. Tempo ajustável aqui.)
+const HOLD_POS_SIM_MS=5000;
+let holdTimer=null;
+function pararHoldPosSim(){ if(holdTimer){ clearInterval(holdTimer); holdTimer=null; } }
+function iniciarHoldPosSim(id){
+  pararHoldPosSim();
+  const fFreio = ESC_NEG*escalaPeso(id);   // força que mapeia pro FREIO máx do peixe (−20×escala)
+  aplicarMotor(fFreio);                     // freia já
+  const fim=Date.now()+HOLD_POS_SIM_MS;
+  holdTimer=setInterval(()=>{ if(Date.now()>=fim){ pararHoldPosSim(); aplicarMotor(0); } else aplicarMotor(fFreio); }, 150);   // reenvia ~7x/s (alimenta o watchdog); solta no fim
+}
 async function tentarReconectar(){
   if(!navigator.bluetooth||!navigator.bluetooth.getDevices) return;
   try{ const d=await navigator.bluetooth.getDevices(); if(d.length){ btUI('','🔵 Reconectando...'); await ligar(d[0]).catch(()=>btUI('','🔵 Conectar')); } }catch(e){}
@@ -674,7 +686,7 @@ function loopSim(sim){
 function iniciarSim(id){
   const sim=SIMS[id];
   sim.pontos=carregarPontos(id);          // recarrega a curva (GitHub manda; pega a versão publicada)
-  sim.estaRodando=true;
+  sim.estaRodando=true; pararHoldPosSim();   // cancela um hold pós-sim anterior, se estiver rolando
   enviarConfigRPM(freioRepousoEscalado(id), freioPosSimA(id)); enviarRepouso(true);   // jogada começou -> manda freio de repouso + freio pós-sim (ambos por peso) + ativa
   sim.overlay.classList.add('oculto');
   novoJogoContadores();                    // novo jogador: zera só a contagem do jogo; a linha do carretel acumula
@@ -686,12 +698,12 @@ function iniciarSim(id){
   const comecar=()=>{ contando=true; sim.intervalo=loopSim(sim); };
   if(sync>0) sim.syncTimer=setTimeout(comecar, sync*1000); else comecar();   // espera o intro do vídeo
 }
-function pausarSim(id){ const sim=SIMS[id]; sim.estaRodando=false; contando=false; clearInterval(sim.intervalo); clearTimeout(sim.fisgadaTimer); clearTimeout(sim.syncTimer); pararFisgadaFisica(); simTocando=null; atualizarVisibilidadeHUD(); sim.video.pause(); enviarRepouso(false); aplicarMotor(0); simEmPausa=id; document.getElementById('pauseOverlay').classList.add('visivel'); }   // pausou -> libera o eixo
-function continuarSim(){ document.getElementById('pauseOverlay').classList.remove('visivel'); if(!simEmPausa) return; const sim=SIMS[simEmPausa]; sim.estaRodando=true; enviarConfigRPM(freioRepousoEscalado(simEmPausa), freioPosSimA(simEmPausa)); enviarRepouso(true); contando=true; simTocando=simEmPausa; atualizarVisibilidadeHUD(); sim.video.play().catch(()=>{}); sim.intervalo=loopSim(sim); simEmPausa=null; }   // voltou -> segura o eixo de novo
+function pausarSim(id){ const sim=SIMS[id]; sim.estaRodando=false; contando=false; clearInterval(sim.intervalo); clearTimeout(sim.fisgadaTimer); clearTimeout(sim.syncTimer); pararFisgadaFisica(); simTocando=null; atualizarVisibilidadeHUD(); sim.video.pause(); enviarRepouso(false); iniciarHoldPosSim(id); simEmPausa=id; document.getElementById('pauseOverlay').classList.add('visivel'); }   // pausou -> segura o freio por 5s (hold do app) e depois solta
+function continuarSim(){ document.getElementById('pauseOverlay').classList.remove('visivel'); if(!simEmPausa) return; const sim=SIMS[simEmPausa]; sim.estaRodando=true; pararHoldPosSim(); enviarConfigRPM(freioRepousoEscalado(simEmPausa), freioPosSimA(simEmPausa)); enviarRepouso(true); contando=true; simTocando=simEmPausa; atualizarVisibilidadeHUD(); sim.video.play().catch(()=>{}); sim.intervalo=loopSim(sim); simEmPausa=null; }   // voltou -> segura o eixo de novo
 function reiniciarSim(){ document.getElementById('pauseOverlay').classList.remove('visivel'); if(!simEmPausa) return; encerrarSim(simEmPausa,true,false); simEmPausa=null; }
 function encerrarSim(id, sairFS, salvar){
   const sim=SIMS[id]; clearInterval(sim.intervalo); clearTimeout(sim.fisgadaTimer); clearTimeout(sim.syncTimer); pararFisgadaFisica();
-  sim.estaRodando=false; contando=false; emJogo=false; simTocando=null; atualizarVisibilidadeHUD(); sim.video.pause(); enviarRepouso(false); aplicarMotor(0);  // fim da jogada -> libera o eixo (volta a ficar livre)
+  sim.estaRodando=false; contando=false; emJogo=false; simTocando=null; atualizarVisibilidadeHUD(); sim.video.pause(); enviarRepouso(false); iniciarHoldPosSim(id);  // fim da jogada -> segura o freio por 5s (hold do app) e depois solta
   const metros=metrosAtuais();
   if(sairFS){ if(document.exitFullscreen) document.exitFullscreen(); else if(document.webkitExitFullscreen) document.webkitExitFullscreen(); }
   devolverOverlays();

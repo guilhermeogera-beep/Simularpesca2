@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Simulador de Pesca — Dashboard</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#050a0f">
@@ -10,7 +10,7 @@
 <style>
 :root{--bg:#050a0f;--card:#0d151d;--surface:#121d28;--border:#1a2736;--accent:#00d4ff;--accent2:#0077b6;--green:#00e676;--yellow:#ffd600;--red:#ff1744;--text:#e0e6ed;--text-dim:#7b8d9e;--radius:14px;}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;min-height:100vh;padding:20px;line-height:1.6;max-width:1000px;margin:0 auto;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;min-height:100vh;padding:20px;line-height:1.6;max-width:1000px;margin:0 auto;touch-action:manipulation;}
 .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:20px;box-shadow:0 8px 32px rgba(0,0,0,0.2);}
 .secao-titulo{font-size:0.75rem;letter-spacing:2px;color:var(--text-dim);text-transform:uppercase;margin-bottom:15px;font-weight:600;display:flex;align-items:center;gap:8px;}
 header{display:flex;align-items:center;gap:12px;margin-bottom:24px;border-bottom:1px solid var(--border);padding-bottom:16px;flex-wrap:wrap;}
@@ -65,10 +65,10 @@ input[type="range"]::-webkit-slider-thumb{height:24px;width:24px;border-radius:5
 .sim-bloco.colapsado .sim-mini-gauge,
 .sim-bloco.colapsado .sim-controls{display:none;}   /* recolhido = só a setinha + nome do peixe */
 .timeline-wrap{position:relative;height:260px;background:#03070b;border:1px solid var(--border);border-radius:8px;overflow:hidden;}
-.curve-area{position:absolute;top:0;left:0;right:0;bottom:20px;z-index:2;cursor:crosshair;}
+.curve-area{position:absolute;top:0;left:0;right:0;bottom:20px;z-index:2;cursor:crosshair;touch-action:none;}
 .curve-svg{position:absolute;inset:0;width:100%;height:100%;}
 .curve-eixo{position:absolute;top:0;bottom:20px;left:0;right:0;z-index:4;pointer-events:none;}
-.ponto-handle{position:absolute;width:7px;height:7px;border-radius:50%;background:var(--accent);border:1.5px solid #fff;transform:translate(-50%,-50%);cursor:grab;z-index:12;box-shadow:0 0 3px rgba(0,212,255,0.6);}
+.ponto-handle{position:absolute;width:7px;height:7px;border-radius:50%;background:var(--accent);border:1.5px solid #fff;transform:translate(-50%,-50%);cursor:grab;z-index:12;box-shadow:0 0 3px rgba(0,212,255,0.6);touch-action:none;}
 .ponto-handle::before{content:'';position:absolute;inset:-7px;border-radius:50%;}  /* área de clique maior, invisível */
 .ponto-handle:active{cursor:grabbing;}
 .ponto-handle.freio{background:#ff5f5f;box-shadow:0 0 3px rgba(255,95,95,0.7);}
@@ -271,6 +271,9 @@ select{background:var(--surface);border:1px solid var(--border);color:var(--text
 </div>
 
 <script>
+// Bloqueia o pinch-zoom (iOS Safari ignora o user-scalable=no do viewport); o double-tap-zoom é desligado via touch-action:manipulation no body
+document.addEventListener('gesturestart', e=>e.preventDefault());
+document.addEventListener('gesturechange', e=>e.preventDefault());
 // ══ BLUETOOTH ═════════════════════════════════════════════════
 const SERVICE_UUID="a1b2c3d4-0001-4a5b-8c6d-1234567890ab";
 const CHAR_MOTOR_UUID="a1b2c3d4-0002-4a5b-8c6d-1234567890ab";
@@ -315,6 +318,18 @@ function freioRepousoEscalado(idx){ const e=escalaPeso(LETRAS[idx], pesoSimValor
 function freioPosSimA(idx){ return freioMaxA()*escalaPeso(LETRAS[idx], pesoSimValor(idx)); }   // FREIO do hold pós-sim = a MAIOR corrente do peixe (freio máx × peso)
 function enviarConfigRPM(frA, fpsA){ if(!configChar) return; const u16=v=>Math.max(0,Math.min(65535,Math.round(v))); const lo=u16(rpmMin()), hi=u16(rpmMax()), fa=u16(freioMaxA()), fr=u16((frA!=null?frA:freioRepMax())*10), fps=u16((fpsA!=null?fpsA:freioMaxA())*10); const b=new Uint8Array([lo&0xFF,(lo>>8)&0xFF,hi&0xFF,(hi>>8)&0xFF,fa&0xFF,(fa>>8)&0xFF,fr&0xFF,(fr>>8)&0xFF,fps&0xFF,(fps>>8)&0xFF]); try{ configChar.writeValueWithoutResponse?configChar.writeValueWithoutResponse(b):configChar.writeValue(b); }catch(e){} }   // 10 bytes: RPM mín/máx, freio máx (A), freio repouso, freio pós-sim (deci-A)
 function enviarRepouso(ativo){ if(!configChar) return; const b=new Uint8Array([ativo?1:0]); try{ configChar.writeValueWithoutResponse?configChar.writeValueWithoutResponse(b):configChar.writeValue(b); }catch(e){} }   // 1 byte: liga/desliga o freio de repouso (sim começou/acabou)
+// ── HOLD PÓS-SIM feito pelo APP: ao acabar a prévia, mantém o FREIO máx do peixe por HOLD_POS_SIM_MS e depois solta ──
+// (segurança: eixo não solta de repente. Feito no app -> funciona com o firmware atual, sem regravar. Tempo ajustável aqui.)
+const HOLD_POS_SIM_MS=5000;
+let holdTimer=null;
+function pararHoldPosSim(){ if(holdTimer){ clearInterval(holdTimer); holdTimer=null; } }
+function iniciarHoldPosSim(idx){
+  pararHoldPosSim(); manualForca=0;   // manualForca=0 evita o keepalive do slider brigar com o hold
+  const fFreio = ESC_NEG*escalaPeso(LETRAS[idx], pesoSimValor(idx));   // força que mapeia pro FREIO máx do peixe (−20×escala)
+  aplicarMotor(fFreio);                     // freia já
+  const fim=Date.now()+HOLD_POS_SIM_MS;
+  holdTimer=setInterval(()=>{ if(Date.now()>=fim){ pararHoldPosSim(); aplicarMotor(0); } else aplicarMotor(fFreio); }, 150);   // reenvia ~7x/s; solta no fim
+}
 async function reconectar(){ if(navigator.bluetooth&&navigator.bluetooth.getDevices){ try{ const d=await navigator.bluetooth.getDevices(); if(d.length) await ligar(d[0]).catch(()=>{}); }catch(e){} } }
 function escreverMotor(pct){ if(!motorChar) return; const b=new Int8Array([Math.max(-100,Math.min(100,Math.round(pct)))]); try{ motorChar.writeValueWithoutResponse?motorChar.writeValueWithoutResponse(b):motorChar.writeValue(b);}catch(e){} }   // força COM SINAL: + puxa, − freia
 function zerarEncoder(){ contagemEncoder=0; contAnt=0; primeiraLeitura=true; metrosGanhos=0; metrosPerdidos=0; travaAtiva=false; atualizarCalLive(); atualizarContadores(); if(linhaChar){ try{ linhaChar.writeValue(new Uint8Array([0])); }catch(e){} } log('Linha do carretel zerada (re-spool)','info'); }
@@ -697,6 +712,7 @@ document.addEventListener('keydown',e=>{
 
 // ══ PLAY / PAUSE / STOP (preview) ─────────────────────────────
 function playSim(idx){ const sim=SIMS[idx]; if(sim.estaRodando) return; sim.estaRodando=true; sim.tempoAtual=0;
+  pararHoldPosSim();   // cancela um hold pós-sim anterior, se estiver rolando
   enviarConfigRPM(freioRepousoEscalado(idx), freioPosSimA(idx)); enviarRepouso(true);   // sim começou -> manda freio de repouso + freio pós-sim (ambos por peso) + ativa
   metrosGanhos=0; metrosPerdidos=0; atualizarContadores();   // novo teste: zera Ganhos/Perdidos (a LINHA DO CARRETEL acumula, não zera)
   const ph=document.getElementById('playhead'+idx), ts=document.getElementById('tsDisplay'+idx);
@@ -716,8 +732,8 @@ function playSim(idx){ const sim=SIMS[idx]; if(sim.estaRodando) return; sim.esta
     if(t>=DURACAO) stopSim(idx);
   },100);
 }
-function pauseSim(idx){ const sim=SIMS[idx]; sim.estaRodando=false; cancelAnimationFrame(sim.raf); clearInterval(sim.intervalo); pararFisgadaFisica(); enviarRepouso(false); aplicarMotor(0); atualizarSimGauge(idx,0); }   // sim parou -> libera o eixo + zera o motor
-function stopSim(idx){ const sim=SIMS[idx]; sim.estaRodando=false; cancelAnimationFrame(sim.raf); clearInterval(sim.intervalo); pararFisgadaFisica(); enviarRepouso(false); sim.tempoAtual=0; atualizarInterfaceTempo(); atualizarSimGauge(idx,0); aplicarMotor(0); }   // sim acabou -> libera o eixo (volta a ficar livre)
+function pauseSim(idx){ const sim=SIMS[idx]; sim.estaRodando=false; cancelAnimationFrame(sim.raf); clearInterval(sim.intervalo); pararFisgadaFisica(); enviarRepouso(false); atualizarSimGauge(idx,0); iniciarHoldPosSim(idx); }   // sim parou -> segura o freio por 5s (hold do app) e depois solta
+function stopSim(idx){ const sim=SIMS[idx]; sim.estaRodando=false; cancelAnimationFrame(sim.raf); clearInterval(sim.intervalo); pararFisgadaFisica(); enviarRepouso(false); sim.tempoAtual=0; atualizarInterfaceTempo(); atualizarSimGauge(idx,0); iniciarHoldPosSim(idx); }   // sim acabou -> segura o freio por 5s (hold do app) e depois solta
 function fmt(s){ return `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`; }
 function atualizarInterfaceTempo(){ for(let i=0;i<NSIMS;i++){ const el=document.getElementById('tsDisplay'+i); if(el) el.textContent=`${fmt(SIMS[i].tempoAtual)} / ${fmt(DURACAO)}`; const ph=document.getElementById('playhead'+i); if(ph) ph.style.left=`${(SIMS[i].tempoAtual/DURACAO)*100}%`; } }
 
