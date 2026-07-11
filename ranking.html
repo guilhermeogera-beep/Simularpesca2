@@ -48,6 +48,8 @@ header h1{font-size:1.4rem;font-weight:800;color:var(--gold);letter-spacing:1px;
 
 <div class="acoes">
   <button class="btn btn-green" onclick="exportar()">⬇ Exportar ranking</button>
+  <button class="btn btn-green" onclick="document.getElementById('impRanking').click()">⬆ Importar ranking</button>
+  <input type="file" id="impRanking" accept="application/json,.json" style="display:none" onchange="importar(event)">
   <button class="btn btn-red" onclick="limpar()">🗑 Limpar ranking</button>
 </div>
 
@@ -88,6 +90,20 @@ function filtrar(sim,btn){ filtroAtual=sim; document.querySelectorAll('.filtro')
 function exportar(){
   const blob=new Blob([JSON.stringify(carregar(),null,2)],{type:'application/json'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='ranking_simpesca.json'; a.click(); URL.revokeObjectURL(a.href);
+}
+function importar(ev){
+  const f=ev.target.files[0]; ev.target.value=''; if(!f) return;
+  const r=new FileReader();
+  r.onload=e=>{ try{
+      const d=JSON.parse(e.target.result);
+      const nova=Array.isArray(d)?d:(Array.isArray(d.ranking)?d.ranking:null);   // aceita o array exportado (ou {ranking:[...]})
+      if(!nova) throw 0;
+      const atual=carregar(), chave=x=>[x.nome,x.sim,x.metros,x.data].join('|'), ex=new Set(atual.map(chave)); let add=0;
+      nova.forEach(x=>{ if(x && x.nome!=null && !ex.has(chave(x))){ atual.push(x); ex.add(chave(x)); add++; } });   // JUNTA, ignora repetidas (mesma jogada)
+      localStorage.setItem('simpesca2_ranking', JSON.stringify(atual)); render();
+      alert(add+' jogada(s) importada(s)'+(nova.length-add>0?' · '+(nova.length-add)+' repetida(s) ignorada(s)':'')+'.');
+    }catch(err){ alert('Arquivo inválido — use um ranking exportado (.json).'); } };
+  r.readAsText(f);
 }
 function limpar(){ if(confirm('Apagar TODO o ranking? Não dá para desfazer.')){ localStorage.removeItem('simpesca2_ranking'); render(); } }
 window.addEventListener('load',()=>{
