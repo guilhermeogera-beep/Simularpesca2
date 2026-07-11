@@ -67,7 +67,7 @@ function nomePeixe(id){ const e=ESPECIES.find(x=>x.id===id); return e?e.nome:('S
 function carregar(){ try{ return JSON.parse(localStorage.getItem('simpesca2_ranking'))||[]; }catch(e){ return []; } }
 function nomeValido(n){ n=(n||'').trim().toLowerCase(); return n!=='' && n!=='jogador'; }   // jogada sem nome não conta
 function fmtData(iso){ const d=new Date(iso); return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
-const PESO_EXP=0.4;   // pontuação = metros × peso^0.4 (igual ao player). Ajuste só aqui + no player.html.
+const PESO_EXP=0.5;   // pontuação = metros × peso^0.5 (√peso, igual ao player). Ajuste só aqui + no player.html.
 function scoreRank(r){ const p=(isFinite(r.peso)&&r.peso>0)?r.peso:1; return Math.round((r.metros||0)*Math.pow(p, PESO_EXP)); }   // RECALCULA sempre (registro antigo re-ordena consistente)
 function render(){
   const todos=carregar().filter(r=>nomeValido(r.nome));   // esconde jogadas sem nome / "Jogador"

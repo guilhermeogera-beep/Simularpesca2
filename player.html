@@ -722,7 +722,7 @@ function encerrarSim(id, sairFS, salvar){
 // nome "de verdade": não vazio e diferente de "Jogador" (placeholder). Jogada sem nome não entra no ranking.
 function nomeValido(n){ n=(n||'').trim().toLowerCase(); return n!=='' && n!=='jogador'; }
 // PONTUAÇÃO = metros recolhidos × peso^PESO_EXP (o peixe grande rende mais, mas suave — a dificuldade já baixa os metros).
-const PESO_EXP=0.4;   // 1: peso cheio (estoura) · 0.5: raiz · 0.4 (atual): 50kg≈1,5× o 1kg · 0.33: quase igual. Ajuste só aqui.
+const PESO_EXP=0.5;   // 1: peso cheio (estoura) · 0.5 (atual): raiz → 50kg≈2× o 1kg · 0.4: 1,5× · 0.33: quase igual. Ajuste só aqui.
 function scoreRank(r){ const p=(isFinite(r.peso)&&r.peso>0)?r.peso:1; return Math.round((r.metros||0)*Math.pow(p, PESO_EXP)); }   // RECALCULA sempre (registro antigo re-ordena consistente; ignora o score salvo)
 function salvarRanking(nome, metros, sim){ let lista=[]; try{ lista=JSON.parse(localStorage.getItem('simpesca2_ranking'))||[]; }catch(e){} const peso=Math.round(pesoEsp(sim)*10)/10; const score=Math.round(metros*Math.pow(peso, PESO_EXP)); lista.push({nome, metros:Math.round(metros*10)/10, sim, peso, score, data:new Date().toISOString()}); localStorage.setItem('simpesca2_ranking', JSON.stringify(lista)); }
 function mostrarResultado(nome, metros, sim, salvou){
