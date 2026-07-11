@@ -401,6 +401,7 @@ function aplicarConfigPlayer(d){
   if(c.freioa!=null) localStorage.setItem('simpesca2_cal_freioa', c.freioa);
   if(c.freiorepmin!=null) localStorage.setItem('simpesca2_cal_freiorepmin', c.freiorepmin);
   if(c.freiorepmax!=null) localStorage.setItem('simpesca2_cal_freiorepmax', c.freiorepmax);
+  if(c.pesoexp!=null) localStorage.setItem('simpesca2_rank_pesoexp', c.pesoexp);   // expoente do peso na pontuação (sincronizado)
   enviarConfigRPM();   // reenvia RPM + freio máx + freio repouso pro ESP (caso já esteja conectado quando o config do GitHub chega)
   if(c.inv!=null)    localStorage.setItem('simpesca2_cal_inv', c.inv);
   const s=d.sync||{};

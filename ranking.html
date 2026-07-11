@@ -37,8 +37,23 @@ header h1{font-size:1.4rem;font-weight:800;color:var(--gold);letter-spacing:1px;
 <header>
   <span style="font-size:1.6rem">🏆</span>
   <h1>Ranking</h1>
-  <a href="player.html" class="btn-link spacer">▶ Player</a>
+  <button class="btn-link spacer" onclick="toggleConfig()">⚙️ Configuração</button>
+  <a href="player.html" class="btn-link">▶ Player</a>
 </header>
+
+<div id="configPanel" style="display:none;margin-bottom:16px;padding:16px;background:var(--card);border:1px solid var(--border);border-radius:12px;">
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+    <span style="font-size:0.85rem;color:var(--text);white-space:nowrap;">⚙️ Peso na pontuação (multiplicador = peso <sup>expoente</sup>):</span>
+    <input type="number" id="cfgPesoExp" min="0" max="1.5" step="0.05" value="0.5" onchange="salvarPesoExp()" style="width:84px;background:#0d151d;border:1px solid var(--accent);border-radius:6px;color:var(--text);font-family:monospace;font-size:1rem;padding:6px 8px;text-align:center;outline:none;">
+  </div>
+  <div id="cfgPesoHint" style="font-size:0.72rem;color:var(--dim);margin-top:7px;line-height:1.5;"></div>
+  <div class="acoes" style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
+    <button class="btn btn-green" onclick="exportar()">⬇ Exportar ranking</button>
+    <button class="btn btn-green" onclick="document.getElementById('impRanking').click()">⬆ Importar ranking</button>
+    <input type="file" id="impRanking" accept="application/json,.json" style="display:none" onchange="importar(event)">
+    <button class="btn btn-red" onclick="limpar()">🗑 Limpar ranking</button>
+  </div>
+</div>
 
 <div class="filtros" id="filtros">
   <button class="filtro ativo" data-sim="todos" onclick="filtrar('todos',this)">Todas</button>
@@ -46,23 +61,9 @@ header h1{font-size:1.4rem;font-weight:800;color:var(--gold);letter-spacing:1px;
 
 <div class="lista" id="lista"></div>
 
-<div class="acoes">
-  <button class="btn btn-green" onclick="exportar()">⬇ Exportar ranking</button>
-  <button class="btn btn-green" onclick="document.getElementById('impRanking').click()">⬆ Importar ranking</button>
-  <input type="file" id="impRanking" accept="application/json,.json" style="display:none" onchange="importar(event)">
-  <button class="btn btn-red" onclick="limpar()">🗑 Limpar ranking</button>
-</div>
-
-<div style="margin-top:16px;padding:14px 16px;background:var(--card);border:1px solid var(--border);border-radius:12px;">
-  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-    <span style="font-size:0.85rem;color:var(--text);white-space:nowrap;">⚙️ Peso na pontuação (multiplicador = peso <sup>expoente</sup>):</span>
-    <input type="number" id="cfgPesoExp" min="0" max="1.5" step="0.05" value="0.5" onchange="salvarPesoExp()" style="width:84px;background:#0d151d;border:1px solid var(--accent);border-radius:6px;color:var(--text);font-family:monospace;font-size:1rem;padding:6px 8px;text-align:center;outline:none;">
-  </div>
-  <div id="cfgPesoHint" style="font-size:0.72rem;color:var(--dim);margin-top:7px;line-height:1.5;"></div>
-</div>
-
 <script>
 let filtroAtual='todos';
+function toggleConfig(){ const p=document.getElementById('configPanel'); p.style.display = (p.style.display==='none'||!p.style.display) ? 'block' : 'none'; }
 const ESPECIES=[
   {id:'pirarara', nome:'Pirarara'},
   {id:'tambaqui', nome:'Tambacu'},
@@ -79,7 +80,23 @@ function fmtData(iso){ const d=new Date(iso); return d.toLocaleDateString('pt-BR
 function pesoExp(){ const v=parseFloat(localStorage.getItem('simpesca2_rank_pesoexp')); return (isFinite(v)&&v>=0)?v:0.5; }
 function scoreRank(r){ const p=(isFinite(r.peso)&&r.peso>0)?r.peso:1; return Math.round((r.metros||0)*Math.pow(p, pesoExp())); }   // RECALCULA sempre (registro antigo re-ordena consistente)
 function atualizarPesoHint(){ const e=pesoExp(), h=document.getElementById('cfgPesoHint'); if(h) h.textContent='com a MESMA linha, um peixe de 50 kg vale ×'+Math.pow(50,e).toFixed(1)+' que um de 1 kg · 0 = ignora peso · 1 = peso cheio'; }
-function salvarPesoExp(){ const el=document.getElementById('cfgPesoExp'); const v=parseFloat(el.value); if(isFinite(v)&&v>=0){ localStorage.setItem('simpesca2_rank_pesoexp', v); atualizarPesoHint(); render(); } else el.value=pesoExp(); }
+function salvarPesoExp(){ const el=document.getElementById('cfgPesoExp'); const v=parseFloat(el.value); if(isFinite(v)&&v>=0){ localStorage.setItem('simpesca2_rank_pesoexp', v); atualizarPesoHint(); render(); syncPesoExp(); } else el.value=pesoExp(); }
+// Sobe cal.pesoexp pro config.json (read-modify-write) — só num aparelho COM token (o totem só lê, via player/aplicarConfig).
+const GH_REPO='guilhermeogera-beep/Simularpesca2', GH_CONFIG='config.json';
+function ghToken(){ return (localStorage.getItem('simpesca2_github_token')||'').trim(); }
+async function syncPesoExp(){
+  if(!ghToken() || !navigator.onLine) return;
+  const headers={'Authorization':'token '+ghToken(),'Accept':'application/vnd.github+json'}, url='https://api.github.com/repos/'+GH_REPO+'/contents/'+GH_CONFIG;
+  let cfg={versao:2,tipo:'config',cal:{},gen:{},sync:{}}, sha=null, ok=false;
+  try{ const g=await fetch(url,{headers,cache:'no-store'});
+    if(g.ok){ const j=await g.json(); sha=j.sha; try{ cfg=JSON.parse(decodeURIComponent(escape(atob((j.content||'').replace(/\s/g,''))))); }catch(e){} ok=true; }
+    else if(g.status===404){ ok=true; }
+  }catch(e){ return; }
+  if(!ok) return;   // erro (rate limit/token): não arrisca sobrescrever
+  cfg.cal=cfg.cal||{}; cfg.cal.pesoexp=pesoExp(); cfg.criado=new Date().toISOString();
+  const body={message:'auto: peso na pontuacao', content:btoa(unescape(encodeURIComponent(JSON.stringify(cfg,null,2))))}; if(sha) body.sha=sha;
+  try{ await fetch(url,{method:'PUT',headers,body:JSON.stringify(body)}); }catch(e){}
+}
 function render(){
   const todos=carregar().filter(r=>nomeValido(r.nome));   // esconde jogadas sem nome / "Jogador"
   let lista = filtroAtual==='todos' ? todos : todos.filter(r=>r.sim===filtroAtual);
