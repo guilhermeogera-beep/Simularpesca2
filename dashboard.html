@@ -1032,8 +1032,9 @@ function preencherFreioJanelas(pts, t0){
       const mid=(a.t+w/2)/DURACAO, fad=(1-0.45*genFreioFad*mid);   // fadiga: freio afrouxa ao longo da briga (mesmo fator nos dois modos)
       if(genFreioQuad){ fr=-genFreioMax*fad; }                                       // QUADRADO: paredes UNIFORMES que afrouxam com a fadiga (sem variação aleatória)
       else { fr=-genFreioMax*fad*rnd(0.7,1.0); }                                     // CARACTERÍSTICO: fadiga + variação aleatória por janela
-      out.push({t:a.t+w*0.2, pot:fr, frear:true});     // entra no freio
-      out.push({t:a.t+w*0.8, pot:fr, frear:true});     // segura até quase o fim da janela
+      const e = genFreioQuad ? Math.min(0.08, w*0.08) : w*0.2;   // QUADRADO: borda coladinha = queda VERTICAL (bloco retangular, enche a janela) · CARACTERÍSTICO: rampa (diagonal)
+      out.push({t:a.t+e, pot:fr, frear:true});         // entra no freio (queda seca no quadrado)
+      out.push({t:b.t-e, pot:fr, frear:true});         // segura até quase o fim da janela (subida seca no quadrado)
     }
   }
   return out;
