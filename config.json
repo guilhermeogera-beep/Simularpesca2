@@ -1,22 +1,21 @@
 {
   "versao": 2,
   "tipo": "config",
-  "criado": "2026-07-11T22:34:12.858Z",
+  "criado": "2026-07-10T00:00:00.000Z",
   "cal": {
     "mpv": 34,
-    "limite": -50,
+    "limite": -150,
     "rpmmin": 1100,
     "rpmmax": 2000,
     "freioa": 12,
-    "freiorepmin": 1,
-    "freiorepmax": 4,
-    "inv": "0",
-    "pesoexp": 2.4
+    "freiorepmin": 2,
+    "freiorepmax": 12,
+    "pesoexp": 2.4,
+    "inv": "1"
   },
   "gen": {
     "pirarara": {
       "corrida": "20",
-      "minpux": "7",
       "fadiga": "50",
       "puxada": "55",
       "saque": "24",
@@ -28,7 +27,6 @@
     },
     "tambaqui": {
       "corrida": "18",
-      "minpux": "7",
       "fadiga": "50",
       "puxada": "55",
       "saque": "22",
@@ -40,7 +38,6 @@
     },
     "tucunare": {
       "corrida": "9",
-      "minpux": "6",
       "fadiga": "50",
       "puxada": "55",
       "saque": "11",
@@ -52,7 +49,6 @@
     },
     "dourado": {
       "corrida": "14",
-      "minpux": "7",
       "fadiga": "50",
       "puxada": "55",
       "saque": "18",
@@ -64,7 +60,6 @@
     },
     "trairao": {
       "corrida": "9",
-      "minpux": "7",
       "fadiga": "50",
       "puxada": "55",
       "saque": "11",
@@ -76,7 +71,6 @@
     },
     "jau": {
       "corrida": "29",
-      "minpux": "7",
       "fadiga": "50",
       "puxada": "55",
       "saque": "35",

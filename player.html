@@ -225,12 +225,15 @@ function fisgadaFisicaCfg(id){   // v2: só o INÍCIO DA BRIGA (dur, s) — marc
 function pararFisgadaFisica(){}   // obsoleto no v2 (não há fisgada física); mantido só pra não quebrar chamadas antigas
 // ── CONFIG do motor (RPM mín/máx) — enviada ao ESP ao conectar ──
 // O ESP mapeia o valor da curva (0..40) pra rotação: valor baixo→RPM mín, valor 40→RPM máx (capa os metros).
-function rpmMin(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_rpmmin')); return (isFinite(v)&&v>=0)?v:1000; }
-function rpmMax(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_rpmmax')); return (isFinite(v)&&v>0)?v:3000; }
+function rpmMin(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_rpmmin')); return (isFinite(v)&&v>=0)?v:1100; }
+function rpmMax(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_rpmmax')); return (isFinite(v)&&v>0)?v:2000; }
 function freioMaxA(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_freioa')); return (isFinite(v)&&v>0)?v:12; }   // corrente (A) do FREIO máximo (base do gráfico -20) — calibrada no dashboard, vai pro ESP
-function freioRepMin(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_freiorepmin')); return (isFinite(v)&&v>=0)?v:1; }   // freio de repouso do peixe MENOR
-function freioRepMax(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_freiorepmax')); return (isFinite(v)&&v>=0)?v:4; }   // freio de repouso do peixe MAIOR
+function freioRepMin(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_freiorepmin')); return (isFinite(v)&&v>=0)?v:2; }   // freio de repouso do peixe MENOR
+function freioRepMax(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_freiorepmax')); return (isFinite(v)&&v>=0)?v:12; }   // freio de repouso do peixe MAIOR
 function freioRepousoEscalado(id){ const e=escalaPeso(id); return freioRepMin() + e*(freioRepMax()-freioRepMin()); }   // varia com o PESO: peixe menor→mín, maior→máx
+// FORÇA (com sinal, negativa) que gera o freio de repouso no ESP pela via do FREIO MANUAL — funciona mesmo em firmware SEM repousoAtivo.
+// Firmware: setBrakeCurrent = (|f|/20)·freioMax  =>  p/ corrente R:  f = -20·R/freioMax. Assim a zona morta da sim NUNCA solta o eixo (coast).
+function freioRepousoForca(id){ const r=freioRepousoEscalado(id), fm=freioMaxA(); return (r>0&&fm>0) ? Math.max(-100, Math.round(-20*r/fm)) : 0; }
 function freioPosSimA(id){ return freioMaxA()*escalaPeso(id); }   // FREIO do hold pós-sim = a MAIOR corrente do peixe (freio máx × peso)
 function enviarConfigRPM(frA, fpsA){ if(!configChar) return; const u16=v=>Math.max(0,Math.min(65535,Math.round(v))); const lo=u16(rpmMin()), hi=u16(rpmMax()), fa=u16(freioMaxA()), fr=u16((frA!=null?frA:freioRepMax())*10), fps=u16((fpsA!=null?fpsA:freioMaxA())*10); const b=new Uint8Array([lo&0xFF,(lo>>8)&0xFF,hi&0xFF,(hi>>8)&0xFF,fa&0xFF,(fa>>8)&0xFF,fr&0xFF,(fr>>8)&0xFF,fps&0xFF,(fps>>8)&0xFF]); try{ configChar.writeValueWithoutResponse?configChar.writeValueWithoutResponse(b):configChar.writeValue(b); }catch(e){} }   // 10 bytes: RPM mín/máx, freio máx (A), freio repouso, freio pós-sim (deci-A)
 function enviarRepouso(ativo){ if(!configChar) return; const b=new Uint8Array([ativo?1:0]); try{ configChar.writeValueWithoutResponse?configChar.writeValueWithoutResponse(b):configChar.writeValue(b); }catch(e){} }   // 1 byte: liga/desliga o freio de repouso (jogada começou/acabou)
@@ -258,9 +261,9 @@ function novoJogoContadores(){ metrosGanhos=0; metrosPerdidos=0; contAnt=contage
 function resetarLinha(){ if(confirm('Zerar a linha acumulada do carretel?\nFaça isso só DEPOIS de re-enrolar a linha na carretilha/molinete.')){ zerarEncoder(); mostrarToast('Linha do carretel zerada'); } }
 
 // ══ CALIBRAÇÃO / LINHA ────────────────────────────────────────
-function metrosPorVolta(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_mpv')); return (isFinite(v)&&v>0)?v:24; }   // padrão calibrado no v2 (VESC)
-function limiteLinha(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_limite')); return (isFinite(v)&&v!==0)?v:-50; }
-function inverterDir(){ return localStorage.getItem('simpesca2_cal_inv')==='1'; }
+function metrosPorVolta(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_mpv')); return (isFinite(v)&&v>0)?v:34; }   // padrão calibrado no v2 (VESC)
+function limiteLinha(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_limite')); return (isFinite(v)&&v!==0)?v:-150; }
+function inverterDir(){ return (localStorage.getItem('simpesca2_cal_inv')||'1')==='1'; }   // PADRÃO = invertido (hardware v2); só desmarca se salvar '0'
 function contagemParaMetros(c){ let m=(c/4096)*metrosPorVolta(); if(inverterDir()) m=-m; return m; }
 function metrosAtuais(){ return Math.max(0, metrosGanhos); }   // só os metros recolhidos (ganhos)
 function atualizarLinha(){ const m=metrosAtuais(); document.getElementById('linhaBadge').textContent='LINHA '+m.toFixed(1)+' m'; document.getElementById('hudLinha').textContent='🎣 Enrolada: '+m.toFixed(1)+' m';
@@ -509,11 +512,11 @@ window.addEventListener('load',async()=>{
 let ultimoToastTrava=0;
 function travado(){ return Math.abs(linhaCarretel()) >= Math.abs(limiteLinha()); }
 function comOffset(pct){ const m=Math.abs(pct); return m<0.5?0 : Math.max(-100,Math.min(100,pct)); }  // v2 (RPM/corrente): SEM zona morta — passa direto; o piso da puxada é o MIN_RPM no ESP
-function aplicarMotor(pct){ pct=Math.max(-100,Math.min(100,pct));
+function aplicarMotor(pct, estadoRaw){ pct=Math.max(-100,Math.min(100,pct));
   if(travado() && pct>0){ if(Date.now()-ultimoToastTrava>2500){ ultimoToastTrava=Date.now(); mostrarToast('🛑 Motor travado pelo limite de linha'); } pct=0; }   // trava bloqueia só a PUXADA; o freio (−) não gasta linha
   pct=comOffset(pct);
   escreverMotorBLE(pct); const mag=Math.abs(pct); const b=document.getElementById('motorBadge'); b.textContent=(pct<0?'FREIO ':'MOTOR ')+mag.toFixed(0)+'%'; b.className='badge '+(mag>70?'alto':mag>0?'ativo':'');
-  const est=document.getElementById('hudEstado'); const fio=Math.round(pct); const puxando=fio>0.5, freando=fio<-0.5;   // mesmo limiar do firmware (±0.5) sobre o valor ARREDONDADO que vai pro fio
+  const est=document.getElementById('hudEstado'); const raw=(estadoRaw===undefined?pct:estadoRaw); const puxando=Math.round(pct)>0.5, freando=Math.round(raw)<-0.5;   // puxando = motor REALMENTE puxando (pós-trava, pós-offset); resistindo = FREIO DA CURVA (raw<-0.5). Freio de repouso na zona morta e puxada travada caem em "recolha".
   est.classList.toggle('puxando',puxando); est.classList.toggle('freando',freando); est.classList.toggle('recolher',!puxando&&!freando);
   est.textContent=puxando?'🐟 PEIXE PUXANDO — segure!':freando?'🛑 RESISTINDO — force a recolhida!':'🎣 RECOLHA A LINHA!'; }
 
@@ -688,7 +691,9 @@ function loopSim(sim){
   // escalada pelo PESO do peixe selecionado (lei peso^⅔ — afeta puxada E freio)
   const esc=escalaPeso(sim.letra);
   return setInterval(()=>{ const pts=sim.pontos, tef=sim.video.currentTime - syncVideo(sim.letra), fim=pts.length?pts[pts.length-1].t:0;
-    aplicarMotor(tef>=fim ? 0 : interpolarPontos(pts, tef) * esc); },100);   // depois do último ponto o motor PARA (evita curva manual terminada em >0 puxar até o fim do vídeo)
+    let v = tef>=fim ? 0 : interpolarPontos(pts, tef) * esc, raw=v;            // depois do último ponto o motor PARA (evita curva manual terminada em >0 puxar até o fim do vídeo)
+    if(Math.abs(v) < 0.5) v = freioRepousoForca(sim.letra);                    // ZONA MORTA (descanso/trecho fraco): freio de repouso pelo app -> o eixo NUNCA fica livre (não depende do repousoAtivo do firmware)
+    aplicarMotor(v, raw); },100);                                             // envia o freio de repouso, mas o HUD reflete a curva (raw): 0 = "recolha", não "resistindo"
 }
 function iniciarSim(id){
   const sim=SIMS[id];
@@ -724,7 +729,7 @@ function encerrarSim(id, sairFS, salvar){
 function nomeValido(n){ n=(n||'').trim().toLowerCase(); return n!=='' && n!=='jogador'; }
 // PONTUAÇÃO = metros recolhidos × peso^expoente (o expoente é configurável na aba ranking; a dificuldade já baixa os metros).
 // Expoente do peso na pontuação (peso^EXP), configurável na aba RANKING (localStorage). 0=ignora peso · 0.5=raiz · 1=peso cheio.
-function pesoExp(){ const v=parseFloat(localStorage.getItem('simpesca2_rank_pesoexp')); return (isFinite(v)&&v>=0)?v:0.5; }
+function pesoExp(){ const v=parseFloat(localStorage.getItem('simpesca2_rank_pesoexp')); return (isFinite(v)&&v>=0)?v:2.4; }
 function scoreRank(r){ const p=(isFinite(r.peso)&&r.peso>0)?r.peso:1; return Math.round((r.metros||0)*Math.pow(p, pesoExp())); }   // RECALCULA sempre (registro antigo re-ordena consistente; ignora o score salvo)
 function salvarRanking(nome, metros, sim){ let lista=[]; try{ lista=JSON.parse(localStorage.getItem('simpesca2_ranking'))||[]; }catch(e){} const peso=Math.round(pesoEsp(sim)*10)/10; const score=Math.round(metros*Math.pow(peso, pesoExp())); lista.push({nome, metros:Math.round(metros*10)/10, sim, peso, score, data:new Date().toISOString()}); localStorage.setItem('simpesca2_ranking', JSON.stringify(lista)); }
 function mostrarResultado(nome, metros, sim, salvou){
