@@ -64,9 +64,9 @@ input[type=text]:focus{border-color:var(--accent);}
 #hudEstado.puxando{color:var(--red);border-color:var(--red);background:rgba(255,23,68,0.22);}
 #hudEstado.recolher{color:var(--green);border-color:var(--green);background:rgba(0,230,118,0.22);}
 #hudEstado.freando{color:#ffc061;border-color:#ffb84d;background:rgba(255,170,0,0.22);}
-#hudCarretel{position:fixed;top:12px;right:14px;z-index:62;border:2px solid var(--accent);border-radius:14px;padding:8px 14px;font-size:0.95rem;font-weight:800;letter-spacing:1px;display:none;background:rgba(0,0,0,0.45);color:var(--accent);pointer-events:none;}
+#hudCarretel{position:fixed;top:12px;right:14px;z-index:62;border:2px solid var(--red);border-radius:14px;padding:10px 18px;font-size:1.9rem;font-weight:800;letter-spacing:1px;display:none;background:rgba(0,0,0,0.55);color:var(--red);pointer-events:none;text-shadow:0 0 12px rgba(255,23,68,0.5);}
 #hudCarretel.visivel{display:block;}
-#hudCarretel.travado{color:var(--red);border-color:var(--red);background:rgba(255,23,68,0.22);}
+#hudCarretel.travado{color:#fff;border-color:var(--red);background:rgba(255,23,68,0.85);}
 #hudTimeline{position:fixed;top:58px;left:14px;z-index:61;width:280px;max-width:58vw;height:38px;background:rgba(0,0,0,0.4);border:1px solid var(--border);border-radius:9px;padding:3px;display:none;pointer-events:none;}
 #hudTimeline.visivel{display:block;}
 #tlCanvas{width:100%;height:100%;display:block;border-radius:6px;}
@@ -159,6 +159,8 @@ input[type=text]:focus{border-color:var(--accent);}
   <div class="recorde" id="resultadoRecorde">🏆 Novo recorde!</div>
   <div class="lbl">Linha recolhida</div>
   <div class="metros-grande" id="resultadoMetros">0.0 m</div>
+  <div class="lbl" style="margin-top:8px;">📍 Linha no carretel</div>
+  <div id="resultadoCarretel" style="font-size:2rem;font-weight:800;color:var(--red);text-shadow:0 0 12px rgba(255,23,68,0.5);margin-bottom:4px;">0.0 m</div>
   <div class="posicao-grande" id="resultadoPos">—</div>
   <div class="lbl" id="resultadoNome">—</div>
   <div class="fs-btns"><button class="btn-fs btn-ok" onclick="fecharResultado();abrirRanking()">🏆 Ver ranking</button><button class="btn-fs btn-sec" onclick="fecharResultado()">Fechar</button></div>
@@ -514,7 +516,7 @@ function aplicarMotor(pct){ pct=Math.max(-100,Math.min(100,pct));
 let simTocando=null, tlRAF=null, emJogo=false;
 const TL_PASSADO=1.4, TL_FUTURO=6.0;   // segundos à esquerda (passado) e à direita (futuro) do "AGORA"
 const ESC_POS=40, ESC_NEG=-20, ESC_RANGE=ESC_POS-ESC_NEG;   // escala da barra (igual ao dashboard): +40 puxa (topo) · -20 freia (base) · 0 a ~⅔
-const hudCfg={linha:true, estado:true, barra:true, carretel:false, sync:true, peso:true};
+const hudCfg={linha:true, estado:true, barra:true, carretel:true, sync:true, peso:true};
 function loopTimeline(){ tlRAF=requestAnimationFrame(loopTimeline); if(simTocando!=null) desenharTimeline(SIMS[simTocando]); }
 function desenharTimeline(sim){
   const cv=document.getElementById('tlCanvas'); if(!cv) return;
@@ -578,7 +580,7 @@ function atualizarPesoCards(){ document.querySelectorAll('.card-peso').forEach(e
 function salvarHudCfg(){ localStorage.setItem('simpesca2_hud_linha',hudCfg.linha?'1':'0'); localStorage.setItem('simpesca2_hud_estado',hudCfg.estado?'1':'0'); localStorage.setItem('simpesca2_hud_barra',hudCfg.barra?'1':'0'); localStorage.setItem('simpesca2_hud_carretel',hudCfg.carretel?'1':'0'); localStorage.setItem('simpesca2_hud_sync',hudCfg.sync?'1':'0'); localStorage.setItem('simpesca2_hud_peso',hudCfg.peso?'1':'0'); }
 function carregarHudCfg(){
   const g=(k,d)=>{ const v=localStorage.getItem(k); return v===null?d:v==='1'; };
-  hudCfg.linha=g('simpesca2_hud_linha',true); hudCfg.estado=g('simpesca2_hud_estado',true); hudCfg.barra=g('simpesca2_hud_barra',true); hudCfg.carretel=g('simpesca2_hud_carretel',false); hudCfg.sync=g('simpesca2_hud_sync',true); hudCfg.peso=g('simpesca2_hud_peso',true);
+  hudCfg.linha=g('simpesca2_hud_linha',true); hudCfg.estado=g('simpesca2_hud_estado',true); hudCfg.barra=g('simpesca2_hud_barra',true); hudCfg.carretel=g('simpesca2_hud_carretel',true); hudCfg.sync=g('simpesca2_hud_sync',true); hudCfg.peso=g('simpesca2_hud_peso',true);
   const cl=document.getElementById('cfgLinha'), ce=document.getElementById('cfgEstado'), cb=document.getElementById('cfgBarra'), cc=document.getElementById('cfgCarretel'), cs=document.getElementById('cfgSync'), cp=document.getElementById('cfgPeso');
   cl.checked=hudCfg.linha; ce.checked=hudCfg.estado; cb.checked=hudCfg.barra; cc.checked=hudCfg.carretel; cs.checked=hudCfg.sync; cp.checked=hudCfg.peso;
   cl.addEventListener('change',()=>{ hudCfg.linha=cl.checked; salvarHudCfg(); atualizarVisibilidadeHUD(); });
@@ -718,6 +720,7 @@ function nomeValido(n){ n=(n||'').trim().toLowerCase(); return n!=='' && n!=='jo
 function salvarRanking(nome, metros, sim){ let lista=[]; try{ lista=JSON.parse(localStorage.getItem('simpesca2_ranking'))||[]; }catch(e){} lista.push({nome, metros:Math.round(metros*10)/10, sim, peso:Math.round(pesoEsp(sim)*10)/10, data:new Date().toISOString()}); localStorage.setItem('simpesca2_ranking', JSON.stringify(lista)); }
 function mostrarResultado(nome, metros, sim, salvou){
   document.getElementById('resultadoMetros').textContent=metros.toFixed(1)+' m';
+  document.getElementById('resultadoCarretel').textContent=linhaCarretel().toFixed(1)+' / '+limiteLinha().toFixed(0)+' m';   // linha no carretel (pra saber quanto recolher / re-spool)
   const posEl=document.getElementById('resultadoPos'), nomeEl=document.getElementById('resultadoNome'), rec=document.getElementById('resultadoRecorde');
   if(salvou===false){                                    // jogada sem nome: mostra os metros, mas não salva nem posiciona
     nomeEl.textContent='Jogada de teste';
