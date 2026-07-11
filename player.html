@@ -721,14 +721,15 @@ function encerrarSim(id, sairFS, salvar){
 // ══ RANKING ───────────────────────────────────────────────────
 // nome "de verdade": não vazio e diferente de "Jogador" (placeholder). Jogada sem nome não entra no ranking.
 function nomeValido(n){ n=(n||'').trim().toLowerCase(); return n!=='' && n!=='jogador'; }
-// PONTUAÇÃO = metros recolhidos × peso^PESO_EXP (o peixe grande rende mais, mas suave — a dificuldade já baixa os metros).
-const PESO_EXP=0.5;   // 1: peso cheio (estoura) · 0.5 (atual): raiz → 50kg≈2× o 1kg · 0.4: 1,5× · 0.33: quase igual. Ajuste só aqui.
-function scoreRank(r){ const p=(isFinite(r.peso)&&r.peso>0)?r.peso:1; return Math.round((r.metros||0)*Math.pow(p, PESO_EXP)); }   // RECALCULA sempre (registro antigo re-ordena consistente; ignora o score salvo)
-function salvarRanking(nome, metros, sim){ let lista=[]; try{ lista=JSON.parse(localStorage.getItem('simpesca2_ranking'))||[]; }catch(e){} const peso=Math.round(pesoEsp(sim)*10)/10; const score=Math.round(metros*Math.pow(peso, PESO_EXP)); lista.push({nome, metros:Math.round(metros*10)/10, sim, peso, score, data:new Date().toISOString()}); localStorage.setItem('simpesca2_ranking', JSON.stringify(lista)); }
+// PONTUAÇÃO = metros recolhidos × peso^expoente (o expoente é configurável na aba ranking; a dificuldade já baixa os metros).
+// Expoente do peso na pontuação (peso^EXP), configurável na aba RANKING (localStorage). 0=ignora peso · 0.5=raiz · 1=peso cheio.
+function pesoExp(){ const v=parseFloat(localStorage.getItem('simpesca2_rank_pesoexp')); return (isFinite(v)&&v>=0)?v:0.5; }
+function scoreRank(r){ const p=(isFinite(r.peso)&&r.peso>0)?r.peso:1; return Math.round((r.metros||0)*Math.pow(p, pesoExp())); }   // RECALCULA sempre (registro antigo re-ordena consistente; ignora o score salvo)
+function salvarRanking(nome, metros, sim){ let lista=[]; try{ lista=JSON.parse(localStorage.getItem('simpesca2_ranking'))||[]; }catch(e){} const peso=Math.round(pesoEsp(sim)*10)/10; const score=Math.round(metros*Math.pow(peso, pesoExp())); lista.push({nome, metros:Math.round(metros*10)/10, sim, peso, score, data:new Date().toISOString()}); localStorage.setItem('simpesca2_ranking', JSON.stringify(lista)); }
 function mostrarResultado(nome, metros, sim, salvou){
   document.getElementById('resultadoMetros').textContent=metros.toFixed(1)+' m';
   const peso=isFinite(pesoEsp(sim))?Math.round(pesoEsp(sim)*10)/10:1;
-  const meuScore=Math.round(metros*Math.pow(peso>0?peso:1, PESO_EXP));      // PONTUAÇÃO = metros × peso^PESO_EXP
+  const meuScore=Math.round(metros*Math.pow(peso>0?peso:1, pesoExp()));      // PONTUAÇÃO = metros × peso^expoente (configurável na aba ranking)
   document.getElementById('resultadoScore').textContent=meuScore+' pts';
   const posEl=document.getElementById('resultadoPos'), nomeEl=document.getElementById('resultadoNome'), rec=document.getElementById('resultadoRecorde');
   if(salvou===false){                                    // jogada sem nome: mostra os metros, mas não salva nem posiciona

@@ -53,6 +53,14 @@ header h1{font-size:1.4rem;font-weight:800;color:var(--gold);letter-spacing:1px;
   <button class="btn btn-red" onclick="limpar()">🗑 Limpar ranking</button>
 </div>
 
+<div style="margin-top:16px;padding:14px 16px;background:var(--card);border:1px solid var(--border);border-radius:12px;">
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+    <span style="font-size:0.85rem;color:var(--text);white-space:nowrap;">⚙️ Peso na pontuação (multiplicador = peso <sup>expoente</sup>):</span>
+    <input type="number" id="cfgPesoExp" min="0" max="1.5" step="0.05" value="0.5" onchange="salvarPesoExp()" style="width:84px;background:#0d151d;border:1px solid var(--accent);border-radius:6px;color:var(--text);font-family:monospace;font-size:1rem;padding:6px 8px;text-align:center;outline:none;">
+  </div>
+  <div id="cfgPesoHint" style="font-size:0.72rem;color:var(--dim);margin-top:7px;line-height:1.5;"></div>
+</div>
+
 <script>
 let filtroAtual='todos';
 const ESPECIES=[
@@ -67,8 +75,11 @@ function nomePeixe(id){ const e=ESPECIES.find(x=>x.id===id); return e?e.nome:('S
 function carregar(){ try{ return JSON.parse(localStorage.getItem('simpesca2_ranking'))||[]; }catch(e){ return []; } }
 function nomeValido(n){ n=(n||'').trim().toLowerCase(); return n!=='' && n!=='jogador'; }   // jogada sem nome não conta
 function fmtData(iso){ const d=new Date(iso); return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
-const PESO_EXP=0.5;   // pontuação = metros × peso^0.5 (√peso, igual ao player). Ajuste só aqui + no player.html.
-function scoreRank(r){ const p=(isFinite(r.peso)&&r.peso>0)?r.peso:1; return Math.round((r.metros||0)*Math.pow(p, PESO_EXP)); }   // RECALCULA sempre (registro antigo re-ordena consistente)
+// Expoente do peso na pontuação (peso^EXP) — CONFIGURÁVEL aqui (campo ⚙️). Salvo no aparelho; o player lê a mesma chave.
+function pesoExp(){ const v=parseFloat(localStorage.getItem('simpesca2_rank_pesoexp')); return (isFinite(v)&&v>=0)?v:0.5; }
+function scoreRank(r){ const p=(isFinite(r.peso)&&r.peso>0)?r.peso:1; return Math.round((r.metros||0)*Math.pow(p, pesoExp())); }   // RECALCULA sempre (registro antigo re-ordena consistente)
+function atualizarPesoHint(){ const e=pesoExp(), h=document.getElementById('cfgPesoHint'); if(h) h.textContent='com a MESMA linha, um peixe de 50 kg vale ×'+Math.pow(50,e).toFixed(1)+' que um de 1 kg · 0 = ignora peso · 1 = peso cheio'; }
+function salvarPesoExp(){ const el=document.getElementById('cfgPesoExp'); const v=parseFloat(el.value); if(isFinite(v)&&v>=0){ localStorage.setItem('simpesca2_rank_pesoexp', v); atualizarPesoHint(); render(); } else el.value=pesoExp(); }
 function render(){
   const todos=carregar().filter(r=>nomeValido(r.nome));   // esconde jogadas sem nome / "Jogador"
   let lista = filtroAtual==='todos' ? todos : todos.filter(r=>r.sim===filtroAtual);
@@ -110,6 +121,7 @@ window.addEventListener('load',()=>{
   const f=document.getElementById('filtros');
   ESPECIES.forEach(e=>{ const b=document.createElement('button'); b.className='filtro'; b.dataset.sim=e.id; b.textContent=e.nome; b.onclick=()=>filtrar(e.id,b); f.appendChild(b); });
   if('serviceWorker' in navigator) navigator.serviceWorker.register('service-worker.js').catch(()=>{});
+  document.getElementById('cfgPesoExp').value=pesoExp(); atualizarPesoHint();
   render();
 });
 </script>
