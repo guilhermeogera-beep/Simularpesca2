@@ -65,10 +65,11 @@ function nomePeixe(id){ const e=ESPECIES.find(x=>x.id===id); return e?e.nome:('S
 function carregar(){ try{ return JSON.parse(localStorage.getItem('simpesca2_ranking'))||[]; }catch(e){ return []; } }
 function nomeValido(n){ n=(n||'').trim().toLowerCase(); return n!=='' && n!=='jogador'; }   // jogada sem nome não conta
 function fmtData(iso){ const d=new Date(iso); return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
+function scoreRank(r){ return isFinite(r.score) ? r.score : Math.round((r.metros||0)*(isFinite(r.peso)?r.peso:1)); }   // PONTUAÇÃO = metros × peso (registro antigo: calcula na hora)
 function render(){
   const todos=carregar().filter(r=>nomeValido(r.nome));   // esconde jogadas sem nome / "Jogador"
   let lista = filtroAtual==='todos' ? todos : todos.filter(r=>r.sim===filtroAtual);
-  lista.sort((a,b)=>b.metros-a.metros);
+  lista.sort((a,b)=>scoreRank(b)-scoreRank(a));   // ordena pela PONTUAÇÃO
   const el=document.getElementById('lista');
   if(!lista.length){ el.innerHTML='<div class="vazio">Nenhuma jogada registrada ainda.<br>Jogue uma simulação para aparecer aqui! 🎣</div>'; return; }
   el.innerHTML = lista.map((r,i)=>{
@@ -76,8 +77,8 @@ function render(){
     const medalha = i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'º';
     return `<div class="linha-rank ${cls}">
       <div class="pos">${medalha}</div>
-      <div class="info"><div class="nome">${escapeHtml(r.nome)}</div><div class="meta">🐟 ${nomePeixe(r.sim)} · ${isFinite(r.peso)?'⚖️ '+r.peso.toFixed(1)+' kg · ':''}${fmtData(r.data)}</div></div>
-      <div class="metros">${r.metros.toFixed(1)} m</div>
+      <div class="info"><div class="nome">${escapeHtml(r.nome)}</div><div class="meta">🐟 ${nomePeixe(r.sim)} · ${isFinite(r.peso)?'⚖️ '+r.peso.toFixed(1)+' kg · ':''}🎣 ${r.metros.toFixed(1)} m · ${fmtData(r.data)}</div></div>
+      <div class="metros">${scoreRank(r)} pts</div>
     </div>`;
   }).join('');
 }

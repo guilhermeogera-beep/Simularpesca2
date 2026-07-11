@@ -161,6 +161,8 @@ input[type=text]:focus{border-color:var(--accent);}
   <div class="recorde" id="resultadoRecorde">🏆 Novo recorde!</div>
   <div class="lbl">Linha recolhida</div>
   <div class="metros-grande" id="resultadoMetros">0.0 m</div>
+  <div class="lbl" style="margin-top:6px;">🏅 Pontuação (linha × peso)</div>
+  <div id="resultadoScore" style="font-size:3.6rem;font-weight:900;color:#ffd700;text-shadow:0 0 30px rgba(255,215,0,0.45);line-height:1.05;">0 pts</div>
   <div class="posicao-grande" id="resultadoPos">—</div>
   <div class="lbl" id="resultadoNome">—</div>
   <div class="fs-btns"><button class="btn-fs btn-ok" onclick="fecharResultado();abrirRanking()">🏆 Ver ranking</button><button class="btn-fs btn-sec" onclick="fecharResultado()">Fechar</button></div>
@@ -719,9 +721,14 @@ function encerrarSim(id, sairFS, salvar){
 // ══ RANKING ───────────────────────────────────────────────────
 // nome "de verdade": não vazio e diferente de "Jogador" (placeholder). Jogada sem nome não entra no ranking.
 function nomeValido(n){ n=(n||'').trim().toLowerCase(); return n!=='' && n!=='jogador'; }
-function salvarRanking(nome, metros, sim){ let lista=[]; try{ lista=JSON.parse(localStorage.getItem('simpesca2_ranking'))||[]; }catch(e){} lista.push({nome, metros:Math.round(metros*10)/10, sim, peso:Math.round(pesoEsp(sim)*10)/10, data:new Date().toISOString()}); localStorage.setItem('simpesca2_ranking', JSON.stringify(lista)); }
+// PONTUAÇÃO = metros recolhidos × peso do peixe (arredondado). Registro antigo sem score/peso: calcula na hora (metros × 1).
+function scoreRank(r){ return isFinite(r.score) ? r.score : Math.round((r.metros||0)*(isFinite(r.peso)?r.peso:1)); }
+function salvarRanking(nome, metros, sim){ let lista=[]; try{ lista=JSON.parse(localStorage.getItem('simpesca2_ranking'))||[]; }catch(e){} const peso=Math.round(pesoEsp(sim)*10)/10; const score=Math.round(metros*peso); lista.push({nome, metros:Math.round(metros*10)/10, sim, peso, score, data:new Date().toISOString()}); localStorage.setItem('simpesca2_ranking', JSON.stringify(lista)); }
 function mostrarResultado(nome, metros, sim, salvou){
   document.getElementById('resultadoMetros').textContent=metros.toFixed(1)+' m';
+  const peso=isFinite(pesoEsp(sim))?Math.round(pesoEsp(sim)*10)/10:1;
+  const meuScore=Math.round(metros*peso);                                   // PONTUAÇÃO = metros × peso
+  document.getElementById('resultadoScore').textContent=meuScore+' pts';
   const posEl=document.getElementById('resultadoPos'), nomeEl=document.getElementById('resultadoNome'), rec=document.getElementById('resultadoRecorde');
   if(salvou===false){                                    // jogada sem nome: mostra os metros, mas não salva nem posiciona
     nomeEl.textContent='Jogada de teste';
@@ -730,10 +737,9 @@ function mostrarResultado(nome, metros, sim, salvou){
     document.getElementById('resultadoOverlay').classList.add('visivel');
     return;
   }
-  const m=Math.round(metros*10)/10;
   let lista=[]; try{ lista=JSON.parse(localStorage.getItem('simpesca2_ranking'))||[]; }catch(e){}
   const naSim=lista.filter(r=>r.sim===sim); const total=naSim.length;
-  const pos=naSim.filter(r=>r.metros>m).length + 1;
+  const pos=naSim.filter(r=>scoreRank(r)>meuScore).length + 1;   // colocação pela PONTUAÇÃO
   const medalha = pos===1?'🥇':pos===2?'🥈':pos===3?'🥉':'';
   posEl.textContent=(medalha?medalha+' ':'')+pos+'º lugar · de '+total+' no '+nomePeixe(sim);
   nomeEl.textContent=nome;
@@ -755,14 +761,14 @@ function renderRanking(){
   lista=lista.filter(r=>nomeValido(r.nome));         // não mostra jogadas sem nome / "Jogador"
   if(rkFiltro!=='todos') lista=lista.filter(r=>r.sim===rkFiltro);
   else lista=lista.filter(r=>peixeVisivel(r.sim));   // "Todas" esconde os peixes desmarcados no EXIBIR
-  lista.sort((a,b)=>b.metros-a.metros);
+  lista.sort((a,b)=>scoreRank(b)-scoreRank(a));   // ordena pela PONTUAÇÃO (metros × peso)
   const el=document.getElementById('rkLista');
   if(!lista.length){ el.innerHTML='<div class="rk-vazio">Nenhuma jogada registrada ainda. 🎣</div>'; return; }
   el.innerHTML=lista.map((r,i)=>{
     const cls=i===0?'top1':i===1?'top2':i===2?'top3':'';
     const medalha=i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'º';
     const d=new Date(r.data); const data=d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-    return `<div class="rk-linha ${cls}"><div class="rk-pos">${medalha}</div><div class="rk-info"><div class="rk-nome">${escHtml(r.nome)}</div><div class="rk-meta">🐟 ${nomePeixe(r.sim)} · ${isFinite(r.peso)?'⚖️ '+r.peso.toFixed(1)+' kg · ':''}${data}</div></div><div class="rk-metros">${r.metros.toFixed(1)} m</div></div>`;
+    return `<div class="rk-linha ${cls}"><div class="rk-pos">${medalha}</div><div class="rk-info"><div class="rk-nome">${escHtml(r.nome)}</div><div class="rk-meta">🐟 ${nomePeixe(r.sim)} · ${isFinite(r.peso)?'⚖️ '+r.peso.toFixed(1)+' kg · ':''}🎣 ${r.metros.toFixed(1)} m · ${data}</div></div><div class="rk-metros">${scoreRank(r)} pts</div></div>`;
   }).join('');
 }
 
