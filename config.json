@@ -1,7 +1,7 @@
 {
   "versao": 2,
   "tipo": "config",
-  "criado": "2026-07-10T00:00:00.000Z",
+  "criado": "2026-07-11T23:53:56.312Z",
   "cal": {
     "mpv": 34,
     "limite": -150,
@@ -10,7 +10,7 @@
     "freioa": 12,
     "freiorepmin": 2,
     "freiorepmax": 12,
-    "pesoexp": 2.4,
+    "pesoexp": 0.5,
     "inv": "1"
   },
   "gen": {
