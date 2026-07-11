@@ -457,7 +457,7 @@ function montarBlocosSims(){
         '<label title="Tempo total de motor ligado (puxada). Maior = blocos mais longos, peixe puxa mais linha">puxada <input type="number" id="puxada'+i+'" min="5" max="80" value="55">s</label>'+
         '<label title="Distância entre pontos no tempo: 0 = densos (atual) · 100 = bem espaçados. Maior = o motor físico tem tempo de alcançar cada nível (não vira borrão)">espaço <input type="number" id="espaco'+i+'" min="0" max="100" value="40">/100</label>'+
         '<label title="Força MÁXIMA de tração SUSTENTADA que o peixe faz no FREIO (parte negativa), em kgf. É a profundidade da resistência gerada nas janelas (0 a -20 = base do gráfico). O PESO do peixe (no player) escala isso. Vira força REAL na linha após a calibração do VESC.">🛑 freio máx <input type="number" id="freioMax'+i+'" min="0" max="20" value="'+(FREIO_MAX_DEF[LETRAS[i]]||10)+'"> kgf</label>'+
-        '<label title="LIGADO = freio QUADRADO (parede constante no freio máx). DESLIGADO = freio CARACTERÍSTICO (varia com a força e a fadiga do peixe).">🟥 <input type="checkbox" id="freioQuad'+i+'" onchange="togFreioQuad('+i+')" style="width:auto"> freio quadrado</label>'+
+        '<label title="LIGADO = freio QUADRADO: paredes UNIFORMES (mesmo nível), mas ainda AFROUXAM com a fadiga ao longo da briga (sem variação aleatória). DESLIGADO = CARACTERÍSTICO: paredes irregulares (fadiga + variação aleatória por janela). Fadiga 0 = paredes constantes no freio máx.">🟥 <input type="checkbox" id="freioQuad'+i+'" onchange="togFreioQuad('+i+')" style="width:auto"> freio quadrado</label>'+
         '<label title="Onde a briga gerada pelo 🎲 começa. Antes desse tempo a curva fica livre pra você desenhar as fisgadas MANUALMENTE." style="border-left:1px solid var(--border);padding-left:8px;margin-left:2px;">🎣 início da briga <input type="number" id="fisFisDur'+i+'" min="0" max="30" step="0.5" value="5" oninput="renderCurva('+i+')">s</label>'+
       '</div>'+
       '<div class="peso-row" style="display:flex;align-items:center;gap:8px;font-size:0.62rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin:4px 0 2px;">⚖️ peso (prévia) <input type="range" id="pesoSim'+i+'" min="'+PESO_MIN+'" max="'+pmx+'" step="0.5" value="'+pwv+'" oninput="ajustarPesoSim('+i+')" style="flex:1;max-width:260px;accent-color:#ffcc66;"><span id="pesoSimLbl'+i+'" style="font-family:monospace;color:var(--text);min-width:185px;text-transform:none;letter-spacing:0;"></span></div>'+
@@ -1029,8 +1029,9 @@ function preencherFreioJanelas(pts, t0){
     if(Math.abs(a.pot)<1 && Math.abs(b.pot)<1 && (b.t-a.t)>1.0 && a.t>=t0-0.01){   // janela de 0 DURANTE a briga
       const w=b.t-a.t;
       let fr;
-      if(genFreioQuad){ fr=-genFreioMax; }                                          // QUADRADO: parede constante no freio máx
-      else { const mid=(a.t+w/2)/DURACAO; fr=-genFreioMax*(1-0.45*genFreioFad*mid)*rnd(0.7,1.0); }   // CARACTERÍSTICO: afrouxa com a fadiga + variação
+      const mid=(a.t+w/2)/DURACAO, fad=(1-0.45*genFreioFad*mid);   // fadiga: freio afrouxa ao longo da briga (mesmo fator nos dois modos)
+      if(genFreioQuad){ fr=-genFreioMax*fad; }                                       // QUADRADO: paredes UNIFORMES que afrouxam com a fadiga (sem variação aleatória)
+      else { fr=-genFreioMax*fad*rnd(0.7,1.0); }                                     // CARACTERÍSTICO: fadiga + variação aleatória por janela
       out.push({t:a.t+w*0.2, pot:fr, frear:true});     // entra no freio
       out.push({t:a.t+w*0.8, pot:fr, frear:true});     // segura até quase o fim da janela
     }
