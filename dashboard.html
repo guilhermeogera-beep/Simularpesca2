@@ -255,7 +255,7 @@ select{background:var(--surface);border:1px solid var(--border);color:var(--text
 <div class="card">
   <div class="secao-titulo recolhivel" data-cardkey="export" onclick="toggleCard(this)"><span class="card-chevron">▾</span><span>💾</span> Exportar / Importar</div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;">
-    <select id="selSimAcao"><option value="0">Pirarara</option><option value="1">Tambacu</option><option value="2">Tucunaré</option><option value="3">Dourado</option><option value="4">Trairão</option><option value="5">Jaú</option></select>
+    <select id="selSimAcao"><option value="0">Pirarara</option><option value="1">Tambacu</option><option value="2">Tucunaré</option><option value="3">Dourado</option><option value="4">Trairão</option><option value="5">Jaú</option><option value="desafio">🎯 Desafio</option></select>
     <button class="btn btn-green" onclick="exportarJSON()">⬇ Exportar</button>
     <label class="btn btn-outline" style="cursor:pointer;">⬆ Importar<input type="file" accept=".json" onchange="importarJSON(event)" style="display:none"></label>
     <button class="btn btn-red" onclick="limparSim()">🗑 Limpar</button>
@@ -744,8 +744,12 @@ function fmt(s){ return `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart
 function atualizarInterfaceTempo(){ for(let i=0;i<NSIMS;i++){ const el=document.getElementById('tsDisplay'+i); if(el) el.textContent=`${fmt(SIMS[i].tempoAtual)} / ${fmt(DURACAO)}`; const ph=document.getElementById('playhead'+i); if(ph) ph.style.left=`${(SIMS[i].tempoAtual/DURACAO)*100}%`; } }
 
 // ══ AÇÕES (padrão / limpar / export / import) ─────────────────
-function limparSim(){ const idx=parseInt(document.getElementById('selSimAcao').value); if(!confirm('Apagar todos os pontos do '+NOMES[idx]+'?')) return; SIMS[idx].pontos=[]; salvarPontos(idx); fecharEditorPonto(); renderCurva(idx); log(NOMES[idx]+' apagado','err'); }
-function exportarJSON(){ const idx=parseInt(document.getElementById('selSimAcao').value); const payload={versao:2,tipo:'pontos',especie:LETRAS[idx],duracao:DURACAO,criado:new Date().toISOString(),pontos:SIMS[idx].pontos}; const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='curva_'+LETRAS[idx]+'.json'; a.click(); URL.revokeObjectURL(a.href); log(NOMES[idx]+' exportado','ok'); }
+function limparSim(){ const val=document.getElementById('selSimAcao').value;
+  if(val==='desafio'){ if(!confirm('Apagar a curva do Desafio (local)?')) return; localStorage.removeItem('simpesca2_aleat_pontos_pirarara'); log('Desafio (local) apagado','err'); return; }
+  const idx=parseInt(val); if(!confirm('Apagar todos os pontos do '+NOMES[idx]+'?')) return; SIMS[idx].pontos=[]; salvarPontos(idx); fecharEditorPonto(); renderCurva(idx); log(NOMES[idx]+' apagado','err'); }
+function exportarJSON(){ const val=document.getElementById('selSimAcao').value;
+  if(val==='desafio'){ const cd=curvaDesafio()||[]; const last=cd.length?cd[cd.length-1].t:1200; const payload={versao:2,tipo:'pontos',especie:'desafio',duracao:Math.round(last),criado:new Date().toISOString(),pontos:cd}; const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='curva_desafio.json'; a.click(); URL.revokeObjectURL(a.href); log('Desafio exportado','ok'); return; }
+  const idx=parseInt(val); const payload={versao:2,tipo:'pontos',especie:LETRAS[idx],duracao:DURACAO,criado:new Date().toISOString(),pontos:SIMS[idx].pontos}; const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='curva_'+LETRAS[idx]+'.json'; a.click(); URL.revokeObjectURL(a.href); log(NOMES[idx]+' exportado','ok'); }
 function exportarConfig(){
   const cal={
     mpv: metrosPorVolta(), limite: limiteLinha(),
@@ -875,7 +879,7 @@ function importarTodasCurvas(ev){
   }; r.readAsText(f);
 }
 function importarJSON(ev){
-  const idx=parseInt(document.getElementById('selSimAcao').value); const f=ev.target.files[0]; if(!f) return;
+  const val=document.getElementById('selSimAcao').value; const f=ev.target.files[0]; if(!f) return;
   const r=new FileReader();
   r.onload=e=>{ try{
       const d=JSON.parse(e.target.result); let pts=null;
@@ -883,8 +887,9 @@ function importarJSON(ev){
       else if(d.gatilhos && Array.isArray(d.gatilhos)) pts=gatilhosParaPontos(d.gatilhos);
       else if(Array.isArray(d)){ pts=(d.length && (d[0].sub!==undefined||d[0].pico!==undefined||d[0].potIni!==undefined)) ? gatilhosParaPontos(d) : d; }
       if(!Array.isArray(pts)) throw 0;
-      SIMS[idx].pontos=sanearCurva(pts.slice().sort((a,b)=>a.t-b.t)); salvarPontos(idx); fecharEditorPonto(); renderCurva(idx);
-      log(NOMES[idx]+': '+pts.length+' pontos importados','ok');
+      const san=sanearCurva(pts.slice().sort((a,b)=>a.t-b.t));
+      if(val==='desafio'){ localStorage.setItem('simpesca2_aleat_pontos_pirarara', JSON.stringify(san)); agendarSync('curvas'); log('Desafio: '+san.length+' pontos importados — subindo pro curvas.json','ok'); }
+      else { const idx=parseInt(val); SIMS[idx].pontos=san; salvarPontos(idx); fecharEditorPonto(); renderCurva(idx); log(NOMES[idx]+': '+san.length+' pontos importados','ok'); }
     }catch(err){ log('JSON inválido','err'); } ev.target.value=''; };
   r.readAsText(f);
 }
