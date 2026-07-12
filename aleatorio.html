@@ -51,6 +51,18 @@ input[type="range"]::-webkit-slider-thumb{height:24px;width:24px;border-radius:5
 .sim-bloco.colapsado .sim-mini-gauge,
 .sim-bloco.colapsado .sim-controls{display:none;}
 .cal-sub{font-size:0.6rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;}
+#btnBT{margin-left:auto;font-size:0.75rem;font-weight:600;padding:8px 16px;border-radius:20px;background:var(--surface);border:1px solid var(--accent);color:var(--accent);cursor:pointer;font-family:inherit;letter-spacing:1px;}
+#btnBT.conectado{color:var(--green);border-color:var(--green);background:rgba(0,230,118,0.1);}
+.recolhivel{cursor:pointer;user-select:none;}
+.card.card-colapsado > :not(:first-child){display:none !important;}
+.card-chevron{display:inline-block;transition:transform 0.15s;font-size:0.8rem;margin-right:3px;}
+.card-colapsado .card-chevron{transform:rotate(-90deg);}
+.cal-campo{display:flex;flex-direction:column;gap:4px;}
+.cal-campo label{font-size:0.6rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;}
+.cal-campo input{background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:monospace;font-size:0.95rem;padding:8px 10px;width:130px;outline:none;text-align:center;}
+.cal-campo input:focus{border-color:var(--accent);}
+.cal-val{font-size:1.6rem;font-weight:800;font-family:monospace;}
+.cal-val.metros{color:var(--green);} .cal-val.cont{color:var(--accent);}
 .timeline-wrap{position:relative;height:260px;background:#03070b;border:1px solid var(--border);border-radius:8px;overflow:hidden;}
 .curve-area{position:absolute;top:0;left:0;right:0;bottom:20px;z-index:2;cursor:crosshair;touch-action:none;}
 .curve-svg{position:absolute;inset:0;width:100%;height:100%;}
@@ -78,6 +90,7 @@ input[type="range"]::-webkit-slider-thumb{height:24px;width:24px;border-radius:5
   .gen-row{font-size:0.56rem;gap:6px 9px;} .gen-row input{width:46px;font-size:0.72rem;}
   .timeline-wrap{height:320px;} .ponto-handle{width:9px;height:9px;} .ponto-handle.sel{width:12px;height:12px;}
   .sim-controls{gap:5px;}
+  .cont3>div{flex:1 1 100% !important;min-width:0 !important;}
 }
 </style>
 </head>
@@ -85,7 +98,8 @@ input[type="range"]::-webkit-slider-thumb{height:24px;width:24px;border-radius:5
 <header>
   <span style="font-size:1.5rem">🎲</span>
   <h1>Modo Aleatório</h1>
-  <a href="dashboard.html" class="btn-link spacer">↩ Dashboard</a>
+  <button id="btnBT" onclick="conectarBLE()">🔵 Conectar</button>
+  <a href="dashboard.html" class="btn-link">↩ Dashboard</a>
 </header>
 
 <div class="nota">🔒 <b>Página isolada:</b> gerar e editar aqui <b>não altera</b> o dashboard nem o player (storage próprio <code>simpesca2_aleat_*</code>, sem GitHub). O <b>▶ play é só prévia visual</b> (sem motor/BLE por enquanto). É o começo do 2º modo de jogo.</div>
@@ -100,6 +114,33 @@ input[type="range"]::-webkit-slider-thumb{height:24px;width:24px;border-radius:5
     <div class="campo"><label>Força (puxa + / freia −)</label><input type="number" id="pPot" step="1" min="-20" max="40"></div>
     <button class="btn btn-red" onclick="removerPonto()">🗑 Remover</button>
     <button class="btn btn-green" onclick="fecharEditorPonto()">✓ Fechar</button>
+  </div>
+</div>
+
+<!-- CONTROLE DE CARRETEL — config GLOBAL (compartilha com o dash + salva no config.json) -->
+<div class="card">
+  <div class="secao-titulo recolhivel" data-cardkey="linha" onclick="toggleCard(this)"><span class="card-chevron">▾</span><span>🎣</span> Controle de Carretel<button onclick="event.stopPropagation(); toggleCarretelBtns()" title="Esconder/mostrar os botões (deixa só as 3 caixas de valores)" style="margin-left:auto;background:none;border:1px solid var(--border);border-radius:5px;color:var(--text-dim);cursor:pointer;font-size:0.62rem;padding:3px 9px;text-transform:none;letter-spacing:0;">🔧 botões</button></div>
+  <div class="cont3" style="display:flex;gap:14px;flex-wrap:wrap;">
+    <div style="flex:1;min-width:120px;background:rgba(0,230,118,0.06);border:1px solid rgba(0,230,118,0.35);border-radius:10px;padding:14px;text-align:center;">
+      <div class="cal-sub">⬆ Ganhos (recolheu)</div>
+      <div class="cal-val metros" id="ctGanhos" style="font-size:2.1rem;margin-top:4px;">0.0 m</div>
+    </div>
+    <div style="flex:1;min-width:120px;background:rgba(255,23,68,0.06);border:1px solid rgba(255,23,68,0.35);border-radius:10px;padding:14px;text-align:center;">
+      <div class="cal-sub">⬇ Perdidos (soltou)</div>
+      <div class="cal-val" id="ctPerdidos" style="font-size:2.1rem;margin-top:4px;color:var(--red);">0.0 m</div>
+    </div>
+    <div style="flex:1;min-width:120px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;">
+      <div class="cal-sub">📍 Linha no carretel (TRAVA)</div>
+      <div class="cal-val cont" id="ctSaldo" style="font-size:2.1rem;margin-top:4px;">0.0 m</div>
+    </div>
+  </div>
+  <div id="carretelCtrls" style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
+    <button class="btn btn-yellow" onclick="zerarContadores()">⟲ Zerar contadores</button>
+    <button class="btn btn-accent" onclick="inverterLado()" title="Inverte o sentido do encoder (troca ganhos ⇄ perdidos)">⇄ Inverter lado</button>
+    <div class="cal-campo"><label>🛑 Limite de linha p/ TRAVA (m)</label><input type="number" id="calLimite" step="1" value="-150"></div>
+    <button class="btn btn-green" onclick="salvarLimite()">💾 Salvar limite</button>
+    <span class="cal-sub" id="calSyncStatus" style="align-self:center;"></span>
+    <span class="cal-sub" id="limiteAviso" style="align-self:center;">trava quando <b>|saldo|</b> atinge o limite (pode ser <b>negativo</b>, ex.: -150) · <b>global</b> (sincroniza com o dash)</span>
   </div>
 </div>
 
@@ -460,6 +501,65 @@ function montarBloco(){
     '</div>';
   cont.appendChild(d);
 }
+
+// ══ CARRETEL — config GLOBAL (NÃO isolado): mesmas chaves simpesca2_cal_* do dash + push pro config.json ══
+const SERVICE_UUID="a1b2c3d4-0001-4a5b-8c6d-1234567890ab", CHAR_MOTOR_UUID="a1b2c3d4-0002-4a5b-8c6d-1234567890ab", CHAR_LINHA_UUID="a1b2c3d4-0003-4a5b-8c6d-1234567890ab", CHAR_CONFIG_UUID="a1b2c3d4-0004-4a5b-8c6d-1234567890ab";
+let bleDevice=null, motorChar=null, linhaChar=null, configChar=null, contagemEncoder=0, contAnt=0, primeiraLeitura=true, metrosGanhos=0, metrosPerdidos=0, travaAtiva=false;
+function btUI(cls,txt){ const b=document.getElementById('btnBT'); if(b){ b.className=cls; b.textContent=txt; } }
+function inverterDir(){ return (localStorage.getItem('simpesca2_cal_inv')||'1')==='1'; }
+function contagemParaMetros(c){ let m=(c/4096)*metrosPorVolta(); if(inverterDir()) m=-m; return m; }
+function limiteLinha(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_limite')); return (isFinite(v)&&v!==0)?v:-150; }
+function linhaCarretel(){ return contagemParaMetros(contagemEncoder); }
+function atualizarContadores(){ const g=document.getElementById('ctGanhos'); if(!g) return; const net=linhaCarretel(), L=limiteLinha(); g.textContent=metrosGanhos.toFixed(1)+' m'; document.getElementById('ctPerdidos').textContent=metrosPerdidos.toFixed(1)+' m'; const s=document.getElementById('ctSaldo'); s.textContent=net.toFixed(1)+' / '+L.toFixed(0)+' m'; s.style.color=(Math.abs(net)>=Math.abs(L))?'var(--red)':''; }
+function zerarContadores(){ metrosGanhos=0; metrosPerdidos=0; contagemEncoder=0; contAnt=0; primeiraLeitura=true; travaAtiva=false; if(linhaChar){ try{ linhaChar.writeValue(new Uint8Array([0])); }catch(e){} } atualizarContadores(); }
+function inverterLado(){ const novo=!(localStorage.getItem('simpesca2_cal_inv')==='1'); localStorage.setItem('simpesca2_cal_inv', novo?'1':'0'); const tmp=metrosGanhos; metrosGanhos=metrosPerdidos; metrosPerdidos=tmp; travaAtiva=false; atualizarContadores(); agendarSyncCal(); }
+function salvarLimite(){ const lim=parseFloat(document.getElementById('calLimite').value); if(isFinite(lim)&&lim!==0){ localStorage.setItem('simpesca2_cal_limite',lim); travaAtiva=false; atualizarContadores(); agendarSyncCal(); } else { alert('Limite inválido (não pode ser 0/vazio)'); } }
+function toggleCarretelBtns(){ const el=document.getElementById('carretelCtrls'); if(!el) return; const ocultar=el.style.display!=='none'; el.style.display=ocultar?'none':''; localStorage.setItem('simpesca2_carretel_btns', ocultar?'0':'1'); }
+function toggleCard(el){ const card=el.closest('.card'); if(!card) return; const rec=!card.classList.contains('card-colapsado'); card.classList.toggle('card-colapsado',rec); const k=el.dataset.cardkey; if(k) localStorage.setItem('simpesca2_cardcol_'+k, rec?'1':'0'); }
+// ── BLE: lê o encoder ao vivo (Ganhos/Perdidos/Linha) e zera via linhaChar ──
+async function conectarBLE(){ if(!navigator.bluetooth){ alert('Sem Web Bluetooth. Use Chrome/Edge no PC ou Android.'); return; } try{ btUI('','🔵 Procurando...'); bleDevice=await navigator.bluetooth.requestDevice({filters:[{services:[SERVICE_UUID]}]}); await ligar(bleDevice); }catch(e){ btUI('','🔵 Conectar'); } }
+async function ligar(device){
+  bleDevice=device;
+  device.addEventListener('gattserverdisconnected',()=>{ motorChar=null; linhaChar=null; configChar=null; btUI('','🔵 Reconectar'); });
+  const server=await device.gatt.connect(); const service=await server.getPrimaryService(SERVICE_UUID);
+  try{ motorChar=await service.getCharacteristic(CHAR_MOTOR_UUID); }catch(e){}
+  try{ linhaChar=await service.getCharacteristic(CHAR_LINHA_UUID); await linhaChar.startNotifications(); linhaChar.addEventListener('characteristicvaluechanged',e=>{
+        const nova=e.target.value.getInt32(0,true);
+        if(primeiraLeitura){ contAnt=nova; primeiraLeitura=false; }
+        const dM=contagemParaMetros(nova-contAnt); contAnt=nova;
+        if(dM>0) metrosGanhos+=dM; else metrosPerdidos+=-dM;
+        contagemEncoder=nova; atualizarContadores();
+      }); }catch(e){}
+  try{ configChar=await service.getCharacteristic(CHAR_CONFIG_UUID); }catch(e){ configChar=null; }
+  btUI('conectado','🟢 Conectado');
+}
+// ── Push do CAL pro config.json: SÓ limite+inv (read-modify-write, preserva gen/sync/resto). Gated por token. ──
+const GH_REPO_A='guilhermeogera-beep/Simularpesca2', GH_CONFIG_A='config.json';
+function ghTokenA(){ return (localStorage.getItem('simpesca2_github_token')||'').trim(); }
+function setSyncBadge(state){ const el=document.getElementById('calSyncStatus'); if(!el) return; const m={pend:'☁️ salvando…',ok:'☁️ salvo',err:'⚠️ erro salvar'}; el.textContent=m[state]||''; el.style.color=state==='err'?'#ff5f5f':state==='ok'?'#00e676':'#7b8d9e'; }
+let calSyncTimer=null;
+function agendarSyncCal(){ if(!ghTokenA()) return; localStorage.setItem('simpesca2_sync_pend','1'); setSyncBadge('pend'); clearTimeout(calSyncTimer); calSyncTimer=setTimeout(enviarSyncCal, 2500); }
+async function enviarSyncCal(){
+  if(!ghTokenA() || !navigator.onLine) return;
+  const headers={'Authorization':'token '+ghTokenA(),'Accept':'application/vnd.github+json'}, url='https://api.github.com/repos/'+GH_REPO_A+'/contents/'+GH_CONFIG_A;
+  let cfg={versao:2,tipo:'config',cal:{},gen:{},sync:{}}, sha=null, ok=false;
+  try{ const g=await fetch(url,{headers,cache:'no-store'});
+    if(g.ok){ const j=await g.json(); sha=j.sha; try{ cfg=JSON.parse(decodeURIComponent(escape(atob((j.content||'').replace(/\s/g,''))))); }catch(e){} ok=true; }
+    else if(g.status===404){ ok=true; }
+  }catch(e){ return; }
+  if(!ok){ setSyncBadge('err'); return; }   // erro (rate limit): não arrisca sobrescrever
+  cfg.cal=cfg.cal||{}; cfg.cal.limite=limiteLinha(); cfg.cal.inv=localStorage.getItem('simpesca2_cal_inv')||'1'; cfg.criado=new Date().toISOString();
+  const body={message:'auto: carretel (limite/inv)', content:btoa(unescape(encodeURIComponent(JSON.stringify(cfg,null,2))))}; if(sha) body.sha=sha;
+  let r=null; try{ r=await fetch(url,{method:'PUT',headers,body:JSON.stringify(body)}); }catch(e){}
+  if(r&&r.ok){ localStorage.removeItem('simpesca2_sync_pend'); setSyncBadge('ok'); } else setSyncBadge('err');
+}
+// ── Sincroniza AO VIVO com o dash (mesmas chaves): se os dois estiverem abertos, reflete a mudança ──
+window.addEventListener('storage', e=>{ if(!e.key) return; if(e.key==='simpesca2_cal_limite' || e.key==='simpesca2_cal_inv' || e.key==='simpesca2_cal_mpv'){ const li=document.getElementById('calLimite'); if(li) li.value=limiteLinha(); atualizarContadores(); } });
+// ── Ao abrir: aplica o cal do config.json (limite/inv/mpv global, read-only) e mostra ──
+{ const li=document.getElementById('calLimite'); if(li) li.value=limiteLinha(); atualizarContadores(); }
+(async()=>{ if(navigator.onLine){ try{ const r=await fetch('config.json',{cache:'no-store'}); if(r&&r.ok){ const d=await r.json(); const c=(d&&d.cal)||{}; if(c.limite!=null) localStorage.setItem('simpesca2_cal_limite',c.limite); if(c.inv!=null) localStorage.setItem('simpesca2_cal_inv',c.inv); if(c.mpv) localStorage.setItem('simpesca2_cal_mpv',c.mpv); } }catch(e){} }
+  const li=document.getElementById('calLimite'); if(li) li.value=limiteLinha(); atualizarContadores();
+  if(ghTokenA() && navigator.onLine && localStorage.getItem('simpesca2_sync_pend')) enviarSyncCal(); })();
 
 // ══ INIT ══════════════════════════════════════════════════════════════════════
 montarBloco();
