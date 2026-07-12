@@ -63,10 +63,16 @@ input[type="range"]::-webkit-slider-thumb{height:24px;width:24px;border-radius:5
 .cal-campo input:focus{border-color:var(--accent);}
 .cal-val{font-size:1.6rem;font-weight:800;font-family:monospace;}
 .cal-val.metros{color:var(--green);} .cal-val.cont{color:var(--accent);}
-.timeline-wrap{position:relative;height:260px;background:#03070b;border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+.tl-row{position:relative;display:flex;align-items:stretch;}
+.curve-eixo-fixo{position:relative;width:26px;height:260px;flex:none;background:#03070b;border:1px solid var(--border);border-right:none;border-radius:8px 0 0 8px;z-index:4;}
+.curve-eixo-fixo .eixo-inner{position:absolute;top:0;left:0;right:0;bottom:20px;}
+.timeline-wrap{position:relative;height:260px;background:#03070b;border:1px solid var(--border);border-left:none;border-radius:0 8px 8px 0;overflow-x:auto;overflow-y:hidden;flex:1;min-width:0;}
+.timeline-wrap::-webkit-scrollbar{height:11px;}
+.timeline-wrap::-webkit-scrollbar-track{background:#0a1219;}
+.timeline-wrap::-webkit-scrollbar-thumb{background:#24384b;border-radius:6px;}
+.tl-inner{position:relative;height:100%;min-width:100%;}
 .curve-area{position:absolute;top:0;left:0;right:0;bottom:20px;z-index:2;cursor:crosshair;touch-action:none;}
 .curve-svg{position:absolute;inset:0;width:100%;height:100%;}
-.curve-eixo{position:absolute;top:0;bottom:20px;left:0;right:0;z-index:4;pointer-events:none;}
 .ponto-handle{position:absolute;width:7px;height:7px;border-radius:50%;background:var(--accent);border:1.5px solid #fff;transform:translate(-50%,-50%);cursor:grab;z-index:12;box-shadow:0 0 3px rgba(0,212,255,0.6);touch-action:none;}
 .ponto-handle::before{content:'';position:absolute;inset:-7px;border-radius:50%;}
 .ponto-handle:active{cursor:grabbing;}
@@ -88,7 +94,7 @@ input[type="range"]::-webkit-slider-thumb{height:24px;width:24px;border-radius:5
   body{padding:10px;overflow-x:hidden;}
   header h1{font-size:1.1rem;flex-basis:100%;}
   .gen-row{font-size:0.56rem;gap:6px 9px;} .gen-row input{width:46px;font-size:0.72rem;}
-  .timeline-wrap{height:320px;} .ponto-handle{width:9px;height:9px;} .ponto-handle.sel{width:12px;height:12px;}
+  .timeline-wrap{height:320px;} .curve-eixo-fixo{height:320px;} .ponto-handle{width:9px;height:9px;} .ponto-handle.sel{width:12px;height:12px;}
   .sim-controls{gap:5px;}
   .cont3>div{flex:1 1 100% !important;min-width:0 !important;}
 }
@@ -105,9 +111,9 @@ input[type="range"]::-webkit-slider-thumb{height:24px;width:24px;border-radius:5
 <div class="nota">🔒 <b>Página isolada:</b> gerar e editar aqui <b>não altera</b> o dashboard nem o player (storage próprio <code>simpesca2_aleat_*</code>, sem GitHub). O <b>▶ play é só prévia visual</b> (sem motor/BLE por enquanto). É o começo do 2º modo de jogo.</div>
 
 <div class="card">
-  <div class="secao-titulo"><span>⚡</span> Curvas da briga — Início &amp; Fim (o jogo interpola entre elas)</div>
-  <div class="dica-editor">🎣 <b>Início (0–90 s)</b> = como o peixe briga descansado · <b>Fim (últimos 90 s)</b> = já cansado (mais fraco). O motor faz a <b>transição Início → Fim</b> ao longo do jogo. · ✏️ <b>🎲+</b> puxada · <b>🎲−</b> freio · <b>clique</b> = ponto · <b>arraste</b> = mover · <b>clique no ponto</b> = editar/remover.</div>
-  <div style="font-size:0.72rem;color:var(--text-dim);margin-bottom:12px;">⏱ <b>Duração total do jogo:</b> <input type="number" id="duracaoTotalMin" min="1" max="60" step="1" value="20" oninput="salvarDuracaoTotal()" style="width:56px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:monospace;text-align:center;padding:4px 6px;outline:none;"> min <i>(a interpolação Início→Fim acontece ao longo desse tempo — usado no jogo/Fase 1)</i></div>
+  <div class="secao-titulo"><span>⚡</span> Curva da briga (20 min) — role na horizontal pra editar</div>
+  <div class="dica-editor">✏️ <b>🎲+</b> puxada · <b>🎲−</b> freio · <b>clique</b> = ponto · <b>arraste</b> = mover · <b>clique no ponto</b> = editar/remover. · A timeline é LARGA: <b>role na horizontal</b> (≈90 s por tela) até o fim pra ajustar tudo.</div>
+  <div style="font-size:0.72rem;color:var(--text-dim);margin-bottom:12px;">⏱ <b>Duração:</b> <input type="number" id="duracaoTotalMin" min="1" max="60" step="1" value="20" oninput="salvarDuracaoTotal()" style="width:56px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:monospace;text-align:center;padding:4px 6px;outline:none;"> min · o gerador (🎲) preenche esse tempo decaindo com a fadiga <i>(regere após mudar)</i></div>
   <div id="simsContainer"></div>
 
   <div id="pontoEditor">
@@ -152,10 +158,11 @@ input[type="range"]::-webkit-slider-thumb{height:24px;width:24px;border-radius:5
 //  Play/pause/stop = prévia VISUAL (playhead + gauge), sem BLE/motor. Editar aqui NÃO afeta dash/player.
 //  (Lê simpesca2_cal_* só pra estimativa/gauge — calibração é global do aparelho, read-only.)
 // ══════════════════════════════════════════════════════════════════════════════
-const ESC_POS=40, ESC_NEG=-20, ESC_RANGE=ESC_POS-ESC_NEG, DURACAO=90;   // cada curva = 90s (Início e Fim); o jogo interpola o MEIO entre as duas ao longo da duração total
-const FREIO_MAX_DEF={ini:11, fim:11}, PESO_MAX_DEF={ini:50, fim:50}, PESO_MIN=1, MAX_PUXADA_A=30;
-const LETRAS=['ini','fim'], NOMES=['Início (0–90 s)','Fim (últimos 90 s)'], NSIMS=2;
-const SIMS=[{pontos:[]},{pontos:[]}];
+const ESC_POS=40, ESC_NEG=-20, ESC_RANGE=ESC_POS-ESC_NEG, PX_POR_S=10;   // PX_POR_S = px por segundo na timeline ROLÁVEL (~90s por tela na largura do card)
+let DURACAO=1200;   // 20 min (⏱ configurável). Curva ÚNICA; timeline LARGA e rolável na horizontal.
+const FREIO_MAX_DEF={pirarara:11}, PESO_MAX_DEF={pirarara:50}, PESO_MIN=1, MAX_PUXADA_A=30;
+const LETRAS=['pirarara'], NOMES=['Pirarará'], NSIMS=1;
+const SIMS=[{pontos:[]}];
 let simAtiva=0, selPonto=-1, multiSel=[], arrastouPonto=false, simHover=0, clip=null;
 
 // ── Calibração global (read-only) só pra estimativa/gauge ──
@@ -169,7 +176,7 @@ function interpolarPontos(pontos,t){ if(!pontos.length) return 0; if(t<=pontos[0
 function rpmAlvo(pct){ const v=Math.min(ESC_POS, Math.max(0,pct)); return rpmMin() + (v/ESC_POS)*(rpmMax()-rpmMin()); }
 function rpmParaMs(erpm){ return Math.abs(erpm)/10/4096*metrosPorVolta(); }
 function ampMotor(pct){ const m=Math.abs(pct); return pct>=0 ? m/100*MAX_PUXADA_A : Math.min(1,m/20)*freioMaxA(); }
-function estimarLinha(pts, esc=1){ if(!pts||!pts.length) return 0; let m=0; const dt=DURACAO>300?0.5:0.1; for(let t=0;t<DURACAO;t+=dt){ const pot=interpolarPontos(pts,t)*esc; if(pot>0.5) m+=rpmParaMs(rpmAlvo(pot))*dt; } return m; }
+function estimarLinha(pts, esc=1){ if(!pts||!pts.length) return 0; let m=0; for(let i=0;i<pts.length-1;i++){ const a=pts[i], b=pts[i+1], dt=b.t-a.t; if(dt<=0) continue; const steps=Math.max(1,Math.round(dt/0.25)), sdt=dt/steps; for(let s=0;s<steps;s++){ const pot=(a.pot+(b.pot-a.pot)*((s+0.5)/steps))*esc; if(pot>0.5) m+=rpmParaMs(rpmAlvo(pot))*sdt; } } return m; }   // integra por SEGMENTO (rápido; sem varrer os pontos a cada amostra)
 function escalaPeso(id,w){ const mx=pesoMaxDash(id); return mx>0 ? Math.min(1, Math.pow(w/mx, 2/3)) : 1; }
 function pesoMaxDash(id){ return PESO_MAX_DEF[id]||20; }
 function pesoSimValor(i){ const el=document.getElementById('pesoSim'+i); const mx=pesoMaxDash(LETRAS[i]); const v=el?parseFloat(el.value):NaN; return isFinite(v)?Math.max(PESO_MIN,Math.min(mx,v)):mx; }
@@ -263,11 +270,12 @@ function buildFight(pe, nMin, nMax, teto, fadiga, puxada, fisEstilo, fisDur, fis
   const pts=[{t:0,pot:0}];
   if(t0>0) pts.push({t:t0,pot:0});
   const base=(isFinite(puxada)&&puxada>0)?puxada:45;
-  const pullBudget=Math.min(DURACAO-8, base*rnd(0.9,1.1));
-  const N=Math.round(rnd(nMin,nMax));
-  const pdurRun=Math.min(12, Math.max(4, pullBudget*0.22));
+  const kDur=DURACAO/90;   // escala vs 90s: dimensiona a briga p/ preencher a duração
+  const pullBudget=Math.min(DURACAO-8, base*kDur*rnd(0.9,1.1));
+  const N=Math.round(rnd(nMin,nMax)*Math.max(1,Math.pow(kDur,0.7)));
+  const pdurRun=Math.min(Math.max(12,DURACAO*0.03), Math.max(4, pullBudget*0.22));
   const pdurOutros=Math.max(1.5,(pullBudget-pdurRun)/Math.max(1,N-1));
-  const fill=rnd(82,89);
+  const fill=rnd(0.86,0.93)*DURACAO;
   const restTotal=Math.max(N*3, (fill-t0)-pullBudget);
   const w=[]; let wsum=0;
   for(let k=0;k<N;k++){ const x=(N>1)?k/(N-1):0; const wk=1+(6.0*F)*x; w.push(wk); wsum+=wk; }
@@ -279,7 +287,7 @@ function buildFight(pe, nMin, nMax, teto, fadiga, puxada, fisEstilo, fisDur, fis
     else { const pdur=pdurOutros*rnd(0.8,1.2); t=pe(pts, t, pdur, fat); }
     t+=rnd(0.4,0.8); pts.push({t,pot:0});
     let wdur=restTotal*(w[k]/wsum)*rnd(0.85,1.15);
-    wdur=Math.max(2.0, Math.min(16, wdur));
+    wdur=Math.max(2.0, Math.min(Math.max(16,DURACAO*0.06), wdur));
     wdur=Math.min(wdur, Math.max(1.5, (DURACAO-11)-t));
     t+=wdur; pts.push({t,pot:0});
     if(t>DURACAO-12) break;
@@ -359,21 +367,34 @@ function salvarGenCfg(idx){ GEN_CAMPOS.forEach(c=>{ const el=document.getElement
 function carregarGenCfg(idx){ GEN_CAMPOS.forEach(c=>{ const v=localStorage.getItem('simpesca2_aleat_gen_'+LETRAS[idx]+'_'+c); if(v!==null){ const el=document.getElementById(c+idx); if(el) el.value=v; } }); const q=document.getElementById('freioQuad'+idx); const qv=localStorage.getItem('simpesca2_aleat_gen_'+LETRAS[idx]+'_freioquad'); if(q&&qv!==null) q.checked=(qv==='1'); }
 
 // ══ RENDER ═════════════════════════════════════════════════════════════════════
-function salvarDuracaoTotal(){ const el=document.getElementById('duracaoTotalMin'); let m=el?parseFloat(el.value):20; if(!(m>0)) m=20; localStorage.setItem('simpesca2_aleat_duracao', m); }   // duração TOTAL do jogo (min) — o jogo interpola Início→Fim ao longo dela (Fase 1)
+function salvarDuracaoTotal(){ const el=document.getElementById('duracaoTotalMin'); let m=el?parseFloat(el.value):20; if(!(m>0)) m=20; DURACAO=Math.round(m*60); localStorage.setItem('simpesca2_aleat_duracao', m); renderCurva(0); }   // muda a duração da briga (⏱ min), redesenha e re-larga a timeline; regere (🎲) pra a curva escalar
+function yOf(v){ return ((ESC_POS-v)/ESC_RANGE)*100; }
 function renderTicks(idx){
-  const wrap=document.getElementById('tl'+idx);
-  wrap.querySelectorAll('.time-line,.time-tick').forEach(e=>e.remove());
+  const inner=document.getElementById('tlInner'+idx); if(!inner) return;
+  inner.querySelectorAll('.time-line,.time-tick').forEach(e=>e.remove());
   const passo = DURACAO>300 ? 60 : 5;   // briga longa (>5min): marca por MINUTO
   for(let sec=0;sec<=DURACAO;sec+=passo){ const pct=(sec/DURACAO)*100;
-    const line=document.createElement('div'); line.className='time-line'; line.style.left=pct+'%'; line.style.background='rgba(26,39,54,0.6)'; wrap.appendChild(line);
-    const tk=document.createElement('div'); tk.className='time-tick'; tk.style.left=pct+'%'; tk.textContent=(DURACAO>300 ? (sec/60)+'min' : sec+'s'); wrap.appendChild(tk);
+    const line=document.createElement('div'); line.className='time-line'; line.style.left=pct+'%'; line.style.background='rgba(26,39,54,0.6)'; inner.appendChild(line);
+    const tk=document.createElement('div'); tk.className='time-tick'; tk.style.left=pct+'%'; tk.textContent=(DURACAO>300 ? (sec/60)+'min' : sec+'s'); inner.appendChild(tk);
   }
 }
 function renderTodas(){ renderCurva(0); }
+// Só os handles VISÍVEIS (janela de rolagem + margem) — senão milhares de pontos numa timeline de 20 min travam.
+function renderHandles(idx){
+  const area=document.getElementById('curva'+idx), wrap=document.getElementById('tl'+idx); if(!area||!wrap) return;
+  area.querySelectorAll('.ponto-handle').forEach(h=>h.remove());
+  const innerW=Math.max(1, DURACAO*PX_POR_S), margem=180;
+  const tMin=Math.max(0,(wrap.scrollLeft-margem)/innerW*DURACAO), tMax=(wrap.scrollLeft+wrap.clientWidth+margem)/innerW*DURACAO;
+  SIMS[idx].pontos.forEach((p,i)=>{
+    if(!((p.t>=tMin && p.t<=tMax) || (idx===simAtiva && i===selPonto))) return;   // fora da janela (o ponto em edição sempre aparece)
+    const h=document.createElement('div'); let cls='ponto-handle'+(p.pot<0?' freio':''); if(idx===simAtiva && i===selPonto) cls+=' sel';
+    h.className=cls; h.style.left=(p.t/DURACAO*100)+'%'; h.style.top=yOf(p.pot)+'%'; h.addEventListener('pointerdown',e=>iniciarDragPonto(e,idx,i)); area.appendChild(h);
+  });
+}
 function renderCurva(idx){
   renderTicks(idx);
+  const tlIn=document.getElementById('tlInner'+idx); if(tlIn) tlIn.style.width=(DURACAO*PX_POR_S)+'px';   // timeline LARGA (px/segundo) -> rolagem horizontal
   const area=document.getElementById('curva'+idx); const pts=SIMS[idx].pontos; const durFis=fisFisDurSeg(idx);
-  const yOf=v=>((ESC_POS-v)/ESC_RANGE)*100;
   const y0=yOf(0), y0s=y0.toFixed(2);
   let inner='';
   inner+='<rect x="0" y="0" width="100" height="'+y0s+'" fill="rgba(0,212,255,0.06)"/>';
@@ -391,11 +412,11 @@ function renderCurva(idx){
     if(escP<0.999){ const gl=seq.map(c=>c[0].toFixed(2)+','+yOf(c[1]*escP).toFixed(2)).join(' '); inner+='<polyline points="'+gl+'" fill="none" stroke="#ffcc66" stroke-width="1.6" stroke-dasharray="3,2" opacity="0.95" vector-effect="non-scaling-stroke"/>'; }
   }
   area.innerHTML='<svg class="curve-svg" viewBox="0 0 100 100" preserveAspectRatio="none">'+inner+'</svg>';
-  pts.forEach((p,i)=>{ const h=document.createElement('div'); let cls='ponto-handle'+(p.pot<0?' freio':''); if(idx===simAtiva && i===selPonto) cls+=' sel'; h.className=cls; h.style.left=(p.t/DURACAO*100)+'%'; h.style.top=yOf(p.pot)+'%'; h.addEventListener('pointerdown',e=>iniciarDragPonto(e,idx,i)); area.appendChild(h); });
+  renderHandles(idx);
   const est=document.getElementById('estLinha'+idx); if(est) est.textContent='🐟 ≈ '+estimarLinha(pts, escalaPeso(LETRAS[idx],pesoSimValor(idx))).toFixed(1)+' m';
   atualizarPesoLbl(idx);
-  const wrap=document.getElementById('tl'+idx); let band=wrap.querySelector('.fisgada-band');
-  if(durFis>0){ if(!band){ band=document.createElement('div'); band.className='fisgada-band'; band.innerHTML='<span class="lbl">🎣 fisgada manual</span>'; wrap.appendChild(band); } band.style.width=Math.min(100,(durFis/DURACAO)*100)+'%'; band.style.display='block'; } else if(band){ band.style.display='none'; }
+  let band=tlIn?tlIn.querySelector('.fisgada-band'):null;
+  if(durFis>0){ if(!band && tlIn){ band=document.createElement('div'); band.className='fisgada-band'; band.innerHTML='<span class="lbl">🎣 fisgada manual</span>'; tlIn.appendChild(band); } if(band){ band.style.width=Math.min(100,(durFis/DURACAO)*100)+'%'; band.style.display='block'; } } else if(band){ band.style.display='none'; }
 }
 
 // ══ EDITOR (clicar/arrastar/editar) ═══════════════════════════════════════════
@@ -403,6 +424,8 @@ function setupArea(idx){
   const area=document.getElementById('curva'+idx);
   const wrap=document.getElementById('tl'+idx);
   wrap.addEventListener('mouseenter',()=>{ simHover=idx; });
+  let rafSc=null;
+  wrap.addEventListener('scroll',()=>{ if(rafSc) return; rafSc=requestAnimationFrame(()=>{ rafSc=null; renderHandles(idx); }); });   // re-renderiza só os handles da janela visível
   area.addEventListener('click',e=>{
     if(e.target.classList.contains('ponto-handle')) return;
     if(arrastouPonto) return;
@@ -455,7 +478,7 @@ function toggleColapso(i){ const corpo=document.getElementById('corpo'+i); if(!c
 let simRodando=false, simRaf=null, simT0=0, simPausaT=0;
 function fmt(s){ return Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0'); }
 function atualizarSimGauge(idx,pct){ pct=Math.max(-100,Math.min(100,pct)); const p=document.getElementById('simPct'+idx),v=document.getElementById('simVolt'+idx),f=document.getElementById('simFill'+idx); if(!p)return; const mag=Math.abs(pct), pull=pct>0.5, brake=pct<-0.5, cor=pull?'#00d4ff':brake?'#ffa838':'#3d5d7e'; p.textContent=(pull?'+':brake?'−':'')+mag.toFixed(0)+'%'; v.textContent=pull?'≈'+Math.round(rpmAlvo(pct))+'RPM':brake?'≈'+ampMotor(pct).toFixed(1)+'A':''; f.style.width=mag+'%'; f.style.background=cor; }
-function loopPlay(idx){ if(!simRodando) return; const t=Math.min(DURACAO,(performance.now()-simT0)/1000); const ph=document.getElementById('playhead'+idx); if(ph) ph.style.left=(t/DURACAO*100)+'%'; const pot=interpolarPontos(SIMS[idx].pontos,t)*escalaPeso(LETRAS[idx],pesoSimValor(idx)); atualizarSimGauge(idx,pot); const ts=document.getElementById('tsDisplay'+idx); if(ts) ts.textContent=fmt(t)+' / '+fmt(DURACAO); if(t>=DURACAO){ stopSim(idx); return; } simRaf=requestAnimationFrame(()=>loopPlay(idx)); }
+function loopPlay(idx){ if(!simRodando) return; const t=Math.min(DURACAO,(performance.now()-simT0)/1000); const ph=document.getElementById('playhead'+idx); if(ph) ph.style.left=(t/DURACAO*100)+'%'; const wrap=document.getElementById('tl'+idx); if(wrap) wrap.scrollLeft=(t/DURACAO)*(DURACAO*PX_POR_S) - wrap.clientWidth*0.5;   /* a timeline rola seguindo o playhead */ const pot=interpolarPontos(SIMS[idx].pontos,t)*escalaPeso(LETRAS[idx],pesoSimValor(idx)); atualizarSimGauge(idx,pot); const ts=document.getElementById('tsDisplay'+idx); if(ts) ts.textContent=fmt(t)+' / '+fmt(DURACAO); if(t>=DURACAO){ stopSim(idx); return; } simRaf=requestAnimationFrame(()=>loopPlay(idx)); }
 function playSim(idx){ if(simRodando) return; simRodando=true; simT0=performance.now()-simPausaT*1000; loopPlay(idx); }
 function pauseSim(idx){ simRodando=false; if(simRaf) cancelAnimationFrame(simRaf); simPausaT=(performance.now()-simT0)/1000; }
 function stopSim(idx){ simRodando=false; if(simRaf) cancelAnimationFrame(simRaf); simPausaT=0; const ph=document.getElementById('playhead'+idx); if(ph) ph.style.left='0%'; atualizarSimGauge(idx,0); const ts=document.getElementById('tsDisplay'+idx); if(ts) ts.textContent='0:00 / 1:30'; }
@@ -500,7 +523,10 @@ function montarBloco(i){
       '<label title="Onde a briga gerada pelo 🎲 começa. Antes desse tempo a curva fica livre pra você desenhar as fisgadas MANUALMENTE." style="border-left:1px solid var(--border);padding-left:8px;margin-left:2px;">🎣 início da briga <input type="number" id="fisFisDur'+i+'" min="0" max="30" step="0.5" value="5" oninput="renderCurva('+i+')">s</label>'+
     '</div>'+
     '<div class="peso-row" style="display:flex;align-items:center;gap:8px;font-size:0.62rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin:4px 0 2px;">⚖️ peso (prévia) <input type="range" id="pesoSim'+i+'" min="'+PESO_MIN+'" max="'+pmx+'" step="0.5" value="'+pwv+'" oninput="ajustarPesoSim('+i+')" style="flex:1;max-width:260px;accent-color:#ffcc66;"><span id="pesoSimLbl'+i+'" style="font-family:monospace;color:var(--text);min-width:185px;text-transform:none;letter-spacing:0;"></span></div>'+
-    '<div id="tl'+i+'" class="timeline-wrap"><div class="curve-eixo">'+eixoHtml+'</div><div class="curve-area" id="curva'+i+'"></div><div id="playhead'+i+'" class="tl-playhead"></div></div>'+
+    '<div class="tl-row">'+
+      '<div class="curve-eixo-fixo"><div class="eixo-inner">'+eixoHtml+'</div></div>'+
+      '<div id="tl'+i+'" class="timeline-wrap"><div id="tlInner'+i+'" class="tl-inner"><div class="curve-area" id="curva'+i+'"></div><div id="playhead'+i+'" class="tl-playhead"></div></div></div>'+
+    '</div>'+
     '</div>';
   cont.appendChild(d);
 }
@@ -566,7 +592,7 @@ window.addEventListener('storage', e=>{ if(!e.key) return; if(e.key==='simpesca2
 
 // ══ INIT ══════════════════════════════════════════════════════════════════════
 for(let i=0;i<NSIMS;i++) montarBloco(i);   // dois blocos: Início e Fim
-{ const dm=parseFloat(localStorage.getItem('simpesca2_aleat_duracao')); const el=document.getElementById('duracaoTotalMin'); if(el && isFinite(dm)&&dm>0) el.value=dm; }   // duração total salva (só preenche o campo; usada no jogo/Fase 1)
+{ const dm=parseFloat(localStorage.getItem('simpesca2_aleat_duracao')); if(isFinite(dm)&&dm>0){ DURACAO=Math.round(dm*60); const el=document.getElementById('duracaoTotalMin'); if(el) el.value=dm; } }   // duração salva -> seta DURACAO antes de gerar/render
 for(let i=0;i<NSIMS;i++){ carregarGenCfg(i); setupArea(i); SIMS[i].pontos = carregarPontosStore(i) || gerarCurvaEspecie(i); salvarPontos(i); renderCurva(i); }   // 1ª vez: gera cada curva
 document.querySelectorAll('.gen-row input').forEach(el=>el.addEventListener('change',()=>salvarGenCfg(+el.id.slice(-1)||0)));   // persiste ajustes ao editar (idx pelo sufixo do id)
 </script>
