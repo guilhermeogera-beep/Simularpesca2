@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🎲 Modo Aleatório — Simulador de Pesca</title>
+<style>
+  :root{ --bg:#0a0f14; --card:#111a24; --border:#1a2736; --text:#e0e6ed; --dim:#7b8d9e; --accent:#00d4ff; --azul:#00d4ff; --verm:#ff5f5f; }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:14px 16px 40px;touch-action:manipulation;}
+  header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;}
+  header h1{font-size:1.15rem;margin:0;font-weight:800;letter-spacing:.5px;}
+  .btn-link{font-size:.72rem;padding:8px 14px;border:1px solid var(--dim);border-radius:8px;color:var(--dim);text-decoration:none;letter-spacing:1px;cursor:pointer;background:transparent;font-family:inherit;}
+  .btn-link.spacer{margin-left:auto;}
+  .nota{background:#10202b;border:1px solid #1c3646;border-radius:10px;padding:9px 13px;font-size:.76rem;color:#8fb7cc;margin-bottom:14px;line-height:1.5;}
+  .painel{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:14px;}
+  .params{display:flex;flex-wrap:wrap;gap:12px 16px;align-items:flex-end;}
+  .campo{display:flex;flex-direction:column;gap:4px;}
+  .campo label{font-size:.66rem;color:var(--dim);letter-spacing:.3px;white-space:nowrap;}
+  .campo input[type=number]{width:78px;background:#0d151d;border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:monospace;font-size:.95rem;padding:6px 7px;text-align:center;outline:none;}
+  .campo input[type=number]:focus{border-color:var(--accent);}
+  .campo.chk{flex-direction:row;align-items:center;gap:6px;}
+  .campo.chk input{width:18px;height:18px;accent-color:var(--accent);}
+  .campo.chk label{font-size:.72rem;color:var(--text);}
+  .acoes{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px;}
+  button.btn{font-family:inherit;font-weight:700;font-size:.92rem;padding:10px 18px;border-radius:9px;border:1px solid var(--border);background:#16222f;color:var(--text);cursor:pointer;}
+  button.btn.grande{background:linear-gradient(135deg,#0a5c73,#0a2f3d);border-color:#0e6a85;font-size:1.05rem;}
+  button.btn.vermelho{color:#ffbcc7;border-color:#5a2530;background:#2a1319;}
+  button.btn:active{transform:translateY(1px);}
+  .est{font-size:.9rem;color:#8fd0ff;font-family:monospace;margin-left:auto;}
+  /* ── Timeline / editor de curva ── */
+  .tl{position:relative;background:#0c141c;border:1px solid var(--border);border-radius:12px;height:min(52vh,420px);overflow:hidden;margin-top:4px;}
+  .curve-area{position:absolute;inset:0;cursor:crosshair;touch-action:none;}
+  .curve-svg{width:100%;height:100%;display:block;pointer-events:none;}
+  .ponto-handle{position:absolute;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;background:var(--azul);border:2px solid #fff;box-shadow:0 0 0 1px #0008;cursor:grab;touch-action:none;z-index:3;}
+  .ponto-handle.freio{background:var(--verm);}
+  .ponto-handle.sel{width:22px;height:22px;margin:-11px 0 0 -11px;box-shadow:0 0 0 3px #ffffff55;z-index:4;}
+  .eixo-y{position:absolute;left:4px;top:0;bottom:0;width:34px;pointer-events:none;z-index:2;}
+  .eixo-y span{position:absolute;left:0;font-size:.6rem;color:#5f7488;font-family:monospace;transform:translateY(-50%);}
+  .eixo-x{position:absolute;left:0;right:0;bottom:2px;height:14px;pointer-events:none;z-index:2;}
+  .eixo-x span{position:absolute;bottom:0;font-size:.6rem;color:#5f7488;font-family:monospace;transform:translateX(-50%);}
+  .fisgada-band{position:absolute;left:0;top:0;bottom:0;background:rgba(255,170,0,0.12);border-right:1px solid rgba(255,170,0,0.55);pointer-events:none;z-index:1;}
+  .fisgada-band span{position:absolute;top:4px;left:5px;font-size:.62rem;color:#ffd089;}
+  .dica{font-size:.72rem;color:var(--dim);margin-top:8px;line-height:1.5;}
+  /* editor de ponto (popup) */
+  #pontoEditor{position:fixed;display:none;gap:8px;align-items:center;background:#0e1a24;border:1px solid var(--accent);border-radius:10px;padding:8px 10px;z-index:50;box-shadow:0 8px 26px #000a;}
+  #pontoEditor label{font-size:.66rem;color:var(--dim);display:flex;flex-direction:column;gap:2px;}
+  #pontoEditor input{width:62px;background:#0d151d;border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:monospace;padding:5px 6px;text-align:center;outline:none;}
+  #pontoEditor button{font-family:inherit;border:none;border-radius:6px;padding:6px 9px;cursor:pointer;font-weight:700;}
+  #pontoEditor .rm{background:#3a1620;color:#ffbcc7;}
+  #pontoEditor .ok{background:#0a5c73;color:#fff;}
+</style>
+</head>
+<body>
+<header>
+  <span style="font-size:1.5rem">🎲</span>
+  <h1>Modo Aleatório <span style="font-weight:400;color:var(--dim);font-size:.8rem">· gerador da pirarará (isolado)</span></h1>
+  <a href="dashboard.html" class="btn-link spacer">↩ Dashboard</a>
+</header>
+
+<div class="nota">
+  🔒 <b>Página isolada:</b> gerar e editar aqui <b>não altera</b> o dashboard nem o player. A curva e os ajustes ficam
+  só neste aparelho (<code>simpesca2_aleat_*</code>), sem enviar pro GitHub. É o começo do 2º modo de jogo — por enquanto, só o gerador.
+</div>
+
+<div class="painel">
+  <div class="params">
+    <div class="campo"><label title="Pico da PUXADA (corrida). Escala do gráfico 0..40.">Puxada (pico)</label><input type="number" id="aCorrida" min="0" max="40" step="1" value="20" oninput="salvarGen()"></div>
+    <div class="campo"><label title="Pico do SAQUE da fisgada. Independe do teto.">Saque (pico)</label><input type="number" id="aSaque" min="0" max="40" step="1" value="24" oninput="salvarGen()"></div>
+    <div class="campo"><label title="0 = briga constante · 100 = cansa muito (trancos caem e descansos crescem no fim).">Fadiga %</label><input type="number" id="aFadiga" min="0" max="100" step="1" value="50" oninput="salvarGen()"></div>
+    <div class="campo"><label title="Total de segundos PUXANDO na briga (o resto vira descanso/recolhe).">Puxada (s)</label><input type="number" id="aPuxada" min="1" max="90" step="1" value="55" oninput="salvarGen()"></div>
+    <div class="campo"><label title="Contraste dos trancos em torno do pico. <50 achata · >50 exagera a assinatura.">Intensidade</label><input type="number" id="aIntens" min="0" max="100" step="1" value="50" oninput="salvarGen()"></div>
+    <div class="campo"><label title="Distância mínima entre pontos. Maior = menos pontos, motor alcança cada nível.">Espaço</label><input type="number" id="aEspaco" min="0" max="100" step="1" value="40" oninput="salvarGen()"></div>
+    <div class="campo"><label title="Freio máx (kgf) = força do peixe nas janelas de descanso. 0 = sem freio.">Freio máx</label><input type="number" id="aFreioMax" min="0" max="20" step="1" value="11" oninput="salvarGen()"></div>
+    <div class="campo"><label title="Piso das puxadas geradas (nada abaixo disso vira puxada real).">Mín. puxada</label><input type="number" id="aMinPux" min="0" max="40" step="1" value="7" oninput="salvarGen()"></div>
+    <div class="campo"><label title="Multiplicador de duração do SAQUE.">Saque ×dur</label><input type="number" id="aFisDur" min="0.2" max="4" step="0.1" value="2" oninput="salvarGen()"></div>
+    <div class="campo"><label title="Início da briga (s): fica em 0% até aqui (zona da fisgada física/manual).">Início (s)</label><input type="number" id="aFisFisDur" min="0" max="20" step="0.5" value="5" oninput="renderCurva();salvarGen()"></div>
+    <div class="campo chk"><input type="checkbox" id="aFreioQuad" onchange="salvarGen()"><label for="aFreioQuad">Freio quadrado</label></div>
+  </div>
+  <div class="acoes">
+    <button class="btn grande" onclick="gerar()">🎲 Gerar briga</button>
+    <button class="btn vermelho" onclick="limparCurva()">🗑 Limpar</button>
+    <span class="est" id="estLinha">🐟 ≈ 0.0 m</span>
+  </div>
+</div>
+
+<div class="tl" id="tl">
+  <div class="curve-area" id="curva"></div>
+  <div class="eixo-y" id="eixoY"></div>
+  <div class="eixo-x" id="eixoX"></div>
+</div>
+<div class="dica">✏️ <b>Clique</b> na área = novo ponto · <b>arraste</b> um ponto = mover · <b>clique num ponto</b> = editar valor / remover. Topo = puxada (+40) · base = freio (−20).</div>
+
+<div id="pontoEditor">
+  <label>t (s)<input id="pTempo" type="number" step="0.1"></label>
+  <label>%<input id="pPot" type="number" step="1"></label>
+  <button class="rm" onclick="removerPonto()">🗑</button>
+  <button class="ok" onclick="fecharEditor()">✓</button>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════════════════
+//  MODO ALEATÓRIO — cópia ISOLADA do gerador da pirarará + editor de curva.
+//  Storage próprio: simpesca2_aleat_pontos (curva) + simpesca2_aleat_gen_<campo> (ajustes).
+//  NÃO escreve em simpesca2_pontos_* / _gen_* / config.json / curvas.json, e NÃO sincroniza com GitHub.
+//  (Lê simpesca2_cal_* só pra estimativa de linha — calibração é global do aparelho, read-only.)
+// ══════════════════════════════════════════════════════════════════════════════
+const DURACAO=90;
+const ESC_POS=40;    // topo = PUXADA máxima
+const ESC_NEG=-20;   // base = FREIO máximo
+const ESC_RANGE=ESC_POS-ESC_NEG;   // 60 (escala assimétrica: 0 não fica no meio)
+const FREIO_MAX_DEF={pirarara:11};
+function rnd(a,b){ return a + Math.random()*(b-a); }
+function round2(x){ return Math.round(x*100)/100; }
+
+// ── Calibração global (read-only) só pra estimativa de linha ──
+function metrosPorVolta(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_mpv')); return (isFinite(v)&&v>0)?v:34; }
+function rpmMin(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_rpmmin')); return (isFinite(v)&&v>=0)?v:1100; }
+function rpmMax(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_rpmmax')); return (isFinite(v)&&v>0)?v:2000; }
+function interpolarPontos(pontos,t){ if(!pontos.length) return 0; if(t<=pontos[0].t) return pontos[0].pot; const last=pontos[pontos.length-1]; if(t>=last.t) return last.pot; for(let i=0;i<pontos.length-1;i++){ const a=pontos[i],b=pontos[i+1]; if(t>=a.t&&t<=b.t) return b.t===a.t?b.pot:a.pot+(b.pot-a.pot)*((t-a.t)/(b.t-a.t)); } return last.pot; }
+function rpmAlvo(pct){ const v=Math.min(ESC_POS, Math.max(0,pct)); return rpmMin() + (v/ESC_POS)*(rpmMax()-rpmMin()); }
+function rpmParaMs(erpm){ return Math.abs(erpm)/10/4096*metrosPorVolta(); }
+function estimarLinha(pts, esc=1){ if(!pts||!pts.length) return 0; let m=0; const dt=0.1; for(let t=0;t<DURACAO;t+=dt){ const pot=interpolarPontos(pts,t)*esc; if(pot>0.5) m+=rpmParaMs(rpmAlvo(pot))*dt; } return m; }
+
+// ══ GERADOR (cópia fiel do dashboard) ══════════════════════════════════════════
+let genFreioMax=0, genFreioQuad=false, genFreioFad=0, genMinPux=7;
+function espacar(pts, dmin){
+  if(!(dmin>0) || pts.length<3) return pts;
+  const out=[pts[0]]; let lastT=pts[0].t;
+  for(let i=1;i<pts.length-1;i++){ const p=pts[i];
+    if(p.pot===0 || p.fis || p.frear){ out.push(p); lastT=p.t; continue; }
+    if(p.t-lastT>=dmin){ out.push(p); lastT=p.t; }
+  }
+  out.push(pts[pts.length-1]); return out;
+}
+function espacoSeg(espaco){ const v=Math.max(0,Math.min(100,isFinite(espaco)?espaco:40)); return (v/100)*1.0; }
+function finalizarFight(pts){
+  const piso=genMinPux;
+  return pts.filter(p=>p.t<=DURACAO).map(p=>{
+    let pot=Math.max(ESC_NEG,Math.min(ESC_POS,Math.round(p.pot)));
+    if(pot>0 && pot<piso) pot=piso;
+    return {t:Math.round(p.t*100)/100, pot};
+  }).sort((a,b)=>a.t-b.t);
+}
+function suavizar(pts){
+  if(pts.length<2) return pts;
+  const out=[pts[0]];
+  for(let i=0;i<pts.length-1;i++){
+    const a=pts[i], b=pts[i+1], dt=b.t-a.t;
+    if(dt>0.6 && Math.abs(b.pot-a.pot)>3){
+      const steps=Math.min(6, Math.max(2, Math.round(dt/0.35)));
+      for(let s=1;s<steps;s++){ const u=s/steps, e=0.5-0.5*Math.cos(Math.PI*u); out.push({t:a.t+dt*u, pot:a.pot+(b.pot-a.pot)*e}); }
+    }
+    out.push(b);
+  }
+  return out;
+}
+function fisgadaStrike(pts, t, estilo, fisDur, fisPico){
+  const D=(isFinite(fisDur)&&fisDur>0)?fisDur:1;
+  const P=(isFinite(fisPico)&&fisPico>0)?Math.min(100,fisPico):95;
+  const p=(lo,hi)=>({t, pot:rnd(lo,hi)/100*P, fis:true});
+  const dt=(lo,hi)=>{ t+=rnd(lo,hi)*D; };
+  // pirarará = 'forte': saque firme e rápido
+  dt(0.3,0.5); pts.push(p(90,100));
+  dt(0.9,1.5); pts.push(p(78,90));
+  return t;
+}
+function arcoEnv(p, F){ return Math.max(0.12, (p<0.5) ? 1.0 : 1.0-(0.9*F)*((p-0.5)/0.5)); }
+function corridaInicial(pts,t,pdur,fat){
+  const end=t+pdur;
+  t+=Math.min(0.6,pdur*0.10); pts.push({t,pot:rnd(94,100)*fat});
+  if(pdur>=6){
+    const tResp=t+(end-t)*rnd(0.42,0.55);
+    while(t<tResp-0.8){ t+=rnd(1.4,2.4); pts.push({t,pot:rnd(85,97)*fat}); }
+    t+=rnd(0.4,0.6); pts.push({t,pot:0});
+    t+=rnd(1.5,3.0); pts.push({t,pot:0});
+    t+=rnd(0.3,0.5); pts.push({t,pot:rnd(92,100)*fat});
+  }
+  while(t<end-0.8){ t+=rnd(1.4,2.4); pts.push({t,pot:rnd(85,97)*fat}); }
+  return t;
+}
+function ultimaInvestida(pts,t,pdur,fat){
+  const end=t+pdur;
+  t+=Math.min(0.4,pdur*0.12); pts.push({t,pot:rnd(90,100)*fat});
+  while(t<end-0.5){ t+=rnd(0.8,1.4); pts.push({t,pot:rnd(82,96)*fat}); }
+  return t;
+}
+function preencherFreioJanelas(pts, t0){
+  if(!(genFreioMax>0)) return pts;
+  pts.sort((a,b)=>a.t-b.t);
+  const out=[];
+  for(let i=0;i<pts.length;i++){
+    out.push(pts[i]);
+    const a=pts[i], b=pts[i+1]; if(!b) continue;
+    if(Math.abs(a.pot)<1 && Math.abs(b.pot)<1 && (b.t-a.t)>1.0 && a.t>=t0-0.01){
+      const w=b.t-a.t;
+      let fr;
+      const mid=(a.t+w/2)/DURACAO, fad=(1-0.45*genFreioFad*mid);
+      if(genFreioQuad){ fr=-genFreioMax*fad; }
+      else { fr=-genFreioMax*fad*rnd(0.7,1.0); }
+      const e = genFreioQuad ? 0.08 : 0.28;
+      out.push({t:a.t+e, pot:fr, frear:true});
+      out.push({t:b.t-e, pot:fr, frear:true});
+    }
+  }
+  return out;
+}
+function buildFight(pe, nMin, nMax, teto, fadiga, puxada, fisEstilo, fisDur, fisPico, intens, espaco, durFis){
+  const F=(isFinite(fadiga)?Math.max(0,Math.min(100,fadiga)):50)/100;
+  const tf=(isFinite(teto)&&teto>0?Math.min(teto,100):100)/100;
+  const t0=isFinite(durFis)?Math.max(0,durFis):5;
+  const pts=[{t:0,pot:0}];
+  if(t0>0) pts.push({t:t0,pot:0});
+  const base=(isFinite(puxada)&&puxada>0)?puxada:45;
+  const pullBudget=Math.min(DURACAO-8, base*rnd(0.9,1.1));
+  const N=Math.round(rnd(nMin,nMax));
+  const pdurRun=Math.min(12, Math.max(4, pullBudget*0.22));
+  const pdurOutros=Math.max(1.5,(pullBudget-pdurRun)/Math.max(1,N-1));
+  const fill=rnd(82,89);
+  const restTotal=Math.max(N*3, (fill-t0)-pullBudget);
+  const w=[]; let wsum=0;
+  for(let k=0;k<N;k++){ const x=(N>1)?k/(N-1):0; const wk=1+(6.0*F)*x; w.push(wk); wsum+=wk; }
+  let t=t0;
+  for(let k=0;k<N;k++){
+    const fat=arcoEnv(t/DURACAO,F);
+    if(k===0){ t=fisgadaStrike(pts, t, fisEstilo, fisDur, fisPico); }
+    else if(k===1){ t=corridaInicial(pts, t, pdurRun, fat); }
+    else { const pdur=pdurOutros*rnd(0.8,1.2); t=pe(pts, t, pdur, fat); }
+    t+=rnd(0.4,0.8); pts.push({t,pot:0});
+    let wdur=restTotal*(w[k]/wsum)*rnd(0.85,1.15);
+    wdur=Math.max(2.0, Math.min(16, wdur));
+    wdur=Math.min(wdur, Math.max(1.5, (DURACAO-11)-t));
+    t+=wdur; pts.push({t,pot:0});
+    if(t>DURACAO-12) break;
+  }
+  { const dUI=Math.min(7, DURACAO-2-t);
+    if(dUI>=3){ t=ultimaInvestida(pts, t, dUI, rnd(0.9,1.0)); t+=Math.min(0.7, Math.max(0.2, DURACAO-t)); pts.push({t,pot:0}); } }
+  const ig=(isFinite(intens)?Math.max(0,Math.min(100,intens)):50)/25;
+  if(ig!==1){
+    let topo=0; pts.forEach(p=>{ if(!p.fis && p.pot>topo) topo=p.pot; });
+    if(topo>0) pts.forEach(p=>{ if(!p.fis && p.pot>0) p.pot=Math.max(0.5, Math.min(100, topo-(topo-p.pot)*ig)); });
+  }
+  pts.forEach(p=>{ if(!p.fis && !p.frear) p.pot*=tf; });
+  return finalizarFight(espacar(suavizar(preencherFreioJanelas(pts, t0)), espacoSeg(espaco)));
+}
+// PIRARARÁ — swells lentos e pesados
+function pePirarara(pts,t,pdur,fat){
+  const end=t+pdur;
+  t+=Math.min(0.7,pdur*0.16); pts.push({t,pot:rnd(86,98)*fat});
+  while(t<end-1.0){
+    t+=rnd(2.2,3.4); pts.push({t,pot:rnd(60,76)*fat});
+    if(t>=end-1.0)break;
+    t+=rnd(2.2,3.4); pts.push({t,pot:rnd(90,100)*fat});
+  }
+  return t;
+}
+function fightPirarara(teto,fadiga,puxada,fisDur,fisPico,intens,espaco,durFis){ return buildFight(pePirarara, 4, 6, teto, fadiga, puxada, 'forte', fisDur, fisPico, intens, espaco, durFis); }
+
+// ── Ajustes do gerador (lê os inputs desta página) ──
+function cfgGerador(){
+  const g=(id,d)=>{ const el=document.getElementById(id); const v=el?parseFloat(el.value):NaN; return isFinite(v)?v:d; };
+  let fadiga=Math.max(0,Math.min(100,g('aFadiga',50)));
+  let puxada=g('aPuxada',55); if(!(puxada>0)) puxada=55;
+  let fisDur=g('aFisDur',2); if(!(fisDur>0)) fisDur=2;
+  let durFis=g('aFisFisDur',5); if(!(durFis>=0)) durFis=5;
+  let intens=Math.max(0,Math.min(100,g('aIntens',50)));
+  let espaco=Math.max(0,Math.min(100,g('aEspaco',40)));
+  let freioMax=Math.max(0,Math.min(-ESC_NEG,g('aFreioMax',FREIO_MAX_DEF.pirarara)));
+  let corrida=Math.max(0,Math.min(ESC_POS,g('aCorrida',Math.round(freioMax*1.8))));
+  let saque=Math.max(0,Math.min(ESC_POS,g('aSaque',Math.round(freioMax*2.2))));
+  let minpux=Math.max(0,Math.min(ESC_POS,g('aMinPux',7)));
+  const teto=Math.max(1,corrida), fisPico=Math.max(1,saque);
+  const freioQuad=!!(document.getElementById('aFreioQuad')||{}).checked;
+  return {teto,fadiga,puxada,fisPico,fisDur,intens,espaco,freioMax,freioQuad,corrida,saque,minpux,durFis};
+}
+function gerarCurva(){ const c=cfgGerador(); genFreioMax=c.freioMax; genFreioQuad=c.freioQuad; genFreioFad=(c.fadiga||0)/100; genMinPux=c.minpux; return fightPirarara(c.teto,c.fadiga,c.puxada,c.fisDur,c.fisPico,c.intens,c.espaco,c.durFis); }
+
+// ══ ESTADO + STORAGE ISOLADO ══════════════════════════════════════════════════
+const KEY_PONTOS='simpesca2_aleat_pontos';
+const GEN_CAMPOS=['aCorrida','aSaque','aFadiga','aPuxada','aIntens','aEspaco','aFreioMax','aMinPux','aFisDur','aFisFisDur'];
+let pontos=[], selPonto=-1, arrastou=false;
+const pEditor=document.getElementById('pontoEditor');
+
+function salvarPontos(){ try{ localStorage.setItem(KEY_PONTOS, JSON.stringify(pontos)); }catch(e){} }
+function carregarPontos(){ try{ const r=localStorage.getItem(KEY_PONTOS); if(r){ const d=JSON.parse(r); if(Array.isArray(d)&&d.length) return d.slice().sort((a,b)=>a.t-b.t); } }catch(e){} return null; }
+function salvarGen(){ GEN_CAMPOS.forEach(id=>{ const el=document.getElementById(id); if(el) localStorage.setItem('simpesca2_aleat_gen_'+id, el.value); }); const q=document.getElementById('aFreioQuad'); if(q) localStorage.setItem('simpesca2_aleat_gen_aFreioQuad', q.checked?'1':'0'); atualizarEst(); }
+function carregarGen(){ GEN_CAMPOS.forEach(id=>{ const v=localStorage.getItem('simpesca2_aleat_gen_'+id); if(v!==null){ const el=document.getElementById(id); if(el) el.value=v; } }); const q=document.getElementById('aFreioQuad'); const qv=localStorage.getItem('simpesca2_aleat_gen_aFreioQuad'); if(q&&qv!==null) q.checked=(qv==='1'); }
+
+// ══ EDITOR / RENDER ═══════════════════════════════════════════════════════════
+function yOf(v){ return ((ESC_POS-v)/ESC_RANGE)*100; }
+function atualizarEst(){ const e=document.getElementById('estLinha'); if(e) e.textContent='🐟 ≈ '+estimarLinha(pontos,1).toFixed(1)+' m'; }
+function montarEixos(){
+  const ey=document.getElementById('eixoY'); ey.innerHTML=[40,20,0,-20].map(v=>'<span style="top:'+yOf(v).toFixed(1)+'%">'+(v>0?'+':'')+v+'</span>').join('');
+  const ex=document.getElementById('eixoX'); ex.innerHTML=[0,15,30,45,60,75,90].map(t=>'<span style="left:'+(t/DURACAO*100).toFixed(1)+'%">'+t+'s</span>').join('');
+}
+function renderCurva(){
+  const area=document.getElementById('curva');
+  const y0=yOf(0), y0s=y0.toFixed(2);
+  let inner='';
+  inner+='<rect x="0" y="0" width="100" height="'+y0s+'" fill="rgba(0,212,255,0.06)"/>';
+  inner+='<rect x="0" y="'+y0s+'" width="100" height="'+(100-y0).toFixed(2)+'" fill="rgba(255,95,95,0.06)"/>';
+  [30,20,10,-10].forEach(v=>{ inner+='<line x1="0" y1="'+yOf(v).toFixed(2)+'" x2="100" y2="'+yOf(v).toFixed(2)+'" stroke="rgba(255,255,255,0.07)" stroke-width="1" vector-effect="non-scaling-stroke"/>'; });
+  inner+='<line x1="0" y1="'+y0s+'" x2="100" y2="'+y0s+'" stroke="rgba(255,255,255,0.28)" stroke-width="1" vector-effect="non-scaling-stroke"/>';
+  if(pontos.length){
+    const seq=[[0,pontos[0].pot]].concat(pontos.map(p=>[(p.t/DURACAO)*100,p.pot])).concat([[100,pontos[pontos.length-1].pot]]);
+    const fill=(clamp,cor)=>{ const pp=seq.map(c=>c[0].toFixed(2)+','+yOf(clamp(c[1])).toFixed(2)).join(' '); return '<polygon points="0,'+y0s+' '+pp+' 100,'+y0s+'" fill="'+cor+'"/>'; };
+    inner+=fill(v=>Math.max(0,v),'rgba(0,212,255,0.20)');
+    inner+=fill(v=>Math.min(0,v),'rgba(255,95,95,0.20)');
+    const line=seq.map(c=>c[0].toFixed(2)+','+yOf(c[1]).toFixed(2)).join(' ');
+    inner+='<polyline points="'+line+'" fill="none" stroke="#dcefff" stroke-width="1.5" vector-effect="non-scaling-stroke"/>';
+  }
+  area.innerHTML='<svg class="curve-svg" viewBox="0 0 100 100" preserveAspectRatio="none">'+inner+'</svg>';
+  pontos.forEach((p,i)=>{ const h=document.createElement('div'); h.className='ponto-handle'+(p.pot<0?' freio':'')+(i===selPonto?' sel':''); h.style.left=(p.t/DURACAO*100)+'%'; h.style.top=yOf(p.pot)+'%'; h.addEventListener('pointerdown',e=>iniciarDragPonto(e,i)); area.appendChild(h); });
+  // faixa da fisgada física (0..durFis)
+  const durFis=cfgGerador().durFis; const wrap=document.getElementById('tl'); let band=wrap.querySelector('.fisgada-band');
+  if(durFis>0){ if(!band){ band=document.createElement('div'); band.className='fisgada-band'; band.innerHTML='<span>🎣 fisgada</span>'; wrap.appendChild(band); } band.style.width=Math.min(100,(durFis/DURACAO)*100)+'%'; band.style.display='block'; } else if(band){ band.style.display='none'; }
+  atualizarEst();
+}
+function iniciarDragPonto(e,i){
+  e.stopPropagation(); e.preventDefault();
+  selPonto=i; arrastou=false; abrirEditor(e); renderCurva();
+  const area=document.getElementById('curva'); const rect=area.getBoundingClientRect();
+  const onMove=ev=>{ arrastou=true; const p=pontos[selPonto]; if(!p) return;
+    p.t=round2(Math.max(0,Math.min(DURACAO,(ev.clientX-rect.left)/rect.width*DURACAO)));
+    p.pot=Math.max(ESC_NEG,Math.min(ESC_POS,Math.round(ESC_POS-((ev.clientY-rect.top)/rect.height)*ESC_RANGE)));
+    camposDoPonto(); renderCurva();
+  };
+  const onUp=()=>{ document.removeEventListener('pointermove',onMove); document.removeEventListener('pointerup',onUp);
+    const obj=pontos[selPonto]; pontos.sort((a,b)=>a.t-b.t); selPonto=pontos.indexOf(obj); salvarPontos(); renderCurva(); camposDoPonto(); setTimeout(()=>{arrastou=false;},10);
+  };
+  document.addEventListener('pointermove',onMove); document.addEventListener('pointerup',onUp);
+}
+function setupArea(){
+  const area=document.getElementById('curva');
+  area.addEventListener('click',e=>{
+    if(e.target.classList.contains('ponto-handle')) return;
+    if(arrastou) return;
+    const rect=area.getBoundingClientRect();
+    const t=round2(Math.max(0,Math.min(DURACAO,(e.clientX-rect.left)/rect.width*DURACAO)));
+    const pot=Math.max(ESC_NEG,Math.min(ESC_POS,Math.round(ESC_POS-((e.clientY-rect.top)/rect.height)*ESC_RANGE)));
+    const novo={t,pot}; pontos.push(novo); pontos.sort((a,b)=>a.t-b.t); selPonto=pontos.indexOf(novo);
+    salvarPontos(); renderCurva(); abrirEditor(e);
+  });
+}
+// ── popup do ponto ──
+function abrirEditor(e){ camposDoPonto(); pEditor.style.display='flex'; posEditor(e); }
+function posEditor(e){
+  if(!e || e.clientX==null){ pEditor.style.left='50%'; pEditor.style.top='90px'; return; }
+  const w=pEditor.offsetWidth||220, h=pEditor.offsetHeight||60;
+  let x=Math.max(8,Math.min(window.innerWidth-w-8, e.clientX+16));
+  let y=Math.max(8,Math.min(window.innerHeight-h-8, e.clientY+16));
+  pEditor.style.left=x+'px'; pEditor.style.top=y+'px';
+}
+function fecharEditor(){ pEditor.style.display='none'; selPonto=-1; renderCurva(); }
+function camposDoPonto(){ const p=pontos[selPonto]; if(!p) return; document.getElementById('pTempo').value=p.t; document.getElementById('pPot').value=p.pot; }
+function removerPonto(){ if(selPonto>-1){ pontos.splice(selPonto,1); salvarPontos(); fecharEditor(); } }
+document.getElementById('pTempo').addEventListener('input',e=>{ const p=pontos[selPonto]; if(!p) return; p.t=Math.max(0,Math.min(DURACAO,parseFloat(e.target.value)||0)); salvarPontos(); renderCurva(); });
+document.getElementById('pPot').addEventListener('input',e=>{ const p=pontos[selPonto]; if(!p) return; p.pot=Math.max(ESC_NEG,Math.min(ESC_POS,parseInt(e.target.value)||0)); salvarPontos(); renderCurva(); });
+
+// ── botões ──
+function gerar(){ pontos=gerarCurva(); selPonto=-1; salvarPontos(); fecharEditor(); renderCurva(); }
+function limparCurva(){ pontos=[]; selPonto=-1; salvarPontos(); fecharEditor(); renderCurva(); }
+
+// ══ INIT ══════════════════════════════════════════════════════════════════════
+carregarGen();
+montarEixos();
+setupArea();
+pontos = carregarPontos() || gerarCurva();   // 1ª vez: já gera uma pirarará (isolada)
+salvarPontos();
+renderCurva();
+</script>
+</body>
+</html>
