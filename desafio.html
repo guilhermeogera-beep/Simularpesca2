@@ -737,14 +737,15 @@ function montarBloco(i){
 
 // ══ CARRETEL — config GLOBAL (NÃO isolado): mesmas chaves simpesca2_cal_* do dash + push pro config.json ══
 const SERVICE_UUID="a1b2c3d4-0001-4a5b-8c6d-1234567890ab", CHAR_MOTOR_UUID="a1b2c3d4-0002-4a5b-8c6d-1234567890ab", CHAR_LINHA_UUID="a1b2c3d4-0003-4a5b-8c6d-1234567890ab", CHAR_CONFIG_UUID="a1b2c3d4-0004-4a5b-8c6d-1234567890ab";
-let bleDevice=null, motorChar=null, linhaChar=null, configChar=null, contagemEncoder=0, contAnt=0, primeiraLeitura=true, metrosGanhos=0, metrosPerdidos=0, travaAtiva=false;
+let bleDevice=null, motorChar=null, linhaChar=null, configChar=null, contagemEncoder=(parseInt(localStorage.getItem('simpesca2_contagem_encoder'))||0), contAnt=0, primeiraLeitura=true, metrosGanhos=0, metrosPerdidos=0, travaAtiva=false;
+function salvarContagem(){ try{ localStorage.setItem('simpesca2_contagem_encoder', String(Math.round(contagemEncoder))); }catch(e){} }   // carretel COMPARTILHADO entre dash/desafio/player (mesma bobina)
 function btUI(cls,txt){ const b=document.getElementById('btnBT'); if(b){ b.className=cls; b.textContent=txt; } }
 function inverterDir(){ return (localStorage.getItem('simpesca2_cal_inv')||'1')==='1'; }
 function contagemParaMetros(c){ let m=(c/4096)*metrosPorVolta(); if(inverterDir()) m=-m; return m; }
 function limiteLinha(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_limite')); return (isFinite(v)&&v!==0)?v:-150; }
 function linhaCarretel(){ return contagemParaMetros(contagemEncoder); }
 function atualizarContadores(){ const g=document.getElementById('ctGanhos'); if(!g) return; const net=linhaCarretel(), L=limiteLinha(); g.textContent=metrosGanhos.toFixed(1)+' m'; document.getElementById('ctPerdidos').textContent=metrosPerdidos.toFixed(1)+' m'; const s=document.getElementById('ctSaldo'); s.textContent=net.toFixed(1)+' / '+L.toFixed(0)+' m'; s.style.color=(Math.abs(net)>=Math.abs(L))?'var(--red)':''; }
-function zerarContadores(){ metrosGanhos=0; metrosPerdidos=0; contagemEncoder=0; contAnt=0; primeiraLeitura=true; travaAtiva=false; if(linhaChar){ try{ linhaChar.writeValue(new Uint8Array([0])); }catch(e){} } atualizarContadores(); }
+function zerarContadores(){ metrosGanhos=0; metrosPerdidos=0; contagemEncoder=0; contAnt=0; primeiraLeitura=true; travaAtiva=false; salvarContagem(); if(linhaChar){ try{ linhaChar.writeValue(new Uint8Array([0])); }catch(e){} } atualizarContadores(); }
 function inverterLado(){ const novo=!(localStorage.getItem('simpesca2_cal_inv')==='1'); localStorage.setItem('simpesca2_cal_inv', novo?'1':'0'); const tmp=metrosGanhos; metrosGanhos=metrosPerdidos; metrosPerdidos=tmp; travaAtiva=false; atualizarContadores(); agendarSyncCal(); }
 function salvarLimite(){ const lim=parseFloat(document.getElementById('calLimite').value); if(isFinite(lim)&&lim!==0){ localStorage.setItem('simpesca2_cal_limite',lim); travaAtiva=false; atualizarContadores(); agendarSyncCal(); } else { alert('Limite inválido (não pode ser 0/vazio)'); } }
 function toggleCarretelBtns(){ const el=document.getElementById('carretelCtrls'); if(!el) return; const ocultar=el.style.display!=='none'; el.style.display=ocultar?'none':''; localStorage.setItem('simpesca2_carretel_btns', ocultar?'0':'1'); }
@@ -759,9 +760,10 @@ async function ligar(device){
   try{ linhaChar=await service.getCharacteristic(CHAR_LINHA_UUID); await linhaChar.startNotifications(); linhaChar.addEventListener('characteristicvaluechanged',e=>{
         const nova=e.target.value.getInt32(0,true);
         if(primeiraLeitura){ contAnt=nova; primeiraLeitura=false; }
-        const dM=contagemParaMetros(nova-contAnt); contAnt=nova;
+        const d=nova-contAnt; contAnt=nova;
+        const dM=contagemParaMetros(d);
         if(dM>0) metrosGanhos+=dM; else metrosPerdidos+=-dM;
-        contagemEncoder=nova; atualizarContadores();
+        contagemEncoder+=d; salvarContagem(); atualizarContadores();
       }); }catch(e){}
   try{ configChar=await service.getCharacteristic(CHAR_CONFIG_UUID); enviarConfigRPM(); }catch(e){ configChar=null; }   // configura RPM/freio no ESP ao conectar
   btUI('conectado','🟢 Conectado');
@@ -809,7 +811,9 @@ async function enviarSyncCurva(){
   setCurvaBadge(r&&r.ok?'ok':'err');
 }
 // ── Sincroniza AO VIVO com o dash (mesmas chaves): se os dois estiverem abertos, reflete a mudança ──
-window.addEventListener('storage', e=>{ if(!e.key) return; if(e.key==='simpesca2_cal_limite' || e.key==='simpesca2_cal_inv' || e.key==='simpesca2_cal_mpv'){ const li=document.getElementById('calLimite'); if(li) li.value=limiteLinha(); atualizarContadores(); } });
+window.addEventListener('storage', e=>{ if(!e.key) return;
+  if(e.key==='simpesca2_contagem_encoder'){ if(!linhaChar){ contagemEncoder=parseInt(e.newValue)||0; atualizarContadores(); } return; }   // carretel sincroniza entre abas (só se esta aba não for a dona do BLE)
+  if(e.key==='simpesca2_cal_limite' || e.key==='simpesca2_cal_inv' || e.key==='simpesca2_cal_mpv'){ const li=document.getElementById('calLimite'); if(li) li.value=limiteLinha(); atualizarContadores(); } });
 // ── Ao abrir: aplica o cal do config.json (limite/inv/mpv global, read-only) e mostra ──
 { const li=document.getElementById('calLimite'); if(li) li.value=limiteLinha(); atualizarContadores(); }
 (async()=>{ if(navigator.onLine){ try{ const r=await fetch('config.json',{cache:'no-store'}); if(r&&r.ok){ const d=await r.json(); const c=(d&&d.cal)||{}; if(c.limite!=null) localStorage.setItem('simpesca2_cal_limite',c.limite); if(c.inv!=null) localStorage.setItem('simpesca2_cal_inv',c.inv); if(c.mpv) localStorage.setItem('simpesca2_cal_mpv',c.mpv); } }catch(e){} }

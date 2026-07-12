@@ -186,7 +186,8 @@ const SERVICE_UUID="a1b2c3d4-0001-4a5b-8c6d-1234567890ab";
 const CHAR_MOTOR_UUID="a1b2c3d4-0002-4a5b-8c6d-1234567890ab";
 const CHAR_LINHA_UUID="a1b2c3d4-0003-4a5b-8c6d-1234567890ab";
 const CHAR_CONFIG_UUID="a1b2c3d4-0004-4a5b-8c6d-1234567890ab";
-let bleDevice=null, motorChar=null, linhaChar=null, configChar=null, contagemEncoder=0;
+let bleDevice=null, motorChar=null, linhaChar=null, configChar=null, contagemEncoder=(parseInt(localStorage.getItem('simpesca2_contagem_encoder'))||0);
+function salvarContagem(){ try{ localStorage.setItem('simpesca2_contagem_encoder', String(Math.round(contagemEncoder))); }catch(e){} }   // carretel COMPARTILHADO entre dash/desafio/player (mesma bobina)
 let contAnt=0, primeiraLeitura=true, metrosGanhos=0, metrosPerdidos=0, contando=false;
 function btUI(c,t){ const b=document.getElementById('btnBT'); b.className=c; b.textContent=t; }
 async function conectarBLE(){
@@ -211,8 +212,9 @@ async function ligar(device){
     linhaChar.addEventListener('characteristicvaluechanged', e=>{
       const nova=e.target.value.getInt32(0,true);
       if(primeiraLeitura){ contAnt=nova; primeiraLeitura=false; }
-      if(contando){ const dM=contagemParaMetros(nova-contAnt); if(dM>0) metrosGanhos+=dM; else metrosPerdidos+=-dM; checarLimiteSeguranca(); }
-      contAnt=nova; contagemEncoder=nova; atualizarLinha();
+      const d=nova-contAnt; contAnt=nova;
+      if(contando){ const dM=contagemParaMetros(d); if(dM>0) metrosGanhos+=dM; else metrosPerdidos+=-dM; checarLimiteSeguranca(); }
+      contagemEncoder+=d; salvarContagem(); atualizarLinha();
     });
   }catch(e){}
   try{ configChar=await service.getCharacteristic(CHAR_CONFIG_UUID); enviarConfigRPM(); }catch(e){ configChar=null; }
@@ -257,7 +259,7 @@ async function tentarReconectar(){
 }
 function escreverMotorBLE(pct){ if(!motorChar) return; const b=new Int8Array([Math.max(-100,Math.min(100,Math.round(pct)))]); try{ motorChar.writeValueWithoutResponse?motorChar.writeValueWithoutResponse(b):motorChar.writeValue(b); }catch(e){} }   // força COM SINAL (int8): + puxa, − freia (firmware VESC)
 // Zera a LINHA do carretel (re-spool): operador usa após re-enrolar a linha na carretilha/molinete
-function zerarEncoder(){ contagemEncoder=0; contAnt=0; primeiraLeitura=true; metrosGanhos=0; metrosPerdidos=0; atualizarLinha(); if(linhaChar){ try{ linhaChar.writeValue(new Uint8Array([0])); }catch(e){} } }
+function zerarEncoder(){ contagemEncoder=0; contAnt=0; primeiraLeitura=true; metrosGanhos=0; metrosPerdidos=0; salvarContagem(); atualizarLinha(); if(linhaChar){ try{ linhaChar.writeValue(new Uint8Array([0])); }catch(e){} } }
 // Novo jogador: zera só a contagem DESTE jogo (HUD/ranking); a linha do carretel continua acumulada
 function novoJogoContadores(){ metrosGanhos=0; metrosPerdidos=0; contAnt=contagemEncoder; atualizarLinha(); }
 function resetarLinha(){ if(confirm('Zerar a linha acumulada do carretel?\nFaça isso só DEPOIS de re-enrolar a linha na carretilha/molinete.')){ zerarEncoder(); mostrarToast('Linha do carretel zerada'); } }
