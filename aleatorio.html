@@ -105,8 +105,9 @@ input[type="range"]::-webkit-slider-thumb{height:24px;width:24px;border-radius:5
 <div class="nota">🔒 <b>Página isolada:</b> gerar e editar aqui <b>não altera</b> o dashboard nem o player (storage próprio <code>simpesca2_aleat_*</code>, sem GitHub). O <b>▶ play é só prévia visual</b> (sem motor/BLE por enquanto). É o começo do 2º modo de jogo.</div>
 
 <div class="card">
-  <div class="secao-titulo"><span>⚡</span> Curva de Potência (por pontos) — pirarará</div>
-  <div class="dica-editor">✏️ <b>🎲+</b> gera a PUXADA · <b>🎲−</b> gera o FREIO nas janelas · <b>clique</b> = novo ponto · <b>arraste</b> = mover · <b>clique no ponto</b> = editar/remover.</div>
+  <div class="secao-titulo"><span>⚡</span> Curvas da briga — Início &amp; Fim (o jogo interpola entre elas)</div>
+  <div class="dica-editor">🎣 <b>Início (0–90 s)</b> = como o peixe briga descansado · <b>Fim (últimos 90 s)</b> = já cansado (mais fraco). O motor faz a <b>transição Início → Fim</b> ao longo do jogo. · ✏️ <b>🎲+</b> puxada · <b>🎲−</b> freio · <b>clique</b> = ponto · <b>arraste</b> = mover · <b>clique no ponto</b> = editar/remover.</div>
+  <div style="font-size:0.72rem;color:var(--text-dim);margin-bottom:12px;">⏱ <b>Duração total do jogo:</b> <input type="number" id="duracaoTotalMin" min="1" max="60" step="1" value="20" oninput="salvarDuracaoTotal()" style="width:56px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:monospace;text-align:center;padding:4px 6px;outline:none;"> min <i>(a interpolação Início→Fim acontece ao longo desse tempo — usado no jogo/Fase 1)</i></div>
   <div id="simsContainer"></div>
 
   <div id="pontoEditor">
@@ -151,11 +152,10 @@ input[type="range"]::-webkit-slider-thumb{height:24px;width:24px;border-radius:5
 //  Play/pause/stop = prévia VISUAL (playhead + gauge), sem BLE/motor. Editar aqui NÃO afeta dash/player.
 //  (Lê simpesca2_cal_* só pra estimativa/gauge — calibração é global do aparelho, read-only.)
 // ══════════════════════════════════════════════════════════════════════════════
-const ESC_POS=40, ESC_NEG=-20, ESC_RANGE=ESC_POS-ESC_NEG;
-let DURACAO=1200;   // duração da briga (s) — configurável (⏱ min). Padrão 20 min. O gerador ESCALA pra preencher.
-const FREIO_MAX_DEF={pirarara:11}, PESO_MAX_DEF={pirarara:50}, PESO_MIN=1, MAX_PUXADA_A=30;
-const LETRAS=['pirarara'], NOMES=['Pirarará'], NSIMS=1;
-const SIMS=[{pontos:[]}];
+const ESC_POS=40, ESC_NEG=-20, ESC_RANGE=ESC_POS-ESC_NEG, DURACAO=90;   // cada curva = 90s (Início e Fim); o jogo interpola o MEIO entre as duas ao longo da duração total
+const FREIO_MAX_DEF={ini:11, fim:11}, PESO_MAX_DEF={ini:50, fim:50}, PESO_MIN=1, MAX_PUXADA_A=30;
+const LETRAS=['ini','fim'], NOMES=['Início (0–90 s)','Fim (últimos 90 s)'], NSIMS=2;
+const SIMS=[{pontos:[]},{pontos:[]}];
 let simAtiva=0, selPonto=-1, multiSel=[], arrastouPonto=false, simHover=0, clip=null;
 
 // ── Calibração global (read-only) só pra estimativa/gauge ──
@@ -263,12 +263,11 @@ function buildFight(pe, nMin, nMax, teto, fadiga, puxada, fisEstilo, fisDur, fis
   const pts=[{t:0,pot:0}];
   if(t0>0) pts.push({t:t0,pot:0});
   const base=(isFinite(puxada)&&puxada>0)?puxada:45;
-  const kDur=DURACAO/90;   // escala vs a referência de 90s (ESCALA o tamanho da briga p/ preencher a duração)
-  const pullBudget=Math.min(DURACAO-8, base*kDur*rnd(0.9,1.1));                    // total de motor ligado cresce com a duração
-  const N=Math.round(rnd(nMin,nMax)*Math.max(1,Math.pow(kDur,0.7)));              // mais trancos (sub-linear: briga longa não vira picotado infinito)
-  const pdurRun=Math.min(Math.max(12,DURACAO*0.03), Math.max(4, pullBudget*0.22)); // corrida inicial pode ser mais longa em briga longa
+  const pullBudget=Math.min(DURACAO-8, base*rnd(0.9,1.1));
+  const N=Math.round(rnd(nMin,nMax));
+  const pdurRun=Math.min(12, Math.max(4, pullBudget*0.22));
   const pdurOutros=Math.max(1.5,(pullBudget-pdurRun)/Math.max(1,N-1));
-  const fill=rnd(0.86,0.93)*DURACAO;                                              // preenche ~90% da duração
+  const fill=rnd(82,89);
   const restTotal=Math.max(N*3, (fill-t0)-pullBudget);
   const w=[]; let wsum=0;
   for(let k=0;k<N;k++){ const x=(N>1)?k/(N-1):0; const wk=1+(6.0*F)*x; w.push(wk); wsum+=wk; }
@@ -280,7 +279,7 @@ function buildFight(pe, nMin, nMax, teto, fadiga, puxada, fisEstilo, fisDur, fis
     else { const pdur=pdurOutros*rnd(0.8,1.2); t=pe(pts, t, pdur, fat); }
     t+=rnd(0.4,0.8); pts.push({t,pot:0});
     let wdur=restTotal*(w[k]/wsum)*rnd(0.85,1.15);
-    wdur=Math.max(2.0, Math.min(Math.max(16,DURACAO*0.06), wdur));   // janelas de descanso podem ser maiores em briga longa
+    wdur=Math.max(2.0, Math.min(16, wdur));
     wdur=Math.min(wdur, Math.max(1.5, (DURACAO-11)-t));
     t+=wdur; pts.push({t,pot:0});
     if(t>DURACAO-12) break;
@@ -354,13 +353,13 @@ function atualizarPesoLbl(i){ const id=LETRAS[i], w=pesoSimValor(i), esc=escalaP
 
 // ══ STORAGE ISOLADO ════════════════════════════════════════════════════════════
 const GEN_CAMPOS=['intens','saque','fisDur','corrida','minpux','fadiga','puxada','espaco','freioMax','fisFisDur'];
-function salvarPontos(idx){ try{ localStorage.setItem('simpesca2_aleat_pontos', JSON.stringify(SIMS[idx].pontos)); }catch(e){} }
-function carregarPontosStore(){ try{ const r=localStorage.getItem('simpesca2_aleat_pontos'); if(r){ const d=JSON.parse(r); if(Array.isArray(d)&&d.length) return d.slice().sort((a,b)=>a.t-b.t); } }catch(e){} return null; }
+function salvarPontos(idx){ try{ localStorage.setItem('simpesca2_aleat_pontos_'+LETRAS[idx], JSON.stringify(SIMS[idx].pontos)); }catch(e){} }
+function carregarPontosStore(idx){ try{ let r=localStorage.getItem('simpesca2_aleat_pontos_'+LETRAS[idx]); if(!r && idx===0) r=localStorage.getItem('simpesca2_aleat_pontos'); if(r){ const d=JSON.parse(r); if(Array.isArray(d)&&d.length) return d.slice().sort((a,b)=>a.t-b.t); } }catch(e){} return null; }
 function salvarGenCfg(idx){ GEN_CAMPOS.forEach(c=>{ const el=document.getElementById(c+idx); if(el) localStorage.setItem('simpesca2_aleat_gen_'+LETRAS[idx]+'_'+c, el.value); }); const q=document.getElementById('freioQuad'+idx); if(q) localStorage.setItem('simpesca2_aleat_gen_'+LETRAS[idx]+'_freioquad', q.checked?'1':'0'); }
-function carregarGenCfg(){ const idx=0; GEN_CAMPOS.forEach(c=>{ const v=localStorage.getItem('simpesca2_aleat_gen_'+LETRAS[idx]+'_'+c); if(v!==null){ const el=document.getElementById(c+idx); if(el) el.value=v; } }); const q=document.getElementById('freioQuad'+idx); const qv=localStorage.getItem('simpesca2_aleat_gen_'+LETRAS[idx]+'_freioquad'); if(q&&qv!==null) q.checked=(qv==='1'); }
+function carregarGenCfg(idx){ GEN_CAMPOS.forEach(c=>{ const v=localStorage.getItem('simpesca2_aleat_gen_'+LETRAS[idx]+'_'+c); if(v!==null){ const el=document.getElementById(c+idx); if(el) el.value=v; } }); const q=document.getElementById('freioQuad'+idx); const qv=localStorage.getItem('simpesca2_aleat_gen_'+LETRAS[idx]+'_freioquad'); if(q&&qv!==null) q.checked=(qv==='1'); }
 
 // ══ RENDER ═════════════════════════════════════════════════════════════════════
-function setDuracao(){ const el=document.getElementById('duracaoMin0'); let m=el?parseFloat(el.value):20; if(!(m>0)) m=20; DURACAO=Math.round(m*60); localStorage.setItem('simpesca2_aleat_duracao', m); renderCurva(0); }   // muda a duração da briga (⏱ min) e redesenha; regere (🎲) pra a curva escalar
+function salvarDuracaoTotal(){ const el=document.getElementById('duracaoTotalMin'); let m=el?parseFloat(el.value):20; if(!(m>0)) m=20; localStorage.setItem('simpesca2_aleat_duracao', m); }   // duração TOTAL do jogo (min) — o jogo interpola Início→Fim ao longo dela (Fase 1)
 function renderTicks(idx){
   const wrap=document.getElementById('tl'+idx);
   wrap.querySelectorAll('.time-line,.time-tick').forEach(e=>e.remove());
@@ -462,9 +461,9 @@ function pauseSim(idx){ simRodando=false; if(simRaf) cancelAnimationFrame(simRaf
 function stopSim(idx){ simRodando=false; if(simRaf) cancelAnimationFrame(simRaf); simPausaT=0; const ph=document.getElementById('playhead'+idx); if(ph) ph.style.left='0%'; atualizarSimGauge(idx,0); const ts=document.getElementById('tsDisplay'+idx); if(ts) ts.textContent='0:00 / 1:30'; }
 
 // ══ BLOCO (marcação IDÊNTICA ao dashboard, idx=0) ═════════════════════════════
-function montarBloco(){
+function montarBloco(i){
   const cont=document.getElementById('simsContainer');
-  const i=0, e={id:LETRAS[0], nome:NOMES[0]}, cls='a';
+  const e={id:LETRAS[i], nome:NOMES[i]}, cls=['a','b','c'][i%3];
   const eixoHtml=[40,30,20,10,0,-10,-20].map(v=>{ const top=(40-v)/60*100, ty=v===40?'0':v===-20?'-100%':'-50%'; return '<span style="position:absolute;left:3px;top:'+top.toFixed(2)+'%;transform:translateY('+ty+');font-size:8.5px;font-family:monospace;color:rgba(200,216,232,0.6);text-shadow:0 0 3px #03070b,0 0 2px #03070b;">'+(v>0?'+':'')+v+'</span>'; }).join('');
   const pmx=pesoMaxDash(e.id); const pwv=(function(){ const v=parseFloat(localStorage.getItem('simpesca2_aleat_peso_'+e.id)); return isFinite(v)?Math.max(PESO_MIN,Math.min(pmx,v)):pmx; })();
   const col=localStorage.getItem('simpesca2_aleat_colapso_'+e.id)==='1';
@@ -488,7 +487,6 @@ function montarBloco(){
     '</div>'+
     '<div class="sim-corpo" id="corpo'+i+'">'+
     '<div class="gen-row">'+
-      '<label title="Duração ALVO da briga (min). O gerador ESCALA pra preencher esse tempo, decaindo com a fadiga. No jogo, você termina antes recolhendo o peixe (ou perde se acabar a linha). Regere (🎲) após mudar." style="border:1px solid var(--accent);border-radius:5px;padding:1px 6px;">⏱ duração <input type="number" id="duracaoMin'+i+'" min="1" max="30" step="1" value="20" oninput="setDuracao()">min</label>'+
       '<label title="Intensidade da ASSINATURA do peixe: 50% = padrão · abaixo de 50 = briga mais plana/genérica · acima de 50 = caráter exagerado (vales mais fundos)">assinatura <input type="number" id="intens'+i+'" min="0" max="100" value="50">%</label>'+
       '<label title="Pico do SAQUE (fisgada), na escala do gráfico (0 a +40). O peso do peixe escala isso. Padrão sugerido = força × 2,2.">🎣 saque <input type="number" id="saque'+i+'" min="0" max="40" step="1" value="'+Math.round((FREIO_MAX_DEF[LETRAS[i]]||10)*2.2)+'"></label>'+
       '<label title="Alonga (>1) ou encurta (<1) a duração da fisgada">dur <input type="number" id="fisDur'+i+'" min="0.2" max="4" step="0.1" value="2">×</label>'+
@@ -567,14 +565,10 @@ window.addEventListener('storage', e=>{ if(!e.key) return; if(e.key==='simpesca2
   if(ghTokenA() && navigator.onLine && localStorage.getItem('simpesca2_sync_pend')) enviarSyncCal(); })();
 
 // ══ INIT ══════════════════════════════════════════════════════════════════════
-montarBloco();
-{ const dm=parseFloat(localStorage.getItem('simpesca2_aleat_duracao')); if(isFinite(dm)&&dm>0){ DURACAO=Math.round(dm*60); const el=document.getElementById('duracaoMin0'); if(el) el.value=dm; } }   // duração salva (⏱ min) antes de gerar/render
-carregarGenCfg();
-setupArea(0);
-SIMS[0].pontos = carregarPontosStore() || gerarCurvaEspecie(0);   // 1ª vez: gera uma pirarará (isolada)
-salvarPontos(0);
-renderCurva(0);
-document.querySelectorAll('.gen-row input').forEach(el=>el.addEventListener('change',()=>salvarGenCfg(0)));   // persiste ajustes ao editar
+for(let i=0;i<NSIMS;i++) montarBloco(i);   // dois blocos: Início e Fim
+{ const dm=parseFloat(localStorage.getItem('simpesca2_aleat_duracao')); const el=document.getElementById('duracaoTotalMin'); if(el && isFinite(dm)&&dm>0) el.value=dm; }   // duração total salva (só preenche o campo; usada no jogo/Fase 1)
+for(let i=0;i<NSIMS;i++){ carregarGenCfg(i); setupArea(i); SIMS[i].pontos = carregarPontosStore(i) || gerarCurvaEspecie(i); salvarPontos(i); renderCurva(i); }   // 1ª vez: gera cada curva
+document.querySelectorAll('.gen-row input').forEach(el=>el.addEventListener('change',()=>salvarGenCfg(+el.id.slice(-1)||0)));   // persiste ajustes ao editar (idx pelo sufixo do id)
 </script>
 </body>
 </html>
