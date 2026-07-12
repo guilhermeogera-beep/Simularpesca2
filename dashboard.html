@@ -477,6 +477,7 @@ function montarBlocosSims(){
         '<label title="Distância entre pontos no tempo: 0 = densos (atual) · 100 = bem espaçados. Maior = o motor físico tem tempo de alcançar cada nível (não vira borrão)">espaço <input type="number" id="espaco'+i+'" min="0" max="100" value="40">/100</label>'+
         '<label title="Força MÁXIMA de tração SUSTENTADA que o peixe faz no FREIO (parte negativa), em kgf. É a profundidade da resistência gerada nas janelas (0 a -20 = base do gráfico). O PESO do peixe (no player) escala isso. Vira força REAL na linha após a calibração do VESC.">🛑 freio máx <input type="number" id="freioMax'+i+'" min="0" max="20" value="'+(FREIO_MAX_DEF[LETRAS[i]]||10)+'"> kgf</label>'+
         '<label title="LIGADO = freio QUADRADO: paredes UNIFORMES (mesmo nível), mas ainda AFROUXAM com a fadiga ao longo da briga (sem variação aleatória). DESLIGADO = CARACTERÍSTICO: paredes irregulares (fadiga + variação aleatória por janela). Fadiga 0 = paredes constantes no freio máx.">🟥 <input type="checkbox" id="freioQuad'+i+'" onchange="togFreioQuad('+i+')" style="width:auto"> freio quadrado</label>'+
+        '<label title="Freio com VARIAÇÃO: a resistência do peixe SURTA e AFROUXA dentro de cada janela de descanso (mais real). Só vale no modo característico (freio quadrado DESmarcado). Regenere o freio (🎲−) pra aplicar.">〰 <input type="checkbox" id="freioVar'+i+'" onchange="togFreioVar('+i+')" style="width:auto"> freio variado</label>'+
         '<label title="Onde a briga gerada pelo 🎲 começa. Antes desse tempo a curva fica livre pra você desenhar as fisgadas MANUALMENTE." style="border-left:1px solid var(--border);padding-left:8px;margin-left:2px;">🎣 início da briga <input type="number" id="fisFisDur'+i+'" min="0" max="30" step="0.5" value="5" oninput="renderCurva('+i+')">s</label>'+
       '</div>'+
       '<div class="peso-row" style="display:flex;align-items:center;gap:8px;font-size:0.62rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin:4px 0 2px;">⚖️ peso (prévia) <input type="range" id="pesoSim'+i+'" min="'+PESO_MIN+'" max="'+pmx+'" step="0.5" value="'+pwv+'" oninput="ajustarPesoSim('+i+')" style="flex:1;max-width:260px;accent-color:#ffcc66;"><span id="pesoSimLbl'+i+'" style="font-family:monospace;color:var(--text);min-width:185px;text-transform:none;letter-spacing:0;"></span></div>'+
@@ -1058,13 +1059,16 @@ function preencherFreioJanelas(pts, t0){
     const a=pts[i], b=pts[i+1]; if(!b) continue;
     if(Math.abs(a.pot)<1 && Math.abs(b.pot)<1 && (b.t-a.t)>1.0 && a.t>=t0-0.01){   // janela de 0 DURANTE a briga
       const w=b.t-a.t;
-      let fr;
-      const mid=(a.t+w/2)/DURACAO, fad=(1-0.45*genFreioFad*mid);   // fadiga: freio afrouxa ao longo da briga (mesmo fator nos dois modos)
-      if(genFreioQuad){ fr=-genFreioMax*fad; }                                       // QUADRADO: paredes UNIFORMES que afrouxam com a fadiga (sem variação aleatória)
-      else { fr=-genFreioMax*fad*rnd(0.7,1.0); }                                     // CARACTERÍSTICO: fadiga + variação aleatória por janela
-      const e = genFreioQuad ? 0.08 : 0.28;   // QUADRADO: borda coladinha = queda VERTICAL (bloco retangular) · CARACTERÍSTICO: rampa CURTA = "quase" reta (antes era w*0.2, bem diagonal)
-      out.push({t:a.t+e, pot:fr, frear:true});         // entra no freio (queda seca no quadrado)
-      out.push({t:b.t-e, pot:fr, frear:true});         // segura até quase o fim da janela (subida seca no quadrado)
+      const mid=(a.t+w/2)/DURACAO, fad=(1-0.45*genFreioFad*mid);   // fadiga: freio afrouxa ao longo da briga
+      const teto=genFreioMax*fad;
+      if(genFreioQuad){ const e=0.08; out.push({t:a.t+e, pot:-teto, frear:true}); out.push({t:b.t-e, pot:-teto, frear:true}); }   // QUADRADO: parede uniforme
+      else if(genFreioVar){   // VARIADO (checkbox 〰): o freio surta e afrouxa DENTRO da janela (mais real) — igual ao desafio
+        const e=0.20; let tt=a.t+e;
+        out.push({t:tt, pot:-teto*rnd(0.55,0.95), frear:true});
+        while(tt < b.t-e-1.0){ tt+=rnd(1.4,3.0); if(tt>=b.t-e) break; out.push({t:tt, pot:-teto*rnd(0.4,1.0), frear:true}); }
+        out.push({t:b.t-e, pot:-teto*rnd(0.5,0.9), frear:true});
+      }
+      else { const fr=-teto*rnd(0.7,1.0), e=0.28; out.push({t:a.t+e, pot:fr, frear:true}); out.push({t:b.t-e, pot:fr, frear:true}); }   // CARACTERÍSTICO: constante por janela (padrão)
     }
   }
   return out;
@@ -1154,12 +1158,13 @@ function cfgGerador(idx){
   const fisPico=Math.max(1, saque);
   const durFis=fisFisCfg(idx).dur;   // tempo de início da briga gerada (antes = fisgada manual)
   const freioQuad=!!(document.getElementById('freioQuad'+idx)||{}).checked;   // SIM = freio quadrado · NÃO = característico
-  return {teto,fadiga,puxada,fisPico,fisDur,intens,espaco,durFis,freioMax,freioQuad,corrida,saque,minpux};
+  const freioVar=!!(document.getElementById('freioVar'+idx)||{}).checked;     // SIM = freio VARIADO (surta/afrouxa na janela)
+  return {teto,fadiga,puxada,fisPico,fisDur,intens,espaco,durFis,freioMax,freioQuad,freioVar,corrida,saque,minpux};
 }
 let genFreioMax=0;   // freio máx do peixe sendo gerado (buildFight lê daqui, sem passar por todos os wrappers)
-let genFreioQuad=false, genFreioFad=0;   // modo do freio: quadrado? · fadiga (0-1) p/ o freio CARACTERÍSTICO afrouxar
+let genFreioQuad=false, genFreioVar=false, genFreioFad=0;   // modo do freio: quadrado? · VARIADO (surta/afrouxa na janela)? · fadiga (0-1) p/ afrouxar
 let genMinPux=7;     // valor MÍNIMO de puxada do peixe sendo gerado (finalizarFight lê daqui) — POR PEIXE
-function gerarCurvaEspecie(idx){ const c=cfgGerador(idx); genFreioMax=c.freioMax; genFreioQuad=c.freioQuad; genFreioFad=(c.fadiga||0)/100; genMinPux=c.minpux; return (FIGHTS[LETRAS[idx]]||fightTucunare)(c.teto,c.fadiga,c.puxada,c.fisDur,c.fisPico,c.intens,c.espaco,c.durFis); }
+function gerarCurvaEspecie(idx){ const c=cfgGerador(idx); genFreioMax=c.freioMax; genFreioQuad=c.freioQuad; genFreioVar=c.freioVar; genFreioFad=(c.fadiga||0)/100; genMinPux=c.minpux; return (FIGHTS[LETRAS[idx]]||fightTucunare)(c.teto,c.fadiga,c.puxada,c.fisDur,c.fisPico,c.intens,c.espaco,c.durFis); }
 function regerar(idx){
   const c=cfgGerador(idx);
   SIMS[idx].pontos=gerarCurvaEspecie(idx); salvarPontos(idx); simAtiva=idx; selPonto=-1; multiSel=[]; fecharEditorPonto(); renderCurva(idx);
@@ -1182,7 +1187,7 @@ function gerarNegativo(idx){
   const c=cfgGerador(idx);
   let base = SIMS[idx].pontos.filter(p=>p.pot>=0).slice().sort((a,b)=>a.t-b.t);   // puxada + descansos
   if(!base.some(p=>p.pot>0)) base=[{t:0,pot:0},{t:c.durFis||0,pot:0},{t:DURACAO,pot:0}];   // sem puxada ainda: freio cobre tudo
-  genFreioMax = c.freioMax; genFreioQuad=c.freioQuad; genFreioFad=(c.fadiga||0)/100; genMinPux = c.minpux;
+  genFreioMax = c.freioMax; genFreioQuad=c.freioQuad; genFreioVar=c.freioVar; genFreioFad=(c.fadiga||0)/100; genMinPux = c.minpux;
   SIMS[idx].pontos = finalizarFight(preencherFreioJanelas(base, c.durFis));   // só adiciona o freio nas janelas (modo quadrado/característico)
   salvarPontos(idx); simAtiva=idx; selPonto=-1; multiSel=[]; fecharEditorPonto(); renderCurva(idx); salvarGenCfg(idx);
   log('🎲− '+NOMES[idx]+' — FREIO gerado (freio máx '+c.freioMax+' kgf)','ok');
@@ -1194,6 +1199,7 @@ const GEN_CAMPOS=[['corrida','corrida'],['minpux','minpux'],['fadiga','fadiga'],
 const FISFIS_GLOBAL={fisfisdur:'simpesca2_fisfis_dur'};  // migração antiga (só o tempo de início)
 function salvarGenCfg(idx){ const id=LETRAS[idx]; GEN_CAMPOS.forEach(([inp,key])=>{ const el=document.getElementById(inp+idx); if(el) localStorage.setItem('simpesca2_gen_'+id+'_'+key, el.value); }); agendarSync('config'); }
 function togFreioQuad(i){ const el=document.getElementById('freioQuad'+i); if(el) localStorage.setItem('simpesca2_gen_'+LETRAS[i]+'_freioquad', el.checked?'1':'0'); }   // modo do freio (local; o totem não gera)
+function togFreioVar(i){ const el=document.getElementById('freioVar'+i); if(el) localStorage.setItem('simpesca2_gen_'+LETRAS[i]+'_freiovar', el.checked?'1':'0'); }   // freio variado (local)
 function carregarGenCfg(){
   for(let i=0;i<NSIMS;i++){ const id=LETRAS[i];
     GEN_CAMPOS.forEach(([inp,key])=>{
@@ -1205,6 +1211,7 @@ function carregarGenCfg(){
       el.addEventListener('change',()=>salvarGenCfg(i));
     });
     const fq=document.getElementById('freioQuad'+i); if(fq) fq.checked = localStorage.getItem('simpesca2_gen_'+id+'_freioquad')==='1';   // modo do freio salvo
+    const fv=document.getElementById('freioVar'+i); if(fv) fv.checked = localStorage.getItem('simpesca2_gen_'+id+'_freiovar')==='1';   // freio variado salvo
   }
 }
 
