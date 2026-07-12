@@ -376,15 +376,15 @@ function salvarGenCfg(idx){ GEN_CAMPOS.forEach(c=>{ const el=document.getElement
 function carregarGenCfg(idx){ GEN_CAMPOS.forEach(c=>{ const v=localStorage.getItem('simpesca2_aleat_gen_'+LETRAS[idx]+'_'+c); if(v!==null){ const el=document.getElementById(c+idx); if(el) el.value=v; } }); const q=document.getElementById('freioQuad'+idx); const qv=localStorage.getItem('simpesca2_aleat_gen_'+LETRAS[idx]+'_freioquad'); if(q&&qv!==null) q.checked=(qv==='1'); }
 
 // ══ RENDER ═════════════════════════════════════════════════════════════════════
-function salvarDuracaoTotal(){ const el=document.getElementById('duracaoTotalMin'); let m=el?parseFloat(el.value):20; if(!(m>0)) m=20; DURACAO=Math.round(m*60); localStorage.setItem('simpesca2_aleat_duracao', m); renderCurva(0); }   // muda a duração da briga (⏱ min), redesenha e re-larga a timeline; regere (🎲) pra a curva escalar
+function salvarDuracaoTotal(){ const el=document.getElementById('duracaoTotalMin'); let m=el?parseFloat(el.value):20; if(!(m>0)) m=20; DURACAO=Math.round(m*60); localStorage.setItem('simpesca2_aleat_duracao', m); renderTicks(0); renderCurva(0); }   // muda a duração da briga (⏱ min), redesenha as marcas + re-larga a timeline; regere (🎲) pra a curva escalar
 function yOf(v){ return ((ESC_POS-v)/ESC_RANGE)*100; }
 function renderTicks(idx){
   const inner=document.getElementById('tlInner'+idx); if(!inner) return;
   inner.querySelectorAll('.time-line,.time-tick').forEach(e=>e.remove());
-  const passo = DURACAO>300 ? 60 : 5;   // briga longa (>5min): marca por MINUTO
+  const passo = DURACAO>300 ? 10 : 5;   // marca de 10 em 10s (briga longa) · 5 em 5s (curta)
   for(let sec=0;sec<=DURACAO;sec+=passo){ const pct=(sec/DURACAO)*100;
     const line=document.createElement('div'); line.className='time-line'; line.style.left=pct+'%'; line.style.background='rgba(26,39,54,0.6)'; inner.appendChild(line);
-    const tk=document.createElement('div'); tk.className='time-tick'; tk.style.left=pct+'%'; tk.textContent=(DURACAO>300 ? (sec/60)+'min' : sec+'s'); inner.appendChild(tk);
+    const tk=document.createElement('div'); tk.className='time-tick'; tk.style.left=pct+'%'; tk.textContent=(DURACAO>300 ? (Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0')) : sec+'s'); inner.appendChild(tk);
   }
 }
 function renderTodas(){ renderCurva(0); }
@@ -401,8 +401,7 @@ function renderHandles(idx){
   });
 }
 function renderCurva(idx){
-  renderTicks(idx);
-  const tlIn=document.getElementById('tlInner'+idx); if(tlIn) tlIn.style.width=(DURACAO*PX_POR_S)+'px';   // timeline LARGA (px/segundo) -> rolagem horizontal
+  const tlIn=document.getElementById('tlInner'+idx); if(tlIn) tlIn.style.width=(DURACAO*PX_POR_S)+'px';   // timeline LARGA (px/segundo) -> rolagem horizontal (marcas de tempo em renderTicks, só ao mudar a duração)
   const area=document.getElementById('curva'+idx); const pts=SIMS[idx].pontos; const durFis=fisFisDurSeg(idx);
   const y0=yOf(0), y0s=y0.toFixed(2);
   let inner='';
@@ -602,7 +601,7 @@ window.addEventListener('storage', e=>{ if(!e.key) return; if(e.key==='simpesca2
 // ══ INIT ══════════════════════════════════════════════════════════════════════
 for(let i=0;i<NSIMS;i++) montarBloco(i);   // dois blocos: Início e Fim
 { const dm=parseFloat(localStorage.getItem('simpesca2_aleat_duracao')); if(isFinite(dm)&&dm>0){ DURACAO=Math.round(dm*60); const el=document.getElementById('duracaoTotalMin'); if(el) el.value=dm; } }   // duração salva -> seta DURACAO antes de gerar/render
-for(let i=0;i<NSIMS;i++){ carregarGenCfg(i); setupArea(i); SIMS[i].pontos = carregarPontosStore(i) || gerarCurvaEspecie(i); salvarPontos(i); renderCurva(i); }   // 1ª vez: gera cada curva
+for(let i=0;i<NSIMS;i++){ carregarGenCfg(i); setupArea(i); SIMS[i].pontos = carregarPontosStore(i) || gerarCurvaEspecie(i); salvarPontos(i); renderTicks(i); renderCurva(i); }   // 1ª vez: gera cada curva
 document.querySelectorAll('.gen-row input').forEach(el=>el.addEventListener('change',()=>salvarGenCfg(+el.id.slice(-1)||0)));   // persiste ajustes ao editar (idx pelo sufixo do id)
 </script>
 </body>
