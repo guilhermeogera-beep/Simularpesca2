@@ -87,12 +87,13 @@ function ghToken(){ return (localStorage.getItem('simpesca2_github_token')||'').
 async function syncPesoExp(){
   if(!ghToken() || !navigator.onLine) return;
   const headers={'Authorization':'token '+ghToken(),'Accept':'application/vnd.github+json'}, url='https://api.github.com/repos/'+GH_REPO+'/contents/'+GH_CONFIG;
-  let cfg={versao:2,tipo:'config',cal:{},gen:{},sync:{}}, sha=null, ok=false;
+  let cfg=null, sha=null;
   try{ const g=await fetch(url,{headers,cache:'no-store'});
-    if(g.ok){ const j=await g.json(); sha=j.sha; try{ cfg=JSON.parse(decodeURIComponent(escape(atob((j.content||'').replace(/\s/g,''))))); }catch(e){} ok=true; }
-    else if(g.status===404){ ok=true; }
+    if(g.ok){ const j=await g.json(); sha=j.sha; try{ cfg=JSON.parse(decodeURIComponent(escape(atob((j.content||'').replace(/\s/g,''))))); }catch(e){ cfg=null; } }
+    else if(g.status===404){ cfg={versao:2,tipo:'config',cal:{},gen:{},sync:{}}; }
+    else { return; }
   }catch(e){ return; }
-  if(!ok) return;   // erro (rate limit/token): não arrisca sobrescrever
+  if(!cfg || typeof cfg!=='object') return;   // existe mas não deu pra ler -> NÃO sobrescreve gen/sync/cal
   cfg.cal=cfg.cal||{}; cfg.cal.pesoexp=pesoExp(); cfg.criado=new Date().toISOString();
   const body={message:'auto: peso na pontuacao', content:btoa(unescape(encodeURIComponent(JSON.stringify(cfg,null,2))))}; if(sha) body.sha=sha;
   try{ await fetch(url,{method:'PUT',headers,body:JSON.stringify(body)}); }catch(e){}

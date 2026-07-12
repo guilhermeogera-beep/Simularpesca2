@@ -772,12 +772,13 @@ function agendarSyncCal(){ if(!ghTokenA()) return; localStorage.setItem('simpesc
 async function enviarSyncCal(){
   if(!ghTokenA() || !navigator.onLine) return;
   const headers={'Authorization':'token '+ghTokenA(),'Accept':'application/vnd.github+json'}, url='https://api.github.com/repos/'+GH_REPO_A+'/contents/'+GH_CONFIG_A;
-  let cfg={versao:2,tipo:'config',cal:{},gen:{},sync:{}}, sha=null, ok=false;
+  let cfg=null, sha=null;
   try{ const g=await fetch(url,{headers,cache:'no-store'});
-    if(g.ok){ const j=await g.json(); sha=j.sha; try{ cfg=JSON.parse(decodeURIComponent(escape(atob((j.content||'').replace(/\s/g,''))))); }catch(e){} ok=true; }
-    else if(g.status===404){ ok=true; }
+    if(g.ok){ const j=await g.json(); sha=j.sha; try{ cfg=JSON.parse(decodeURIComponent(escape(atob((j.content||'').replace(/\s/g,''))))); }catch(e){ cfg=null; } }
+    else if(g.status===404){ cfg={versao:2,tipo:'config',cal:{},gen:{},sync:{}}; }
+    else { setSyncBadge('err'); return; }
   }catch(e){ return; }
-  if(!ok){ setSyncBadge('err'); return; }   // erro (rate limit): não arrisca sobrescrever
+  if(!cfg || typeof cfg!=='object'){ setSyncBadge('err'); return; }   // existe mas não deu pra ler -> ABORTA (não apaga gen/sync)
   cfg.cal=cfg.cal||{}; cfg.cal.limite=limiteLinha(); cfg.cal.inv=localStorage.getItem('simpesca2_cal_inv')||'1'; cfg.criado=new Date().toISOString();
   const body={message:'auto: carretel (limite/inv)', content:btoa(unescape(encodeURIComponent(JSON.stringify(cfg,null,2))))}; if(sha) body.sha=sha;
   let r=null; try{ r=await fetch(url,{method:'PUT',headers,body:JSON.stringify(body)}); }catch(e){}
@@ -791,13 +792,15 @@ function agendarSyncCurva(){ if(!ghTokenA()) return; setCurvaBadge('pend'); clea
 async function enviarSyncCurva(){
   if(!ghTokenA() || !navigator.onLine) return;
   const headers={'Authorization':'token '+ghTokenA(),'Accept':'application/vnd.github+json'}, url='https://api.github.com/repos/'+GH_REPO_A+'/contents/'+GH_CURVAS_A;
-  let cfg={versao:1,tipo:'curvas_todas',curvas:{}}, sha=null, ok=false;
+  let cfg=null, sha=null;
   try{ const g=await fetch(url,{headers,cache:'no-store'});
-    if(g.ok){ const j=await g.json(); sha=j.sha; try{ cfg=JSON.parse(decodeURIComponent(escape(atob((j.content||'').replace(/\s/g,''))))); }catch(e){} ok=true; }
-    else if(g.status===404){ ok=true; }
+    if(g.ok){ const j=await g.json(); sha=j.sha; try{ cfg=JSON.parse(decodeURIComponent(escape(atob((j.content||'').replace(/\s/g,''))))); }catch(e){ cfg=null; } }   // 200 + parse falhou -> cfg=null (NÃO usa vazio)
+    else if(g.status===404){ cfg={versao:1,tipo:'curvas_todas',curvas:{}}; }   // 1ª vez: arquivo não existe
+    else { setCurvaBadge('err'); return; }
   }catch(e){ return; }
-  if(!ok){ setCurvaBadge('err'); return; }   // erro (rate limit): não arrisca sobrescrever as 6 espécies
-  cfg.curvas=cfg.curvas||{}; cfg.curvas.desafio=SIMS[0].pontos; cfg.criado=new Date().toISOString();
+  // PROTEÇÃO: se o arquivo existe mas não deu pra ler as curvas -> ABORTA (nunca sobrescreve as 6 espécies com vazio)
+  if(!cfg || !cfg.curvas || typeof cfg.curvas!=='object'){ setCurvaBadge('err'); return; }
+  cfg.curvas.desafio=SIMS[0].pontos; cfg.criado=new Date().toISOString();
   const body={message:'auto: curva desafio (20min)', content:btoa(unescape(encodeURIComponent(JSON.stringify(cfg,null,2))))}; if(sha) body.sha=sha;
   let r=null; try{ r=await fetch(url,{method:'PUT',headers,body:JSON.stringify(body)}); }catch(e){}
   setCurvaBadge(r&&r.ok?'ok':'err');

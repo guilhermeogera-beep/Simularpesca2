@@ -452,12 +452,13 @@ async function enviarSyncPlayer(){
   ghSyncEnviando=true;
   const headers={'Authorization':'token '+ghToken(),'Accept':'application/vnd.github+json'};
   const url='https://api.github.com/repos/'+GH_REPO+'/contents/'+GH_CONFIG;
-  let cfg={versao:1,tipo:'config',cal:{},gen:{},sync:{}}, sha=null, getOk=false, is404=false;
+  let cfg=null, sha=null;
   try{ const g=await fetch(url,{headers,cache:'no-store'});
-    if(g.ok){ const j=await g.json(); sha=j.sha; try{ cfg=JSON.parse(decodeURIComponent(escape(atob((j.content||'').replace(/\s/g,''))))); }catch(e){} getOk=true; }
-    else if(g.status===404){ is404=true; }                // arquivo ainda não existe: vai criar
+    if(g.ok){ const j=await g.json(); sha=j.sha; try{ cfg=JSON.parse(decodeURIComponent(escape(atob((j.content||'').replace(/\s/g,''))))); }catch(e){ cfg=null; } }   // 200 + parse falhou -> cfg=null
+    else if(g.status===404){ cfg={versao:1,tipo:'config',cal:{},gen:{},sync:{}}; }   // arquivo ainda não existe: vai criar
+    else { ghSyncEnviando=false; return; }
   }catch(e){ ghSyncEnviando=false; return; }               // offline/erro de rede: tenta depois
-  if(!getOk && !is404){ ghSyncEnviando=false; return; }     // erro (rate limit/token): NÃO arrisca sobrescrever cal/gen
+  if(!cfg || typeof cfg!=='object'){ ghSyncEnviando=false; return; }   // existe mas não deu pra ler -> NÃO sobrescreve cal/gen
   cfg.sync=cfg.sync||{}; ESPECIES.forEach(e=>{ cfg.sync[e.id]=localStorage.getItem('simpesca2_sync_'+e.id)||'0'; });
   cfg.criado=new Date().toISOString();
   const content=btoa(unescape(encodeURIComponent(JSON.stringify(cfg,null,2))));
