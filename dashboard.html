@@ -134,7 +134,7 @@ select{background:var(--surface);border:1px solid var(--border);color:var(--text
   <span style="font-size:1.8rem">🎣</span>
   <h1>Simulador de Pesca</h1>
   <button id="btnBT" onclick="conectarBLE()">🔵 Conectar</button>
-  <a href="aleatorio.html" class="btn-link">🎲 Modo aleatório</a>
+  <a href="desafio.html" class="btn-link">🎯 Modo desafio</a>
   <a href="ranking.html" class="btn-link">🏆 Ranking</a>
   <a href="player.html" class="btn-link">▶ Player</a>
 </header>
@@ -771,7 +771,7 @@ const GH_PATH={curvas:'curvas.json', config:'config.json'};   // caminho NO REPO
 let ghDirty={curvas:false,config:false}, ghTimer=null, ghEnviando=false;
 function ghToken(){ return (localStorage.getItem('simpesca2_github_token')||'').trim(); }
 function salvarToken(v){ localStorage.setItem('simpesca2_github_token',(v||'').trim()); setSyncBadge(ghToken()?'idle':'notoken'); }
-function montarCurvasObj(){ const curvas={}; LETRAS.forEach((id,i)=>{ curvas[id]=SIMS[i].pontos; }); return {versao:1,tipo:'curvas_todas',criado:new Date().toISOString(),curvas}; }
+function montarCurvasObj(){ const curvas={}; LETRAS.forEach((id,i)=>{ curvas[id]=SIMS[i].pontos; }); if(curvasGitHub && curvasGitHub.desafio) curvas.desafio=curvasGitHub.desafio; return {versao:1,tipo:'curvas_todas',criado:new Date().toISOString(),curvas}; }   // preserva a 7ª sim (desafio) que a página Desafio grava
 function montarConfigObj(){
   const cal={mpv:metrosPorVolta(),limite:limiteLinha(),rpmmin:rpmMin(),rpmmax:rpmMax(),freioa:freioMaxA(),freiorepmin:freioRepMin(),freiorepmax:freioRepMax(),pesoexp:rankPesoExp(),inv:localStorage.getItem('simpesca2_cal_inv')||'1'};
   const gen={}; LETRAS.forEach((id,i)=>{ gen[id]={}; GEN_CAMPOS.forEach(([inp,key])=>{ const el=document.getElementById(inp+i); if(el) gen[id][key]=el.value; }); });

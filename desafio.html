@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🎯 Modo Desafio — Simulador de Pesca</title>
+<style>
+:root{--bg:#050a0f;--card:#0d151d;--surface:#121d28;--border:#1a2736;--accent:#00d4ff;--accent2:#0077b6;--green:#00e676;--yellow:#ffd600;--red:#ff1744;--text:#e0e6ed;--text-dim:#7b8d9e;--radius:14px;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;min-height:100vh;padding:20px;line-height:1.6;max-width:1000px;margin:0 auto;touch-action:manipulation;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:20px;box-shadow:0 8px 32px rgba(0,0,0,0.2);}
+.secao-titulo{font-size:0.75rem;letter-spacing:2px;color:var(--text-dim);text-transform:uppercase;margin-bottom:15px;font-weight:600;display:flex;align-items:center;gap:8px;}
+header{display:flex;align-items:center;gap:12px;margin-bottom:24px;border-bottom:1px solid var(--border);padding-bottom:16px;flex-wrap:wrap;}
+header h1{font-size:1.5rem;font-weight:800;color:var(--accent);letter-spacing:1px;text-transform:uppercase;}
+.btn-link{font-size:0.7rem;padding:8px 14px;border:1px solid var(--text-dim);border-radius:8px;color:var(--text-dim);text-decoration:none;letter-spacing:1px;}
+.btn-link.spacer{margin-left:auto;}
+input[type="range"]{-webkit-appearance:none;width:100%;max-width:400px;background:transparent;margin:15px 0;}
+input[type="range"]:focus{outline:none;}
+input[type="range"]::-webkit-slider-runnable-track{width:100%;height:8px;cursor:pointer;background:var(--surface);border-radius:4px;border:1px solid var(--border);}
+input[type="range"]::-webkit-slider-thumb{height:24px;width:24px;border-radius:50%;background:var(--accent);cursor:pointer;-webkit-appearance:none;margin-top:-9px;box-shadow:0 0 12px rgba(0,212,255,0.6);}
+.btn{padding:10px 20px;border:1px solid;border-radius:8px;font-family:inherit;font-size:0.8rem;font-weight:600;cursor:pointer;text-transform:uppercase;letter-spacing:1px;transition:all 0.2s ease;display:flex;align-items:center;gap:6px;background:transparent;}
+.btn-green{background:rgba(0,230,118,0.05);border-color:var(--green);color:var(--green);}
+.btn-red{background:rgba(255,23,68,0.05);border-color:var(--red);color:var(--red);}
+.btn-yellow{background:rgba(255,214,0,0.05);border-color:var(--yellow);color:var(--yellow);}
+.btn-accent{background:rgba(0,212,255,0.05);border-color:var(--accent);color:var(--accent);}
+.btn-outline{border-color:var(--text-dim);color:var(--text-dim);}
+.btn:hover{filter:brightness(1.2);} .btn:active{transform:scale(0.96);} .btn:disabled{opacity:0.35;cursor:default;filter:none;}
+.time-tick{position:absolute;bottom:3px;transform:translateX(-50%);font-size:0.6rem;color:var(--text-dim);font-family:monospace;pointer-events:none;}
+.time-line{position:absolute;top:0;bottom:20px;width:1px;background:rgba(26,39,54,0.35);pointer-events:none;}
+.sim-bloco{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:12px;}
+.sim-header{display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap;}
+.sim-label{font-size:0.75rem;font-weight:700;letter-spacing:1px;padding:3px 10px;border-radius:20px;white-space:nowrap;}
+.sim-label-a{background:rgba(0,212,255,0.12);color:var(--accent);border:1px solid rgba(0,212,255,0.3);}
+.sim-label-b{background:rgba(255,214,0,0.10);color:var(--yellow);border:1px solid rgba(255,214,0,0.3);}
+.sim-label-c{background:rgba(0,230,118,0.10);color:var(--green);border:1px solid rgba(0,230,118,0.3);}
+.ts-badge{font-size:0.8rem;color:var(--text-dim);font-family:monospace;background:var(--bg);padding:4px 10px;border-radius:6px;border:1px solid var(--border);}
+.sim-mini-gauge{display:flex;align-items:center;gap:5px;background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:6px;padding:3px 8px;}
+.sim-gauge-pct{font-size:0.75rem;font-weight:800;font-family:monospace;color:var(--accent);min-width:34px;}
+.sim-gauge-volt{font-size:0.65rem;font-family:monospace;color:var(--text-dim);min-width:36px;}
+.sim-gauge-bar{width:48px;height:4px;background:var(--bg);border-radius:2px;overflow:hidden;border:1px solid var(--border);}
+.sim-gauge-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--accent2),var(--accent));border-radius:2px;transition:width 0.15s;}
+.sim-controls{display:flex;align-items:center;gap:6px;flex:1;justify-content:flex-end;flex-wrap:wrap;}
+.gen-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:2px 0 6px;font-size:0.62rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;}
+.gen-row label{display:flex;align-items:center;gap:4px;}
+.gen-row input{width:52px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:monospace;font-size:0.78rem;padding:3px 4px;text-align:center;outline:none;}
+.gen-row input:focus{border-color:var(--accent);}
+.btn-colapso{background:none;border:none;color:var(--text-dim);font-size:0.85rem;cursor:pointer;padding:0 6px 0 0;line-height:1;}
+.btn-colapso:hover{color:var(--accent);}
+.sim-bloco.colapsado .sim-corpo,
+.sim-bloco.colapsado .cal-sub,
+.sim-bloco.colapsado .sim-mini-gauge,
+.sim-bloco.colapsado .sim-controls{display:none;}
+.cal-sub{font-size:0.6rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;}
+#btnBT{margin-left:auto;font-size:0.75rem;font-weight:600;padding:8px 16px;border-radius:20px;background:var(--surface);border:1px solid var(--accent);color:var(--accent);cursor:pointer;font-family:inherit;letter-spacing:1px;}
+#btnBT.conectado{color:var(--green);border-color:var(--green);background:rgba(0,230,118,0.1);}
+.recolhivel{cursor:pointer;user-select:none;}
+.card.card-colapsado > :not(:first-child){display:none !important;}
+.card-chevron{display:inline-block;transition:transform 0.15s;font-size:0.8rem;margin-right:3px;}
+.card-colapsado .card-chevron{transform:rotate(-90deg);}
+.cal-campo{display:flex;flex-direction:column;gap:4px;}
+.cal-campo label{font-size:0.6rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;}
+.cal-campo input{background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:monospace;font-size:0.95rem;padding:8px 10px;width:130px;outline:none;text-align:center;}
+.cal-campo input:focus{border-color:var(--accent);}
+.cal-val{font-size:1.6rem;font-weight:800;font-family:monospace;}
+.cal-val.metros{color:var(--green);} .cal-val.cont{color:var(--accent);}
+.tl-row{position:relative;display:flex;align-items:stretch;}
+.curve-eixo-fixo{position:relative;width:26px;height:260px;flex:none;background:#03070b;border:1px solid var(--border);border-right:none;border-radius:8px 0 0 8px;z-index:4;}
+.curve-eixo-fixo .eixo-inner{position:absolute;top:0;left:0;right:0;bottom:20px;}
+.timeline-wrap{position:relative;height:260px;background:#03070b;border:1px solid var(--border);border-left:none;border-radius:0 8px 8px 0;overflow-x:auto;overflow-y:hidden;flex:1;min-width:0;}
+.timeline-wrap::-webkit-scrollbar{height:11px;}
+.timeline-wrap::-webkit-scrollbar-track{background:#0a1219;}
+.timeline-wrap::-webkit-scrollbar-thumb{background:#24384b;border-radius:6px;}
+.tl-inner{position:relative;height:100%;min-width:100%;}
+.curve-area{position:absolute;top:0;left:0;right:0;bottom:20px;z-index:2;cursor:crosshair;touch-action:none;}
+.curve-svg{position:absolute;inset:0;width:100%;height:100%;}
+.ponto-handle{position:absolute;width:7px;height:7px;border-radius:50%;background:var(--accent);border:1.5px solid #fff;transform:translate(-50%,-50%);cursor:grab;z-index:12;box-shadow:0 0 3px rgba(0,212,255,0.6);touch-action:none;}
+.ponto-handle::before{content:'';position:absolute;inset:-7px;border-radius:50%;}
+.ponto-handle:active{cursor:grabbing;}
+.ponto-handle.freio{background:#ff5f5f;box-shadow:0 0 3px rgba(255,95,95,0.7);}
+.ponto-handle.sel{background:var(--yellow);box-shadow:0 0 6px var(--yellow);width:10px;height:10px;}
+.tl-playhead{position:absolute;top:0;bottom:20px;width:2px;background:var(--accent);left:0%;pointer-events:none;box-shadow:0 0 8px var(--accent);z-index:9;}
+.fisgada-band{position:absolute;top:0;bottom:20px;left:0;z-index:5;pointer-events:none;background:repeating-linear-gradient(45deg,rgba(255,170,0,0.10),rgba(255,170,0,0.10) 6px,rgba(255,170,0,0.20) 6px,rgba(255,170,0,0.20) 12px);border-right:2px dashed rgba(255,170,0,0.7);}
+.fisgada-band .lbl{position:absolute;top:3px;left:5px;font-size:0.58rem;color:#ffc061;font-weight:700;letter-spacing:0.5px;white-space:nowrap;text-shadow:0 1px 2px #000;}
+#pontoEditor{display:none;position:fixed;z-index:200;align-items:flex-end;gap:14px;flex-wrap:wrap;background:rgba(13,21,29,0.98);border:1px solid var(--accent);border-radius:10px;padding:10px 14px;box-shadow:0 10px 30px rgba(0,0,0,0.6);max-width:calc(100vw - 16px);}
+#pontoEditor .campo{display:flex;flex-direction:column;gap:3px;}
+#pontoEditor label{font-size:0.6rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;}
+#pontoEditor input{background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:monospace;font-size:0.9rem;padding:6px 8px;width:96px;text-align:center;outline:none;}
+#pontoEditor input:focus{border-color:var(--accent);}
+#pontoEditor .btn{padding:6px 12px;font-size:0.7rem;}
+.dica-editor{font-size:0.74rem;color:var(--text-dim);margin-bottom:12px;background:rgba(0,212,255,0.05);border:1px solid rgba(0,212,255,0.15);border-radius:8px;padding:8px 12px;}
+.dica-editor b{color:var(--text);}
+.nota{font-size:0.74rem;color:#8fb7cc;margin-bottom:16px;background:#10202b;border:1px solid #1c3646;border-radius:8px;padding:9px 13px;line-height:1.5;}
+@media (max-width:760px){
+  body{padding:10px;overflow-x:hidden;}
+  header h1{font-size:1.1rem;flex-basis:100%;}
+  .gen-row{font-size:0.56rem;gap:6px 9px;} .gen-row input{width:46px;font-size:0.72rem;}
+  .timeline-wrap{height:320px;} .curve-eixo-fixo{height:320px;} .ponto-handle{width:9px;height:9px;} .ponto-handle.sel{width:12px;height:12px;}
+  .sim-controls{gap:5px;}
+  .cont3>div{flex:1 1 100% !important;min-width:0 !important;}
+}
+</style>
+</head>
+<body>
+<header>
+  <span style="font-size:1.5rem">🎯</span>
+  <h1>Modo Desafio</h1>
+  <button id="btnBT" onclick="conectarBLE()">🔵 Conectar</button>
+  <a href="dashboard.html" class="btn-link">↩ Dashboard</a>
+</header>
+
+<div class="nota">🎯 <b>Modo Desafio:</b> a curva de 20 min salva no GitHub como a <b>7ª simulação</b> (<code>curvas.json</code> → <code>desafio</code>) — não mistura com as 6 espécies. O <b>Controle de Carretel</b> é config GLOBAL (compartilha com o dash). ▶ play é prévia visual (sem motor/BLE por ora).</div>
+
+<div class="card">
+  <div class="secao-titulo"><span>⚡</span> Curva da briga (20 min) — role na horizontal pra editar <span id="curvaSyncStatus" class="cal-sub" style="margin-left:auto;text-transform:none;letter-spacing:0;"></span></div>
+  <div class="dica-editor">✏️ <b>🎲+</b> puxada · <b>🎲−</b> freio · <b>clique</b> = ponto · <b>arraste</b> = mover · <b>clique no ponto</b> = editar/remover. · A timeline é LARGA: <b>role na horizontal</b> (≈90 s por tela) até o fim pra ajustar tudo.</div>
+  <div style="font-size:0.72rem;color:var(--text-dim);margin-bottom:12px;">⏱ <b>Duração:</b> <input type="number" id="duracaoTotalMin" min="1" max="60" step="1" value="20" oninput="salvarDuracaoTotal()" style="width:56px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:monospace;text-align:center;padding:4px 6px;outline:none;"> min · o gerador (🎲) preenche esse tempo decaindo com a fadiga <i>(regere após mudar)</i></div>
+  <div id="simsContainer"></div>
+
+  <div id="pontoEditor">
+    <div class="campo"><label>Tempo (s)</label><input type="number" id="pTempo" step="0.1" min="0"></div>
+    <div class="campo"><label>Força (puxa + / freia −)</label><input type="number" id="pPot" step="1" min="-20" max="40"></div>
+    <button class="btn btn-red" onclick="removerPonto()">🗑 Remover</button>
+    <button class="btn btn-green" onclick="fecharEditorPonto()">✓ Fechar</button>
+  </div>
+</div>
+
+<!-- CONTROLE DE CARRETEL — config GLOBAL (compartilha com o dash + salva no config.json) -->
+<div class="card">
+  <div class="secao-titulo recolhivel" data-cardkey="linha" onclick="toggleCard(this)"><span class="card-chevron">▾</span><span>🎣</span> Controle de Carretel<button onclick="event.stopPropagation(); toggleCarretelBtns()" title="Esconder/mostrar os botões (deixa só as 3 caixas de valores)" style="margin-left:auto;background:none;border:1px solid var(--border);border-radius:5px;color:var(--text-dim);cursor:pointer;font-size:0.62rem;padding:3px 9px;text-transform:none;letter-spacing:0;">🔧 botões</button></div>
+  <div class="cont3" style="display:flex;gap:14px;flex-wrap:wrap;">
+    <div style="flex:1;min-width:120px;background:rgba(0,230,118,0.06);border:1px solid rgba(0,230,118,0.35);border-radius:10px;padding:14px;text-align:center;">
+      <div class="cal-sub">⬆ Ganhos (recolheu)</div>
+      <div class="cal-val metros" id="ctGanhos" style="font-size:2.1rem;margin-top:4px;">0.0 m</div>
+    </div>
+    <div style="flex:1;min-width:120px;background:rgba(255,23,68,0.06);border:1px solid rgba(255,23,68,0.35);border-radius:10px;padding:14px;text-align:center;">
+      <div class="cal-sub">⬇ Perdidos (soltou)</div>
+      <div class="cal-val" id="ctPerdidos" style="font-size:2.1rem;margin-top:4px;color:var(--red);">0.0 m</div>
+    </div>
+    <div style="flex:1;min-width:120px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;">
+      <div class="cal-sub">📍 Linha no carretel (TRAVA)</div>
+      <div class="cal-val cont" id="ctSaldo" style="font-size:2.1rem;margin-top:4px;">0.0 m</div>
+    </div>
+  </div>
+  <div id="carretelCtrls" style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
+    <button class="btn btn-yellow" onclick="zerarContadores()">⟲ Zerar contadores</button>
+    <button class="btn btn-accent" onclick="inverterLado()" title="Inverte o sentido do encoder (troca ganhos ⇄ perdidos)">⇄ Inverter lado</button>
+    <div class="cal-campo"><label>🛑 Limite de linha p/ TRAVA (m)</label><input type="number" id="calLimite" step="1" value="-150"></div>
+    <button class="btn btn-green" onclick="salvarLimite()">💾 Salvar limite</button>
+    <span class="cal-sub" id="calSyncStatus" style="align-self:center;"></span>
+    <span class="cal-sub" id="limiteAviso" style="align-self:center;">trava quando <b>|saldo|</b> atinge o limite (pode ser <b>negativo</b>, ex.: -150) · <b>global</b> (sincroniza com o dash)</span>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════════════════
+//  MODO ALEATÓRIO — bloco de simulação IDÊNTICO ao do dashboard (mesmo CSS/marcação/botões),
+//  porém ISOLADO: escopo de 1 peixe (pirarará), storage próprio simpesca2_aleat_*, SEM sync GitHub.
+//  Play/pause/stop = prévia VISUAL (playhead + gauge), sem BLE/motor. Editar aqui NÃO afeta dash/player.
+//  (Lê simpesca2_cal_* só pra estimativa/gauge — calibração é global do aparelho, read-only.)
+// ══════════════════════════════════════════════════════════════════════════════
+const ESC_POS=40, ESC_NEG=-20, ESC_RANGE=ESC_POS-ESC_NEG, PX_POR_S=10;   // PX_POR_S = px por segundo na timeline ROLÁVEL (~90s por tela na largura do card)
+let DURACAO=1200;   // 20 min (⏱ configurável). Curva ÚNICA; timeline LARGA e rolável na horizontal.
+const FREIO_MAX_DEF={pirarara:11}, PESO_MAX_DEF={pirarara:50}, PESO_MIN=1, MAX_PUXADA_A=30;
+const LETRAS=['pirarara'], NOMES=['Pirarará'], NSIMS=1;
+const SIMS=[{pontos:[]}];
+let simAtiva=0, selPonto=-1, multiSel=[], arrastouPonto=false, simHover=0, clip=null;
+
+// ── Calibração global (read-only) só pra estimativa/gauge ──
+function metrosPorVolta(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_mpv')); return (isFinite(v)&&v>0)?v:34; }
+function rpmMin(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_rpmmin')); return (isFinite(v)&&v>=0)?v:1100; }
+function rpmMax(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_rpmmax')); return (isFinite(v)&&v>0)?v:2000; }
+function freioMaxA(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_freioa')); return (isFinite(v)&&v>0)?v:12; }
+function rnd(a,b){ return a + Math.random()*(b-a); }
+function round2(x){ return Math.round(x*100)/100; }
+function interpolarPontos(pontos,t){ if(!pontos.length) return 0; if(t<=pontos[0].t) return pontos[0].pot; const last=pontos[pontos.length-1]; if(t>=last.t) return last.pot; for(let i=0;i<pontos.length-1;i++){ const a=pontos[i],b=pontos[i+1]; if(t>=a.t&&t<=b.t) return b.t===a.t?b.pot:a.pot+(b.pot-a.pot)*((t-a.t)/(b.t-a.t)); } return last.pot; }
+function rpmAlvo(pct){ const v=Math.min(ESC_POS, Math.max(0,pct)); return rpmMin() + (v/ESC_POS)*(rpmMax()-rpmMin()); }
+function rpmParaMs(erpm){ return Math.abs(erpm)/10/4096*metrosPorVolta(); }
+function ampMotor(pct){ const m=Math.abs(pct); return pct>=0 ? m/100*MAX_PUXADA_A : Math.min(1,m/20)*freioMaxA(); }
+function estimarLinha(pts, esc=1){ if(!pts||!pts.length) return 0; let m=0; for(let i=0;i<pts.length-1;i++){ const a=pts[i], b=pts[i+1], dt=b.t-a.t; if(dt<=0) continue; const steps=Math.max(1,Math.round(dt/0.25)), sdt=dt/steps; for(let s=0;s<steps;s++){ const pot=(a.pot+(b.pot-a.pot)*((s+0.5)/steps))*esc; if(pot>0.5) m+=rpmParaMs(rpmAlvo(pot))*sdt; } } return m; }   // integra por SEGMENTO (rápido; sem varrer os pontos a cada amostra)
+function escalaPeso(id,w){ const mx=pesoMaxDash(id); return mx>0 ? Math.min(1, Math.pow(w/mx, 2/3)) : 1; }
+function pesoMaxDash(id){ return PESO_MAX_DEF[id]||20; }
+function pesoSimValor(i){ const el=document.getElementById('pesoSim'+i); const mx=pesoMaxDash(LETRAS[i]); const v=el?parseFloat(el.value):NaN; return isFinite(v)?Math.max(PESO_MIN,Math.min(mx,v)):mx; }
+
+// ══ GERADOR (cópia fiel do dashboard) ══════════════════════════════════════════
+let genFreioMax=0, genFreioQuad=false, genFreioFad=0, genMinPux=7;
+function espacar(pts, dmin){
+  if(!(dmin>0) || pts.length<3) return pts;
+  const out=[pts[0]]; let lastT=pts[0].t;
+  for(let i=1;i<pts.length-1;i++){ const p=pts[i];
+    if(p.pot===0 || p.fis || p.frear){ out.push(p); lastT=p.t; continue; }
+    if(p.t-lastT>=dmin){ out.push(p); lastT=p.t; }
+  }
+  out.push(pts[pts.length-1]); return out;
+}
+function espacoSeg(espaco){ const v=Math.max(0,Math.min(100,isFinite(espaco)?espaco:40)); return (v/100)*1.0; }
+function finalizarFight(pts){
+  const piso=genMinPux;
+  return pts.filter(p=>p.t<=DURACAO).map(p=>{
+    let pot=Math.max(ESC_NEG,Math.min(ESC_POS,Math.round(p.pot)));
+    if(pot>0 && pot<piso) pot=piso;
+    return {t:Math.round(p.t*100)/100, pot};
+  }).sort((a,b)=>a.t-b.t);
+}
+function suavizar(pts){
+  if(pts.length<2) return pts;
+  const out=[pts[0]];
+  for(let i=0;i<pts.length-1;i++){
+    const a=pts[i], b=pts[i+1], dt=b.t-a.t;
+    if(dt>0.6 && Math.abs(b.pot-a.pot)>3){
+      const steps=Math.min(6, Math.max(2, Math.round(dt/0.35)));
+      for(let s=1;s<steps;s++){ const u=s/steps, e=0.5-0.5*Math.cos(Math.PI*u); out.push({t:a.t+dt*u, pot:a.pot+(b.pot-a.pot)*e}); }
+    }
+    out.push(b);
+  }
+  return out;
+}
+function fisgadaStrike(pts, t, estilo, fisDur, fisPico){
+  const D=(isFinite(fisDur)&&fisDur>0)?fisDur:1;
+  const P=(isFinite(fisPico)&&fisPico>0)?Math.min(100,fisPico):95;
+  const p=(lo,hi)=>({t, pot:rnd(lo,hi)/100*P, fis:true});
+  const dt=(lo,hi)=>{ t+=rnd(lo,hi)*D; };
+  dt(0.3,0.5); pts.push(p(90,100));
+  dt(0.9,1.5); pts.push(p(78,90));
+  return t;
+}
+function arcoEnv(p, F){ return Math.max(0.12, (p<0.5) ? 1.0 : 1.0-(0.9*F)*((p-0.5)/0.5)); }
+function corridaInicial(pts,t,pdur,fat){
+  const end=t+pdur;
+  t+=Math.min(0.6,pdur*0.10); pts.push({t,pot:rnd(94,100)*fat});
+  if(pdur>=6){
+    const tResp=t+(end-t)*rnd(0.42,0.55);
+    while(t<tResp-0.8){ t+=rnd(1.4,2.4); pts.push({t,pot:rnd(85,97)*fat}); }
+    t+=rnd(0.4,0.6); pts.push({t,pot:0});
+    t+=rnd(1.5,3.0); pts.push({t,pot:0});
+    t+=rnd(0.3,0.5); pts.push({t,pot:rnd(92,100)*fat});
+  }
+  while(t<end-0.8){ t+=rnd(1.4,2.4); pts.push({t,pot:rnd(85,97)*fat}); }
+  return t;
+}
+function ultimaInvestida(pts,t,pdur,fat){
+  const end=t+pdur;
+  t+=Math.min(0.4,pdur*0.12); pts.push({t,pot:rnd(90,100)*fat});
+  while(t<end-0.5){ t+=rnd(0.8,1.4); pts.push({t,pot:rnd(82,96)*fat}); }
+  return t;
+}
+function preencherFreioJanelas(pts, t0){
+  if(!(genFreioMax>0)) return pts;
+  pts.sort((a,b)=>a.t-b.t);
+  const out=[];
+  for(let i=0;i<pts.length;i++){
+    out.push(pts[i]);
+    const a=pts[i], b=pts[i+1]; if(!b) continue;
+    if(Math.abs(a.pot)<1 && Math.abs(b.pot)<1 && (b.t-a.t)>1.0 && a.t>=t0-0.01){
+      const w=b.t-a.t;
+      const mid=(a.t+w/2)/DURACAO, fad=(1-0.45*genFreioFad*mid);   // freio afrouxa com a fadiga ao longo da briga
+      const teto=genFreioMax*fad;                                   // profundidade MÁX do freio nesta janela
+      if(genFreioQuad){                                             // QUADRADO: parede uniforme (mantém)
+        const e=0.08;
+        out.push({t:a.t+e, pot:-teto, frear:true});
+        out.push({t:b.t-e, pot:-teto, frear:true});
+      } else {                                                      // CARACTERÍSTICO: freio que VARIA na janela (o peixe surta e afrouxa a resistência) — mais real
+        const e=0.20;
+        let tt=a.t+e;
+        out.push({t:tt, pot:-teto*rnd(0.55,0.95), frear:true});     // entra
+        while(tt < b.t-e-1.0){
+          tt += rnd(1.4,3.0);                                       // varia a cada ~1,5-3s
+          if(tt >= b.t-e) break;
+          out.push({t:tt, pot:-teto*rnd(0.4,1.0), frear:true});     // nível variável do freio (surto/alívio)
+        }
+        out.push({t:b.t-e, pot:-teto*rnd(0.5,0.9), frear:true});    // sai
+      }
+    }
+  }
+  return out;
+}
+function buildFight(pe, nMin, nMax, teto, fadiga, puxada, fisEstilo, fisDur, fisPico, intens, espaco, durFis){
+  const F=(isFinite(fadiga)?Math.max(0,Math.min(100,fadiga)):50)/100;
+  const tf=(isFinite(teto)&&teto>0?Math.min(teto,100):100)/100;
+  const t0=isFinite(durFis)?Math.max(0,durFis):5;
+  const pts=[{t:0,pot:0}];
+  if(t0>0) pts.push({t:t0,pot:0});
+  const base=(isFinite(puxada)&&puxada>0)?puxada:45;
+  const kDur=DURACAO/90;   // escala vs 90s: dimensiona a briga p/ preencher a duração
+  const pullBudget=Math.min(DURACAO-8, base*kDur*rnd(0.9,1.1));
+  const N=Math.max(3, Math.round(pullBudget/rnd(9,13)));                    // nº de trancos vem do BUDGET -> mantém cada tranco ~9-13s (como a sim antiga); não alonga
+  const pdurRun=Math.min(16, Math.max(4, pullBudget*0.22));                 // corrida inicial CURTA (não "corre" demais)
+  const pdurOutros=Math.max(1.5,(pullBudget-pdurRun)/Math.max(1,N-1));
+  const fill=DURACAO-rnd(3,10);   // enche QUASE toda a duração (deixa só ~3-10s no fim)
+  const restTotal=Math.max(N*3, (fill-t0)-pullBudget);
+  const w=[]; let wsum=0;
+  for(let k=0;k<N;k++){ const x=(N>1)?k/(N-1):0; const wk=1+(6.0*F)*x; w.push(wk); wsum+=wk; }
+  let t=t0;
+  for(let k=0;k<N;k++){
+    const fat=arcoEnv(t/DURACAO,F);
+    if(k===0){ t=fisgadaStrike(pts, t, fisEstilo, fisDur, fisPico); }
+    else if(k===1){ t=corridaInicial(pts, t, pdurRun, fat); }
+    else { const pdur=pdurOutros*rnd(0.8,1.2); t=pe(pts, t, pdur, fat); }
+    t+=rnd(0.4,0.8); pts.push({t,pot:0});
+    let wdur=restTotal*(w[k]/wsum)*rnd(0.85,1.15);
+    wdur=Math.max(2.0, Math.min(Math.max(16,DURACAO*0.06), wdur));
+    wdur=Math.min(wdur, Math.max(1.5, (DURACAO-2)-t));
+    t+=wdur; pts.push({t,pot:0});
+    if(t>DURACAO-3) break;
+  }
+  pts.push({t:DURACAO, pot:0});   // fecha a briga no FIM da duração (sem "última investida" solta no fim)
+  const ig=(isFinite(intens)?Math.max(0,Math.min(100,intens)):50)/25;
+  if(ig!==1){
+    let topo=0; pts.forEach(p=>{ if(!p.fis && p.pot>topo) topo=p.pot; });
+    if(topo>0) pts.forEach(p=>{ if(!p.fis && p.pot>0) p.pot=Math.max(0.5, Math.min(100, topo-(topo-p.pot)*ig)); });
+  }
+  pts.forEach(p=>{ if(!p.fis && !p.frear) p.pot*=tf; });
+  return finalizarFight(espacar(suavizar(preencherFreioJanelas(pts, t0)), espacoSeg(espaco)));
+}
+function pePirarara(pts,t,pdur,fat){
+  const end=t+pdur;
+  t+=Math.min(0.7,pdur*0.16); pts.push({t,pot:rnd(86,98)*fat});
+  while(t<end-1.0){
+    t+=rnd(2.2,3.4); pts.push({t,pot:rnd(60,76)*fat});
+    if(t>=end-1.0)break;
+    t+=rnd(2.2,3.4); pts.push({t,pot:rnd(90,100)*fat});
+  }
+  return t;
+}
+function fightPirarara(teto,fadiga,puxada,fisDur,fisPico,intens,espaco,durFis){ return buildFight(pePirarara, 4, 6, teto, fadiga, puxada, 'forte', fisDur, fisPico, intens, espaco, durFis); }
+
+// ── Ajustes do gerador (lê os inputs da .gen-row, idx=0) ──
+function fisFisDurSeg(idx){ const el=document.getElementById('fisFisDur'+idx); const v=el?parseFloat(el.value):NaN; return isFinite(v)?Math.max(0,v):5; }
+function cfgGerador(idx){
+  const g=(id,d)=>{ const el=document.getElementById(id+idx); const v=el?parseFloat(el.value):NaN; return isFinite(v)?v:d; };
+  let fadiga=Math.max(0,Math.min(100,g('fadiga',50)));
+  let puxada=g('puxada',55); if(!(puxada>0)) puxada=55;
+  let fisDur=g('fisDur',2); if(!(fisDur>0)) fisDur=2;
+  let intens=Math.max(0,Math.min(100,g('intens',50)));
+  let espaco=Math.max(0,Math.min(100,g('espaco',40)));
+  let freioMax=Math.max(0,Math.min(-ESC_NEG,g('freioMax', FREIO_MAX_DEF[LETRAS[idx]]||10)));
+  let corrida=Math.max(0,Math.min(ESC_POS,g('corrida', Math.round(freioMax*1.8))));
+  let saque=Math.max(0,Math.min(ESC_POS,g('saque', Math.round(freioMax*2.2))));
+  let minpux=Math.max(0,Math.min(ESC_POS,g('minpux', 7)));
+  let durFis=g('fisFisDur',5); if(!(durFis>=0)) durFis=5;
+  const teto=Math.max(1,corrida), fisPico=Math.max(1,saque);
+  const freioQuad=!!(document.getElementById('freioQuad'+idx)||{}).checked;
+  return {teto,fadiga,puxada,fisPico,fisDur,intens,espaco,durFis,freioMax,freioQuad,corrida,saque,minpux};
+}
+function gerarCurvaEspecie(idx){ const c=cfgGerador(idx); genFreioMax=c.freioMax; genFreioQuad=c.freioQuad; genFreioFad=(c.fadiga||0)/100; genMinPux=c.minpux; return fightPirarara(c.teto,c.fadiga,c.puxada,c.fisDur,c.fisPico,c.intens,c.espaco,c.durFis); }
+// 🎲+ : gera a PUXADA (mantém o freio existente)
+function gerarPositivo(idx){
+  const c=cfgGerador(idx);
+  const negExist = SIMS[idx].pontos.filter(p=>p.pot<0);
+  genFreioMax = 0; genMinPux = c.minpux;
+  const novo = fightPirarara(c.teto,c.fadiga,c.puxada,c.fisDur,c.fisPico,c.intens,c.espaco,c.durFis);
+  SIMS[idx].pontos = finalizarFight(novo.concat(negExist));
+  salvarPontos(idx); simAtiva=idx; selPonto=-1; multiSel=[]; fecharEditorPonto(); renderCurva(idx); salvarGenCfg(idx);
+}
+// 🎲− : (re)preenche o FREIO nas janelas de 0 (mantém a puxada + descansos)
+function gerarNegativo(idx){
+  const c=cfgGerador(idx);
+  let base = SIMS[idx].pontos.filter(p=>p.pot>=0).slice().sort((a,b)=>a.t-b.t);
+  if(!base.some(p=>p.pot>0)) base=[{t:0,pot:0},{t:c.durFis||0,pot:0},{t:DURACAO,pot:0}];
+  genFreioMax = c.freioMax; genFreioQuad=c.freioQuad; genFreioFad=(c.fadiga||0)/100; genMinPux = c.minpux;
+  SIMS[idx].pontos = finalizarFight(preencherFreioJanelas(base, c.durFis));
+  salvarPontos(idx); simAtiva=idx; selPonto=-1; multiSel=[]; fecharEditorPonto(); renderCurva(idx); salvarGenCfg(idx);
+}
+function limparPositivo(idx){ SIMS[idx].pontos = SIMS[idx].pontos.filter(p=>p.pot<=0); salvarPontos(idx); selPonto=-1; multiSel=[]; fecharEditorPonto(); renderCurva(idx); }
+function limparNegativo(idx){ SIMS[idx].pontos = SIMS[idx].pontos.filter(p=>p.pot>=0); salvarPontos(idx); selPonto=-1; multiSel=[]; fecharEditorPonto(); renderCurva(idx); }
+function togFreioQuad(i){ const el=document.getElementById('freioQuad'+i); if(el) localStorage.setItem('simpesca2_aleat_gen_'+LETRAS[i]+'_freioquad', el.checked?'1':'0'); }
+
+// ── PESO (prévia) ──
+function ajustarPesoSim(i){ localStorage.setItem('simpesca2_aleat_peso_'+LETRAS[i], pesoSimValor(i)); renderCurva(i); }
+function atualizarPesoLbl(i){ const id=LETRAS[i], w=pesoSimValor(i), esc=escalaPeso(id,w); const lbl=document.getElementById('pesoSimLbl'+i); if(!lbl) return; const fEl=document.getElementById('freioMax'+i), fmax=fEl?(parseFloat(fEl.value)||0):0; lbl.textContent = w.toFixed(1)+' kg · '+Math.round(esc*100)+'% · freio ~'+(fmax*esc).toFixed(1)+' kgf'; }
+
+// ══ STORAGE ISOLADO ════════════════════════════════════════════════════════════
+const GEN_CAMPOS=['intens','saque','fisDur','corrida','minpux','fadiga','puxada','espaco','freioMax','fisFisDur'];
+function salvarPontos(idx){ try{ localStorage.setItem('simpesca2_aleat_pontos_'+LETRAS[idx], JSON.stringify(SIMS[idx].pontos)); }catch(e){} if(idx===0 && podeSyncCurva) agendarSyncCurva(); }   // ao editar, agenda o push da curva pro curvas.json (7ª sim)
+function carregarPontosStore(idx){ try{ let r=localStorage.getItem('simpesca2_aleat_pontos_'+LETRAS[idx]); if(!r && idx===0) r=localStorage.getItem('simpesca2_aleat_pontos'); if(r){ const d=JSON.parse(r); if(Array.isArray(d)&&d.length) return d.slice().sort((a,b)=>a.t-b.t); } }catch(e){} return null; }
+function salvarGenCfg(idx){ GEN_CAMPOS.forEach(c=>{ const el=document.getElementById(c+idx); if(el) localStorage.setItem('simpesca2_aleat_gen_'+LETRAS[idx]+'_'+c, el.value); }); const q=document.getElementById('freioQuad'+idx); if(q) localStorage.setItem('simpesca2_aleat_gen_'+LETRAS[idx]+'_freioquad', q.checked?'1':'0'); }
+function carregarGenCfg(idx){ GEN_CAMPOS.forEach(c=>{ const v=localStorage.getItem('simpesca2_aleat_gen_'+LETRAS[idx]+'_'+c); if(v!==null){ const el=document.getElementById(c+idx); if(el) el.value=v; } }); const q=document.getElementById('freioQuad'+idx); const qv=localStorage.getItem('simpesca2_aleat_gen_'+LETRAS[idx]+'_freioquad'); if(q&&qv!==null) q.checked=(qv==='1'); }
+
+// ══ RENDER ═════════════════════════════════════════════════════════════════════
+function salvarDuracaoTotal(){ const el=document.getElementById('duracaoTotalMin'); let m=el?parseFloat(el.value):20; if(!(m>0)) m=20; DURACAO=Math.round(m*60); localStorage.setItem('simpesca2_aleat_duracao', m); renderTicks(0); renderCurva(0); }   // muda a duração da briga (⏱ min), redesenha as marcas + re-larga a timeline; regere (🎲) pra a curva escalar
+function yOf(v){ return ((ESC_POS-v)/ESC_RANGE)*100; }
+function renderTicks(idx){
+  const inner=document.getElementById('tlInner'+idx); if(!inner) return;
+  inner.querySelectorAll('.time-line,.time-tick').forEach(e=>e.remove());
+  const passo = DURACAO>300 ? 10 : 5;   // marca de 10 em 10s (briga longa) · 5 em 5s (curta)
+  for(let sec=0;sec<=DURACAO;sec+=passo){ const pct=(sec/DURACAO)*100;
+    const line=document.createElement('div'); line.className='time-line'; line.style.left=pct+'%'; line.style.background='rgba(26,39,54,0.6)'; inner.appendChild(line);
+    const tk=document.createElement('div'); tk.className='time-tick'; tk.style.left=pct+'%'; tk.textContent=(DURACAO>300 ? (Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0')) : sec+'s'); inner.appendChild(tk);
+  }
+}
+function renderTodas(){ renderCurva(0); }
+// Só os handles VISÍVEIS (janela de rolagem + margem) — senão milhares de pontos numa timeline de 20 min travam.
+function renderHandles(idx){
+  const area=document.getElementById('curva'+idx), wrap=document.getElementById('tl'+idx); if(!area||!wrap) return;
+  area.querySelectorAll('.ponto-handle').forEach(h=>h.remove());
+  const innerW=Math.max(1, DURACAO*PX_POR_S), margem=180;
+  const tMin=Math.max(0,(wrap.scrollLeft-margem)/innerW*DURACAO), tMax=(wrap.scrollLeft+wrap.clientWidth+margem)/innerW*DURACAO;
+  SIMS[idx].pontos.forEach((p,i)=>{
+    if(!((p.t>=tMin && p.t<=tMax) || (idx===simAtiva && i===selPonto))) return;   // fora da janela (o ponto em edição sempre aparece)
+    const h=document.createElement('div'); let cls='ponto-handle'+(p.pot<0?' freio':''); if(idx===simAtiva && i===selPonto) cls+=' sel';
+    h.className=cls; h.style.left=(p.t/DURACAO*100)+'%'; h.style.top=yOf(p.pot)+'%'; h.addEventListener('pointerdown',e=>iniciarDragPonto(e,idx,i)); area.appendChild(h);
+  });
+}
+function renderCurva(idx){
+  const tlIn=document.getElementById('tlInner'+idx); if(tlIn) tlIn.style.width=(DURACAO*PX_POR_S)+'px';   // timeline LARGA (px/segundo) -> rolagem horizontal (marcas de tempo em renderTicks, só ao mudar a duração)
+  const area=document.getElementById('curva'+idx); const pts=SIMS[idx].pontos; const durFis=fisFisDurSeg(idx);
+  const y0=yOf(0), y0s=y0.toFixed(2);
+  let inner='';
+  inner+='<rect x="0" y="0" width="100" height="'+y0s+'" fill="rgba(0,212,255,0.06)"/>';
+  inner+='<rect x="0" y="'+y0s+'" width="100" height="'+(100-y0).toFixed(2)+'" fill="rgba(255,95,95,0.06)"/>';
+  [30,20,10,-10].forEach(v=>{ inner+='<line x1="0" y1="'+yOf(v).toFixed(2)+'" x2="100" y2="'+yOf(v).toFixed(2)+'" stroke="rgba(255,255,255,0.07)" stroke-width="1" vector-effect="non-scaling-stroke"/>'; });
+  inner+='<line x1="0" y1="'+y0s+'" x2="100" y2="'+y0s+'" stroke="rgba(255,255,255,0.28)" stroke-width="1" vector-effect="non-scaling-stroke"/>';
+  if(pts.length){
+    const seq=[[0,pts[0].pot]].concat(pts.map(p=>[(p.t/DURACAO)*100,p.pot])).concat([[100,pts[pts.length-1].pot]]);
+    const fill=(clamp,cor)=>{ const pp=seq.map(c=>c[0].toFixed(2)+','+yOf(clamp(c[1])).toFixed(2)).join(' '); return '<polygon points="0,'+y0s+' '+pp+' 100,'+y0s+'" fill="'+cor+'"/>'; };
+    inner+=fill(v=>Math.max(0,v),'rgba(0,212,255,0.20)');
+    inner+=fill(v=>Math.min(0,v),'rgba(255,95,95,0.20)');
+    const line=seq.map(c=>c[0].toFixed(2)+','+yOf(c[1]).toFixed(2)).join(' ');
+    inner+='<polyline points="'+line+'" fill="none" stroke="#dcefff" stroke-width="1.5" vector-effect="non-scaling-stroke"/>';
+    const escP=escalaPeso(LETRAS[idx], pesoSimValor(idx));
+    if(escP<0.999){ const gl=seq.map(c=>c[0].toFixed(2)+','+yOf(c[1]*escP).toFixed(2)).join(' '); inner+='<polyline points="'+gl+'" fill="none" stroke="#ffcc66" stroke-width="1.6" stroke-dasharray="3,2" opacity="0.95" vector-effect="non-scaling-stroke"/>'; }
+  }
+  area.innerHTML='<svg class="curve-svg" viewBox="0 0 100 100" preserveAspectRatio="none">'+inner+'</svg>';
+  renderHandles(idx);
+  const est=document.getElementById('estLinha'+idx); if(est) est.textContent='🐟 ≈ '+estimarLinha(pts, escalaPeso(LETRAS[idx],pesoSimValor(idx))).toFixed(1)+' m';
+  atualizarPesoLbl(idx);
+  let band=tlIn?tlIn.querySelector('.fisgada-band'):null;
+  if(durFis>0){ if(!band && tlIn){ band=document.createElement('div'); band.className='fisgada-band'; band.innerHTML='<span class="lbl">🎣 fisgada manual</span>'; tlIn.appendChild(band); } if(band){ band.style.width=Math.min(100,(durFis/DURACAO)*100)+'%'; band.style.display='block'; } } else if(band){ band.style.display='none'; }
+}
+
+// ══ EDITOR (clicar/arrastar/editar) ═══════════════════════════════════════════
+function setupArea(idx){
+  const area=document.getElementById('curva'+idx);
+  const wrap=document.getElementById('tl'+idx);
+  wrap.addEventListener('mouseenter',()=>{ simHover=idx; });
+  let rafSc=null;
+  wrap.addEventListener('scroll',()=>{ if(rafSc) return; rafSc=requestAnimationFrame(()=>{ rafSc=null; renderHandles(idx); }); });   // re-renderiza só os handles da janela visível
+  area.addEventListener('click',e=>{
+    if(e.target.classList.contains('ponto-handle')) return;
+    if(arrastouPonto) return;
+    const rect=area.getBoundingClientRect();
+    let t=round2(Math.max(0,Math.min(DURACAO,(e.clientX-rect.left)/rect.width*DURACAO)));
+    let pot=Math.max(ESC_NEG,Math.min(ESC_POS,Math.round(ESC_POS-((e.clientY-rect.top)/rect.height)*ESC_RANGE)));
+    const novo={t,pot}; SIMS[idx].pontos.push(novo); SIMS[idx].pontos.sort((a,b)=>a.t-b.t);
+    simAtiva=idx; multiSel=[]; selPonto=SIMS[idx].pontos.indexOf(novo);
+    salvarPontos(idx); renderCurva(idx); abrirEditorPonto(e);
+  });
+}
+function iniciarDragPonto(e,idx,i){
+  e.stopPropagation(); e.preventDefault();
+  simAtiva=idx; multiSel=[]; selPonto=i; arrastouPonto=false; abrirEditorPonto(e); renderCurva(idx);
+  const area=document.getElementById('curva'+idx); const rect=area.getBoundingClientRect();
+  const onMove=ev=>{ arrastouPonto=true; const p=SIMS[idx].pontos[selPonto]; if(!p) return;
+    p.t=round2(Math.max(0,Math.min(DURACAO,(ev.clientX-rect.left)/rect.width*DURACAO)));
+    p.pot=Math.max(ESC_NEG,Math.min(ESC_POS,Math.round(ESC_POS-((ev.clientY-rect.top)/rect.height)*ESC_RANGE)));
+    camposDoPonto(); renderCurva(idx);
+  };
+  const onUp=()=>{ document.removeEventListener('pointermove',onMove); document.removeEventListener('pointerup',onUp);
+    const obj=SIMS[idx].pontos[selPonto]; SIMS[idx].pontos.sort((a,b)=>a.t-b.t); selPonto=SIMS[idx].pontos.indexOf(obj);
+    salvarPontos(idx); renderCurva(idx); camposDoPonto(); setTimeout(()=>{arrastouPonto=false;},10);
+  };
+  document.addEventListener('pointermove',onMove); document.addEventListener('pointerup',onUp);
+}
+const pEditor=document.getElementById('pontoEditor');
+function abrirEditorPonto(e){ camposDoPonto(); pEditor.style.display='flex'; posicionarEditorPonto(e); }
+function posicionarEditorPonto(e){
+  if(!e || e.clientX==null){ pEditor.style.left='50%'; pEditor.style.top='80px'; pEditor.style.transform='translateX(-50%)'; return; }
+  pEditor.style.transform='none';
+  const w=pEditor.offsetWidth||280, h=pEditor.offsetHeight||130;
+  let x=e.clientX+16, y=e.clientY+16;
+  x=Math.max(8, Math.min(window.innerWidth - w - 8, x));
+  y=Math.max(8, Math.min(window.innerHeight - h - 8, y));
+  pEditor.style.left=x+'px'; pEditor.style.top=y+'px';
+}
+function fecharEditorPonto(){ pEditor.style.display='none'; selPonto=-1; renderTodas(); }
+function camposDoPonto(){ const p=SIMS[simAtiva].pontos[selPonto]; if(!p) return; document.getElementById('pTempo').value=p.t; document.getElementById('pPot').value=p.pot; }
+function removerPonto(){ if(selPonto>-1){ SIMS[simAtiva].pontos.splice(selPonto,1); salvarPontos(simAtiva); fecharEditorPonto(); renderCurva(simAtiva); } }
+document.getElementById('pTempo').addEventListener('input',e=>{ const p=SIMS[simAtiva].pontos[selPonto]; if(!p) return; p.t=Math.max(0,Math.min(DURACAO,parseFloat(e.target.value)||0)); salvarPontos(simAtiva); renderCurva(simAtiva); });
+document.getElementById('pPot').addEventListener('input',e=>{ const p=SIMS[simAtiva].pontos[selPonto]; if(!p) return; p.pot=Math.max(ESC_NEG,Math.min(ESC_POS,parseInt(e.target.value)||0)); salvarPontos(simAtiva); renderCurva(simAtiva); });
+
+// ── Copiar / colar a curva ──
+function copiarCurva(idx){ clip=JSON.parse(JSON.stringify(SIMS[idx].pontos)); document.querySelectorAll('.btnColar').forEach(b=>b.disabled=false); }
+function colarCurva(idx){ if(!clip) return; SIMS[idx].pontos=JSON.parse(JSON.stringify(clip)).sort((a,b)=>a.t-b.t); selPonto=-1; multiSel=[]; salvarPontos(idx); pEditor.style.display='none'; renderCurva(idx); }
+function toggleColapso(i){ const corpo=document.getElementById('corpo'+i); if(!corpo) return; const bloco=corpo.closest('.sim-bloco'), btn=document.getElementById('colBtn'+i); const recolher=!bloco.classList.contains('colapsado'); bloco.classList.toggle('colapsado',recolher); if(btn) btn.textContent = recolher ? '▸' : '▾'; localStorage.setItem('simpesca2_aleat_colapso_'+LETRAS[i], recolher?'1':'0'); }
+
+// ── PLAY (prévia VISUAL — playhead + gauge, SEM motor/BLE) ──
+let simRodando=false, simRaf=null, simT0=0, simPausaT=0;
+function fmt(s){ return Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0'); }
+function atualizarSimGauge(idx,pct){ pct=Math.max(-100,Math.min(100,pct)); const p=document.getElementById('simPct'+idx),v=document.getElementById('simVolt'+idx),f=document.getElementById('simFill'+idx); if(!p)return; const mag=Math.abs(pct), pull=pct>0.5, brake=pct<-0.5, cor=pull?'#00d4ff':brake?'#ffa838':'#3d5d7e'; p.textContent=(pull?'+':brake?'−':'')+mag.toFixed(0)+'%'; v.textContent=pull?'≈'+Math.round(rpmAlvo(pct))+'RPM':brake?'≈'+ampMotor(pct).toFixed(1)+'A':''; f.style.width=mag+'%'; f.style.background=cor; }
+function loopPlay(idx){ if(!simRodando) return; const t=Math.min(DURACAO,(performance.now()-simT0)/1000); const ph=document.getElementById('playhead'+idx); if(ph) ph.style.left=(t/DURACAO*100)+'%'; const wrap=document.getElementById('tl'+idx); if(wrap) wrap.scrollLeft=(t/DURACAO)*(DURACAO*PX_POR_S) - wrap.clientWidth*0.5;   /* a timeline rola seguindo o playhead */ const pot=interpolarPontos(SIMS[idx].pontos,t)*escalaPeso(LETRAS[idx],pesoSimValor(idx)); atualizarSimGauge(idx,pot); const ts=document.getElementById('tsDisplay'+idx); if(ts) ts.textContent=fmt(t)+' / '+fmt(DURACAO); if(t>=DURACAO){ stopSim(idx); return; } simRaf=requestAnimationFrame(()=>loopPlay(idx)); }
+function playSim(idx){ if(simRodando) return; simRodando=true; simT0=performance.now()-simPausaT*1000; loopPlay(idx); }
+function pauseSim(idx){ simRodando=false; if(simRaf) cancelAnimationFrame(simRaf); simPausaT=(performance.now()-simT0)/1000; }
+function stopSim(idx){ simRodando=false; if(simRaf) cancelAnimationFrame(simRaf); simPausaT=0; const ph=document.getElementById('playhead'+idx); if(ph) ph.style.left='0%'; atualizarSimGauge(idx,0); const ts=document.getElementById('tsDisplay'+idx); if(ts) ts.textContent='0:00 / 1:30'; }
+
+// ══ BLOCO (marcação IDÊNTICA ao dashboard, idx=0) ═════════════════════════════
+function montarBloco(i){
+  const cont=document.getElementById('simsContainer');
+  const e={id:LETRAS[i], nome:NOMES[i]}, cls=['a','b','c'][i%3];
+  const eixoHtml=[40,30,20,10,0,-10,-20].map(v=>{ const top=(40-v)/60*100, ty=v===40?'0':v===-20?'-100%':'-50%'; return '<span style="position:absolute;left:3px;top:'+top.toFixed(2)+'%;transform:translateY('+ty+');font-size:8.5px;font-family:monospace;color:rgba(200,216,232,0.6);text-shadow:0 0 3px #03070b,0 0 2px #03070b;">'+(v>0?'+':'')+v+'</span>'; }).join('');
+  const pmx=pesoMaxDash(e.id); const pwv=(function(){ const v=parseFloat(localStorage.getItem('simpesca2_aleat_peso_'+e.id)); return isFinite(v)?Math.max(PESO_MIN,Math.min(pmx,v)):pmx; })();
+  const col=localStorage.getItem('simpesca2_aleat_colapso_'+e.id)==='1';
+  const d=document.createElement('div'); d.className='sim-bloco'+(col?' colapsado':'');
+  d.innerHTML=
+    '<div class="sim-header">'+
+      '<button class="btn-colapso" id="colBtn'+i+'" onclick="toggleColapso('+i+')" title="Recolher/expandir">'+(col?'▸':'▾')+'</button>'+
+      '<span class="sim-label sim-label-'+cls+'">🐟 '+e.nome+'</span>'+
+      '<span class="cal-sub" id="estLinha'+i+'" title="Estimativa de linha que o peixe puxa nesta briga">🐟 ≈ — m</span>'+
+      '<div class="sim-mini-gauge"><span class="sim-gauge-pct" id="simPct'+i+'">0%</span><span>·</span><span class="sim-gauge-volt" id="simVolt'+i+'"></span><div class="sim-gauge-bar"><div class="sim-gauge-fill" id="simFill'+i+'"></div></div></div>'+
+      '<div class="sim-controls">'+
+        '<button class="btn" style="background:#1565c0;color:#fff" onclick="gerarPositivo('+i+')" title="🎲 Gerar a PUXADA (azul, +). Mantém o freio que já existe.">🎲+</button>'+
+        '<button class="btn" style="background:#c1121f;color:#fff" onclick="gerarNegativo('+i+')" title="🎲 Gerar o FREIO (vermelho, −) nas janelas. Mantém a puxada que já existe.">🎲−</button>'+
+        '<button class="btn btn-outline" onclick="limparPositivo('+i+')" title="Apagar só a PUXADA (parte +)">🧹+</button>'+
+        '<button class="btn btn-outline" onclick="limparNegativo('+i+')" title="Apagar só o FREIO (parte −)">🧹−</button>'+
+        '<button class="btn btn-green" onclick="playSim('+i+')" title="Prévia visual (sem motor)">▶</button><button class="btn btn-yellow" onclick="pauseSim('+i+')">⏸</button><button class="btn btn-red" onclick="stopSim('+i+')">■</button>'+
+        '<button class="btn btn-outline" onclick="copiarCurva('+i+')" title="Copiar curva">📄</button>'+
+        '<button class="btn btn-accent btnColar" id="colar'+i+'" onclick="colarCurva('+i+')" disabled title="Colar curva copiada">📋</button>'+
+        '<div id="tsDisplay'+i+'" class="ts-badge">0:00 / 1:30</div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="sim-corpo" id="corpo'+i+'">'+
+    '<div class="gen-row">'+
+      '<label title="Intensidade da ASSINATURA do peixe: 50% = padrão · abaixo de 50 = briga mais plana/genérica · acima de 50 = caráter exagerado (vales mais fundos)">assinatura <input type="number" id="intens'+i+'" min="0" max="100" value="50">%</label>'+
+      '<label title="Pico do SAQUE (fisgada), na escala do gráfico (0 a +40). O peso do peixe escala isso. Padrão sugerido = força × 2,2.">🎣 saque <input type="number" id="saque'+i+'" min="0" max="40" step="1" value="'+Math.round((FREIO_MAX_DEF[LETRAS[i]]||10)*2.2)+'"></label>'+
+      '<label title="Alonga (>1) ou encurta (<1) a duração da fisgada">dur <input type="number" id="fisDur'+i+'" min="0.2" max="4" step="0.1" value="2">×</label>'+
+      '<label title="Pico da PUXADA (quando o peixe dispara), na escala do gráfico (0 a +40). O peso do peixe escala isso. Padrão sugerido = força × 1,8.">🏃 corrida <input type="number" id="corrida'+i+'" min="0" max="40" step="1" value="'+Math.round((FREIO_MAX_DEF[LETRAS[i]]||10)*1.8)+'"></label>'+
+      '<label title="Valor MÍNIMO de puxada (piso): nenhuma puxada gerada fica abaixo disso. Descanso (0) e freio (negativo) passam inteiros. 0 = sem piso. Regenere (🎲) pra aplicar." style="border:1px solid var(--accent);border-radius:5px;padding:1px 6px;">⬇ mín. puxada <input type="number" id="minpux'+i+'" min="0" max="40" step="1" value="7"></label>'+
+      '<label title="0% = não cansa · 100% = cansa muito (trancos caem + janelas crescem)">fadiga <input type="number" id="fadiga'+i+'" min="0" max="100" value="50">%</label>'+
+      '<label title="Tempo total de motor ligado (puxada). Maior = blocos mais longos, peixe puxa mais linha">puxada <input type="number" id="puxada'+i+'" min="5" max="80" value="55">s</label>'+
+      '<label title="Distância entre pontos no tempo: 0 = densos · 100 = bem espaçados. Maior = o motor físico tem tempo de alcançar cada nível">espaço <input type="number" id="espaco'+i+'" min="0" max="100" value="40">/100</label>'+
+      '<label title="Força MÁXIMA de tração SUSTENTADA no FREIO (parte negativa), em kgf (0 a -20 = base do gráfico). O PESO do peixe escala isso.">🛑 freio máx <input type="number" id="freioMax'+i+'" min="0" max="20" value="'+(FREIO_MAX_DEF[LETRAS[i]]||10)+'"> kgf</label>'+
+      '<label title="LIGADO = freio QUADRADO: paredes UNIFORMES que ainda afrouxam com a fadiga. DESLIGADO = CARACTERÍSTICO: paredes irregulares (fadiga + variação aleatória).">🟥 <input type="checkbox" id="freioQuad'+i+'" onchange="togFreioQuad('+i+')" style="width:auto"> freio quadrado</label>'+
+      '<label title="Onde a briga gerada pelo 🎲 começa. Antes desse tempo a curva fica livre pra você desenhar as fisgadas MANUALMENTE." style="border-left:1px solid var(--border);padding-left:8px;margin-left:2px;">🎣 início da briga <input type="number" id="fisFisDur'+i+'" min="0" max="30" step="0.5" value="5" oninput="renderCurva('+i+')">s</label>'+
+    '</div>'+
+    '<div class="peso-row" style="display:flex;align-items:center;gap:8px;font-size:0.62rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin:4px 0 2px;">⚖️ peso (prévia) <input type="range" id="pesoSim'+i+'" min="'+PESO_MIN+'" max="'+pmx+'" step="0.5" value="'+pwv+'" oninput="ajustarPesoSim('+i+')" style="flex:1;max-width:260px;accent-color:#ffcc66;"><span id="pesoSimLbl'+i+'" style="font-family:monospace;color:var(--text);min-width:185px;text-transform:none;letter-spacing:0;"></span></div>'+
+    '<div class="tl-row">'+
+      '<div class="curve-eixo-fixo"><div class="eixo-inner">'+eixoHtml+'</div></div>'+
+      '<div id="tl'+i+'" class="timeline-wrap"><div id="tlInner'+i+'" class="tl-inner"><div class="curve-area" id="curva'+i+'"></div><div id="playhead'+i+'" class="tl-playhead"></div></div></div>'+
+    '</div>'+
+    '</div>';
+  cont.appendChild(d);
+}
+
+// ══ CARRETEL — config GLOBAL (NÃO isolado): mesmas chaves simpesca2_cal_* do dash + push pro config.json ══
+const SERVICE_UUID="a1b2c3d4-0001-4a5b-8c6d-1234567890ab", CHAR_MOTOR_UUID="a1b2c3d4-0002-4a5b-8c6d-1234567890ab", CHAR_LINHA_UUID="a1b2c3d4-0003-4a5b-8c6d-1234567890ab", CHAR_CONFIG_UUID="a1b2c3d4-0004-4a5b-8c6d-1234567890ab";
+let bleDevice=null, motorChar=null, linhaChar=null, configChar=null, contagemEncoder=0, contAnt=0, primeiraLeitura=true, metrosGanhos=0, metrosPerdidos=0, travaAtiva=false;
+function btUI(cls,txt){ const b=document.getElementById('btnBT'); if(b){ b.className=cls; b.textContent=txt; } }
+function inverterDir(){ return (localStorage.getItem('simpesca2_cal_inv')||'1')==='1'; }
+function contagemParaMetros(c){ let m=(c/4096)*metrosPorVolta(); if(inverterDir()) m=-m; return m; }
+function limiteLinha(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_limite')); return (isFinite(v)&&v!==0)?v:-150; }
+function linhaCarretel(){ return contagemParaMetros(contagemEncoder); }
+function atualizarContadores(){ const g=document.getElementById('ctGanhos'); if(!g) return; const net=linhaCarretel(), L=limiteLinha(); g.textContent=metrosGanhos.toFixed(1)+' m'; document.getElementById('ctPerdidos').textContent=metrosPerdidos.toFixed(1)+' m'; const s=document.getElementById('ctSaldo'); s.textContent=net.toFixed(1)+' / '+L.toFixed(0)+' m'; s.style.color=(Math.abs(net)>=Math.abs(L))?'var(--red)':''; }
+function zerarContadores(){ metrosGanhos=0; metrosPerdidos=0; contagemEncoder=0; contAnt=0; primeiraLeitura=true; travaAtiva=false; if(linhaChar){ try{ linhaChar.writeValue(new Uint8Array([0])); }catch(e){} } atualizarContadores(); }
+function inverterLado(){ const novo=!(localStorage.getItem('simpesca2_cal_inv')==='1'); localStorage.setItem('simpesca2_cal_inv', novo?'1':'0'); const tmp=metrosGanhos; metrosGanhos=metrosPerdidos; metrosPerdidos=tmp; travaAtiva=false; atualizarContadores(); agendarSyncCal(); }
+function salvarLimite(){ const lim=parseFloat(document.getElementById('calLimite').value); if(isFinite(lim)&&lim!==0){ localStorage.setItem('simpesca2_cal_limite',lim); travaAtiva=false; atualizarContadores(); agendarSyncCal(); } else { alert('Limite inválido (não pode ser 0/vazio)'); } }
+function toggleCarretelBtns(){ const el=document.getElementById('carretelCtrls'); if(!el) return; const ocultar=el.style.display!=='none'; el.style.display=ocultar?'none':''; localStorage.setItem('simpesca2_carretel_btns', ocultar?'0':'1'); }
+function toggleCard(el){ const card=el.closest('.card'); if(!card) return; const rec=!card.classList.contains('card-colapsado'); card.classList.toggle('card-colapsado',rec); const k=el.dataset.cardkey; if(k) localStorage.setItem('simpesca2_cardcol_'+k, rec?'1':'0'); }
+// ── BLE: lê o encoder ao vivo (Ganhos/Perdidos/Linha) e zera via linhaChar ──
+async function conectarBLE(){ if(!navigator.bluetooth){ alert('Sem Web Bluetooth. Use Chrome/Edge no PC ou Android.'); return; } try{ btUI('','🔵 Procurando...'); bleDevice=await navigator.bluetooth.requestDevice({filters:[{services:[SERVICE_UUID]}]}); await ligar(bleDevice); }catch(e){ btUI('','🔵 Conectar'); } }
+async function ligar(device){
+  bleDevice=device;
+  device.addEventListener('gattserverdisconnected',()=>{ motorChar=null; linhaChar=null; configChar=null; btUI('','🔵 Reconectar'); });
+  const server=await device.gatt.connect(); const service=await server.getPrimaryService(SERVICE_UUID);
+  try{ motorChar=await service.getCharacteristic(CHAR_MOTOR_UUID); }catch(e){}
+  try{ linhaChar=await service.getCharacteristic(CHAR_LINHA_UUID); await linhaChar.startNotifications(); linhaChar.addEventListener('characteristicvaluechanged',e=>{
+        const nova=e.target.value.getInt32(0,true);
+        if(primeiraLeitura){ contAnt=nova; primeiraLeitura=false; }
+        const dM=contagemParaMetros(nova-contAnt); contAnt=nova;
+        if(dM>0) metrosGanhos+=dM; else metrosPerdidos+=-dM;
+        contagemEncoder=nova; atualizarContadores();
+      }); }catch(e){}
+  try{ configChar=await service.getCharacteristic(CHAR_CONFIG_UUID); }catch(e){ configChar=null; }
+  btUI('conectado','🟢 Conectado');
+}
+// ── Push do CAL pro config.json: SÓ limite+inv (read-modify-write, preserva gen/sync/resto). Gated por token. ──
+const GH_REPO_A='guilhermeogera-beep/Simularpesca2', GH_CONFIG_A='config.json';
+function ghTokenA(){ return (localStorage.getItem('simpesca2_github_token')||'').trim(); }
+function setSyncBadge(state){ const el=document.getElementById('calSyncStatus'); if(!el) return; const m={pend:'☁️ salvando…',ok:'☁️ salvo',err:'⚠️ erro salvar'}; el.textContent=m[state]||''; el.style.color=state==='err'?'#ff5f5f':state==='ok'?'#00e676':'#7b8d9e'; }
+let calSyncTimer=null;
+function agendarSyncCal(){ if(!ghTokenA()) return; localStorage.setItem('simpesca2_sync_pend','1'); setSyncBadge('pend'); clearTimeout(calSyncTimer); calSyncTimer=setTimeout(enviarSyncCal, 2500); }
+async function enviarSyncCal(){
+  if(!ghTokenA() || !navigator.onLine) return;
+  const headers={'Authorization':'token '+ghTokenA(),'Accept':'application/vnd.github+json'}, url='https://api.github.com/repos/'+GH_REPO_A+'/contents/'+GH_CONFIG_A;
+  let cfg={versao:2,tipo:'config',cal:{},gen:{},sync:{}}, sha=null, ok=false;
+  try{ const g=await fetch(url,{headers,cache:'no-store'});
+    if(g.ok){ const j=await g.json(); sha=j.sha; try{ cfg=JSON.parse(decodeURIComponent(escape(atob((j.content||'').replace(/\s/g,''))))); }catch(e){} ok=true; }
+    else if(g.status===404){ ok=true; }
+  }catch(e){ return; }
+  if(!ok){ setSyncBadge('err'); return; }   // erro (rate limit): não arrisca sobrescrever
+  cfg.cal=cfg.cal||{}; cfg.cal.limite=limiteLinha(); cfg.cal.inv=localStorage.getItem('simpesca2_cal_inv')||'1'; cfg.criado=new Date().toISOString();
+  const body={message:'auto: carretel (limite/inv)', content:btoa(unescape(encodeURIComponent(JSON.stringify(cfg,null,2))))}; if(sha) body.sha=sha;
+  let r=null; try{ r=await fetch(url,{method:'PUT',headers,body:JSON.stringify(body)}); }catch(e){}
+  if(r&&r.ok){ localStorage.removeItem('simpesca2_sync_pend'); setSyncBadge('ok'); } else setSyncBadge('err');
+}
+// ── Curva do DESAFIO -> salva no curvas.json como 7ª sim (chave "desafio"), read-modify-write (preserva as 6 espécies). Gated por token. ──
+const GH_CURVAS_A='curvas.json';
+let curvaSyncTimer=null, podeSyncCurva=false;   // podeSyncCurva: só empurra APÓS o load (senão o load local sobrescreveria o GitHub)
+function setCurvaBadge(state){ const el=document.getElementById('curvaSyncStatus'); if(!el) return; const m={pend:'☁️ salvando…',ok:'☁️ salvo no GitHub',err:'⚠️ erro ao salvar'}; el.textContent=m[state]||''; el.style.color=state==='err'?'#ff5f5f':state==='ok'?'#00e676':'#7b8d9e'; }
+function agendarSyncCurva(){ if(!ghTokenA()) return; setCurvaBadge('pend'); clearTimeout(curvaSyncTimer); curvaSyncTimer=setTimeout(enviarSyncCurva, 2500); }
+async function enviarSyncCurva(){
+  if(!ghTokenA() || !navigator.onLine) return;
+  const headers={'Authorization':'token '+ghTokenA(),'Accept':'application/vnd.github+json'}, url='https://api.github.com/repos/'+GH_REPO_A+'/contents/'+GH_CURVAS_A;
+  let cfg={versao:1,tipo:'curvas_todas',curvas:{}}, sha=null, ok=false;
+  try{ const g=await fetch(url,{headers,cache:'no-store'});
+    if(g.ok){ const j=await g.json(); sha=j.sha; try{ cfg=JSON.parse(decodeURIComponent(escape(atob((j.content||'').replace(/\s/g,''))))); }catch(e){} ok=true; }
+    else if(g.status===404){ ok=true; }
+  }catch(e){ return; }
+  if(!ok){ setCurvaBadge('err'); return; }   // erro (rate limit): não arrisca sobrescrever as 6 espécies
+  cfg.curvas=cfg.curvas||{}; cfg.curvas.desafio=SIMS[0].pontos; cfg.criado=new Date().toISOString();
+  const body={message:'auto: curva desafio (20min)', content:btoa(unescape(encodeURIComponent(JSON.stringify(cfg,null,2))))}; if(sha) body.sha=sha;
+  let r=null; try{ r=await fetch(url,{method:'PUT',headers,body:JSON.stringify(body)}); }catch(e){}
+  setCurvaBadge(r&&r.ok?'ok':'err');
+}
+// ── Sincroniza AO VIVO com o dash (mesmas chaves): se os dois estiverem abertos, reflete a mudança ──
+window.addEventListener('storage', e=>{ if(!e.key) return; if(e.key==='simpesca2_cal_limite' || e.key==='simpesca2_cal_inv' || e.key==='simpesca2_cal_mpv'){ const li=document.getElementById('calLimite'); if(li) li.value=limiteLinha(); atualizarContadores(); } });
+// ── Ao abrir: aplica o cal do config.json (limite/inv/mpv global, read-only) e mostra ──
+{ const li=document.getElementById('calLimite'); if(li) li.value=limiteLinha(); atualizarContadores(); }
+(async()=>{ if(navigator.onLine){ try{ const r=await fetch('config.json',{cache:'no-store'}); if(r&&r.ok){ const d=await r.json(); const c=(d&&d.cal)||{}; if(c.limite!=null) localStorage.setItem('simpesca2_cal_limite',c.limite); if(c.inv!=null) localStorage.setItem('simpesca2_cal_inv',c.inv); if(c.mpv) localStorage.setItem('simpesca2_cal_mpv',c.mpv); } }catch(e){} }
+  const li=document.getElementById('calLimite'); if(li) li.value=limiteLinha(); atualizarContadores();
+  if(ghTokenA() && navigator.onLine && localStorage.getItem('simpesca2_sync_pend')) enviarSyncCal(); })();
+
+// ══ INIT ══════════════════════════════════════════════════════════════════════
+for(let i=0;i<NSIMS;i++) montarBloco(i);   // 1 bloco (pirarará, 20 min)
+// Carretel no TOPO da página (antes da curva)
+{ const carr=document.querySelector('[data-cardkey="linha"]'); const cardCarr=carr?carr.closest('.card'):null; const sc=document.getElementById('simsContainer'); const cardCurva=sc?sc.closest('.card'):null; if(cardCarr&&cardCurva&&cardCurva.parentNode) cardCurva.parentNode.insertBefore(cardCarr, cardCurva); }
+{ const dm=parseFloat(localStorage.getItem('simpesca2_aleat_duracao')); if(isFinite(dm)&&dm>0){ DURACAO=Math.round(dm*60); const el=document.getElementById('duracaoTotalMin'); if(el) el.value=dm; } }   // duração salva -> seta DURACAO antes de gerar/render
+for(let i=0;i<NSIMS;i++){ carregarGenCfg(i); setupArea(i); SIMS[i].pontos = carregarPontosStore(i) || gerarCurvaEspecie(i); salvarPontos(i); renderTicks(i); renderCurva(i); }   // 1ª vez: gera/carrega a curva
+document.querySelectorAll('.gen-row input').forEach(el=>el.addEventListener('change',()=>salvarGenCfg(+el.id.slice(-1)||0)));   // persiste ajustes ao editar (idx pelo sufixo do id)
+// ── Ao abrir: puxa a curva do DESAFIO do GitHub (curvas.json -> desafio), fonte de verdade. Ajusta a duração pelo último ponto. Depois libera o push (podeSyncCurva). ──
+(async()=>{ try{ const r=await fetch('curvas.json',{cache:'no-store'}); if(r&&r.ok){ const d=await r.json(); const cv=(d&&d.curvas)||{}; if(Array.isArray(cv.desafio)&&cv.desafio.length){ SIMS[0].pontos=cv.desafio.slice().sort((a,b)=>a.t-b.t); const last=SIMS[0].pontos[SIMS[0].pontos.length-1]; if(last&&last.t>1){ DURACAO=Math.round(last.t); const el=document.getElementById('duracaoTotalMin'); if(el) el.value=Math.max(1,Math.round(DURACAO/60)); } salvarPontos(0); renderTicks(0); renderCurva(0); } } }catch(e){} podeSyncCurva=true; })();
+</script>
+</body>
+</html>

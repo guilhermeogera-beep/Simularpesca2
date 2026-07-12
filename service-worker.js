@@ -1,6 +1,6 @@
 // Cache do SHELL do app (HTML/JS/JSON/ícones). Os VÍDEOS não passam por aqui:
 // ficam no IndexedDB do navegador (importados manualmente em index.html).
-const SHELL_CACHE = 'simpesca2-shell-v5';
+const SHELL_CACHE = 'simpesca2-shell-v6';
 
 const APP_SHELL = [
   '/Simularpesca2/',
@@ -8,7 +8,7 @@ const APP_SHELL = [
   '/Simularpesca2/player.html',
   '/Simularpesca2/dashboard.html',
   '/Simularpesca2/ranking.html',
-  '/Simularpesca2/aleatorio.html',
+  '/Simularpesca2/desafio.html',
   '/Simularpesca2/manifest.json',
   '/Simularpesca2/curvas.json',
   '/Simularpesca2/config.json',
