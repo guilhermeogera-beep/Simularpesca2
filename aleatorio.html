@@ -275,7 +275,7 @@ function buildFight(pe, nMin, nMax, teto, fadiga, puxada, fisEstilo, fisDur, fis
   const N=Math.round(rnd(nMin,nMax)*Math.max(1,Math.pow(kDur,0.7)));
   const pdurRun=Math.min(Math.max(12,DURACAO*0.03), Math.max(4, pullBudget*0.22));
   const pdurOutros=Math.max(1.5,(pullBudget-pdurRun)/Math.max(1,N-1));
-  const fill=rnd(0.86,0.93)*DURACAO;
+  const fill=DURACAO-rnd(3,10);   // enche QUASE toda a duração (deixa só ~3-10s no fim)
   const restTotal=Math.max(N*3, (fill-t0)-pullBudget);
   const w=[]; let wsum=0;
   for(let k=0;k<N;k++){ const x=(N>1)?k/(N-1):0; const wk=1+(6.0*F)*x; w.push(wk); wsum+=wk; }
@@ -288,12 +288,11 @@ function buildFight(pe, nMin, nMax, teto, fadiga, puxada, fisEstilo, fisDur, fis
     t+=rnd(0.4,0.8); pts.push({t,pot:0});
     let wdur=restTotal*(w[k]/wsum)*rnd(0.85,1.15);
     wdur=Math.max(2.0, Math.min(Math.max(16,DURACAO*0.06), wdur));
-    wdur=Math.min(wdur, Math.max(1.5, (DURACAO-11)-t));
+    wdur=Math.min(wdur, Math.max(1.5, (DURACAO-2)-t));
     t+=wdur; pts.push({t,pot:0});
-    if(t>DURACAO-12) break;
+    if(t>DURACAO-3) break;
   }
-  { const dUI=Math.min(7, DURACAO-2-t);
-    if(dUI>=3){ t=ultimaInvestida(pts, t, dUI, rnd(0.9,1.0)); t+=Math.min(0.7, Math.max(0.2, DURACAO-t)); pts.push({t,pot:0}); } }
+  pts.push({t:DURACAO, pot:0});   // fecha a briga no FIM da duração (sem "última investida" solta no fim)
   const ig=(isFinite(intens)?Math.max(0,Math.min(100,intens)):50)/25;
   if(ig!==1){
     let topo=0; pts.forEach(p=>{ if(!p.fis && p.pot>topo) topo=p.pot; });
