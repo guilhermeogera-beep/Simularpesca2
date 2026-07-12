@@ -1,7 +1,7 @@
 {
   "versao": 1,
   "tipo": "curvas_todas",
-  "criado": "2026-07-12T16:14:37.531Z",
+  "criado": "2026-07-12T16:14:42.604Z",
   "curvas": {
     "pirarara": [
       {
@@ -295,6 +295,10 @@
       {
         "t": 88.56,
         "pot": 0
+      },
+      {
+        "t": 88.94,
+        "pot": -9
       }
     ],
     "tambaqui": [
