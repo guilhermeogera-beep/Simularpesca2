@@ -52,7 +52,9 @@ video{width:100%;height:100%;object-fit:cover;display:block;}
 .posicao-grande{font-size:2.7rem;font-weight:800;color:var(--accent);letter-spacing:1px;}
 .recorde{font-size:0.95rem;font-weight:800;color:#ffd700;letter-spacing:2px;text-transform:uppercase;text-shadow:0 0 20px rgba(255,215,0,0.4);display:none;}
 /* Barra FIXA no rodapé: metros do carretel ao vivo (tela de escolher peixe + tela de resultado). Some no jogo (fullscreen). */
-#carretelBar{position:fixed;left:0;right:0;bottom:0;z-index:105;background:rgba(0,0,0,0.9);border-top:1px solid var(--border);padding:12px;text-align:center;font-size:2.9rem;font-weight:800;color:var(--text);letter-spacing:1px;pointer-events:none;}
+#carretelBar{position:fixed;left:0;right:0;bottom:0;z-index:105;background:rgba(0,0,0,0.9);border-top:1px solid var(--border);padding:12px;text-align:center;font-size:2.9rem;font-weight:800;color:var(--text);letter-spacing:1px;pointer-events:none;transition:color .2s;}
+#carretelBar.linha-ok{color:#33d17a;}    /* VERDE: carretel no 0/positivo = tem linha sobrando na vara */
+#carretelBar.sem-linha{color:#ff5a7d;}   /* VERMELHO: linha disponível não comporta nem a sim mais exigente -> recolher/re-spool */
 input[type=text]{background:#0d1722;border:1px solid var(--border);color:var(--text);border-radius:10px;padding:12px 16px;font-family:inherit;font-size:1rem;text-align:center;width:min(320px,80vw);outline:none;}
 input[type=text]:focus{border-color:var(--accent);}
 .fs-btns{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;}
@@ -270,7 +272,10 @@ function atualizarLinha(){ const m=metrosAtuais(); document.getElementById('linh
   const car=linhaCarretel(), L=limiteLinha(), travadoLin=Math.abs(car)>=Math.abs(L);
   const hc=document.getElementById('hudCarretel');
   hc.textContent='📍 Carretel: '+car.toFixed(1)+' / '+L.toFixed(0)+' m'; hc.classList.toggle('travado', travadoLin);
-  document.getElementById('carretelBar').textContent='Carretel: '+car.toFixed(1)+' m';   // barra fixa embaixo (seleção + resultado): limpo, só o valor atual
+  const bar=document.getElementById('carretelBar'); bar.textContent='Carretel: '+car.toFixed(1)+' m';   // barra fixa embaixo (seleção + resultado): limpo, só o valor atual
+  const semLinha=linhaDisponivel()<linhaNecessariaMax();   // não cabe nem a sim mais exigente -> avisar pra recolher/re-spool ANTES de escolher
+  bar.classList.toggle('sem-linha', semLinha);                       // vermelho
+  bar.classList.toggle('linha-ok', !semLinha && car>=0);             // verde: carretel no 0/positivo = linha sobrando
   const bl=document.getElementById('btnLinha'); bl.textContent='⟲ '+car.toFixed(1)+' / '+L.toFixed(0)+' m'; bl.style.color=travadoLin?'#ff5a7d':''; bl.style.borderColor=travadoLin?'#ff5a7d':'';
   atualizarLinhaOverlay(); }
 // Linha ABSOLUTA do carretel (posição líquida do encoder) — ACUMULA entre jogadores, NÃO zera por jogo
@@ -288,6 +293,11 @@ function estimarLinhaPts(pts, esc=1){   // metros que o peixe puxa: integra a ve
   return m;
 }
 function linhaDisponivel(){ return Math.abs(limiteLinha()) - Math.abs(linhaCarretel()); }   // o que ainda cabe puxar
+// LINHA que a sim MAIS EXIGENTE puxa (com o peso atual de cada peixe) — pra a barra do carretel avisar ANTES de escolher.
+// Cacheado: só recalcula quando peso/curva/config muda (invalidarLinhaNecessaria); nunca a cada tick do encoder.
+let _needSujo=true, _needMax=0;
+function invalidarLinhaNecessaria(){ _needSujo=true; }
+function linhaNecessariaMax(){ if(_needSujo){ _needMax=0; ESPECIES.forEach(e=>{ const n=estimarLinhaPts(carregarPontos(e.id), escalaPeso(e.id)); if(n>_needMax) _needMax=n; }); _needSujo=false; } return _needMax; }
 // SEGURANÇA: a linha do carretel atingiu o limite físico -> para o motor
 function checarLimiteSeguranca(){
   if(!contando) return;
@@ -411,6 +421,7 @@ function aplicarConfigPlayer(d){
   ESPECIES.forEach(e=>{ if(s[e.id]!=null) localStorage.setItem('simpesca2_sync_'+e.id, s[e.id]); });
   const g=(d.versao||0)>=2 ? (d.gen||{}) : {};   // o player usa só gen.fisfisdur (faixa de fisgada da barra); só do esquema NOVO (v2)
   ESPECIES.forEach(e=>{ if(g[e.id]&&g[e.id].fisfisdur!=null) localStorage.setItem('simpesca2_gen_'+e.id+'_fisfisdur', g[e.id].fisfisdur); });
+  invalidarLinhaNecessaria();   // mudou limite/mpv/rpm -> a linha disponível e a necessária mudam -> recalcula a cor da barra
 }
 // ── PESO do peixe (slider por espécie) -> fator de escala da curva (puxa + freia) ──
 const PESO_MAX_DEF={pirarara:50, tambaqui:40, tucunare:13, dourado:30, trairao:15, jau:80};   // pesos validados (FishBase/IGFA); trairão = comum (H. lacerdae)   // peso máx pesquisado (gigante) por espécie; ajustável no dashboard
@@ -418,7 +429,7 @@ const PESO_MIN=1;   // o slider começa em 1 kg
 function pesoMaxEsp(id){ return PESO_MAX_DEF[id]||20; }   // peso que vale 100% — fixo no pesquisado (mesma fonte que o dashboard)
 function pesoEsp(id){ const mx=pesoMaxEsp(id); const v=parseFloat(localStorage.getItem('simpesca2_peso_'+id)); return isFinite(v)?Math.max(PESO_MIN,Math.min(mx,v)):mx; }   // selecionado (padrão = máx)
 function escalaPeso(id){ const mx=pesoMaxEsp(id), w=pesoEsp(id); return mx>0 ? Math.min(1, Math.pow(w/mx, 2/3)) : 1; }   // peso -> escala pela lei FÍSICA peso^⅔ (arrasto ∝ área ∝ peso^⅔): 1kg≈0,85kgf (base) · gigante=100% (freio máx) · meio na curva; sem piso
-function salvarPeso(id){ const el=document.getElementById('peso_'+id); if(!el) return; localStorage.setItem('simpesca2_peso_'+id, el.value); const lbl=document.getElementById('pesolbl_'+id); if(lbl) lbl.textContent=parseFloat(el.value).toFixed(1)+' kg'; }
+function salvarPeso(id){ const el=document.getElementById('peso_'+id); if(!el) return; localStorage.setItem('simpesca2_peso_'+id, el.value); const lbl=document.getElementById('pesolbl_'+id); if(lbl) lbl.textContent=parseFloat(el.value).toFixed(1)+' kg'; invalidarLinhaNecessaria(); atualizarLinha(); }   // peso mudou -> a linha necessária muda -> reavalia a cor da barra
 // Se o PESO mudar em OUTRA aba (ex.: o dashboard no mesmo PC), reflete no slider/rótulo do card na hora
 window.addEventListener('storage', e=>{
   if(!e.key || e.key.indexOf('simpesca2_peso_')!==0) return;
@@ -465,7 +476,7 @@ window.addEventListener('load',async()=>{
       fetch('curvas.json',{cache:'no-store'}).catch(()=>null),   // online: fresco · offline: SW serve o cacheado
       fetch('config.json',{cache:'no-store'}).catch(()=>null)
     ]);
-    if(rc&&rc.ok){ const d=await rc.json(); curvasGitHub=d.curvas||{}; }
+    if(rc&&rc.ok){ const d=await rc.json(); curvasGitHub=d.curvas||{}; invalidarLinhaNecessaria(); }
     if(rg&&rg.ok){ const d=await rg.json(); aplicarConfigPlayer(d); }
   }catch(e){}
   // monta os cards (1 por peixe)
@@ -503,6 +514,7 @@ window.addEventListener('load',async()=>{
   ESPECIES.forEach(e=>{ const b=document.createElement('button'); b.className='rk-filtro'; b.dataset.sim=e.id; b.textContent=e.nome; b.onclick=()=>filtrarRanking(e.id,b); rkF.appendChild(b); });
   document.getElementById('inputNome').value=localStorage.getItem('simpesca2_ultimo_nome')||'';
   carregarHudCfg();
+  atualizarLinha();   // pinta a barra do carretel já na abertura (verde no 0/positivo, vermelho se não couber uma sim)
   if('serviceWorker' in navigator) navigator.serviceWorker.register('service-worker.js').catch(()=>{});
   if(ghToken() && navigator.onLine && localStorage.getItem('simpesca2_sync_pend_player')) enviarSyncPlayer();   // retoma sincronia pendente
   tentarReconectar();
