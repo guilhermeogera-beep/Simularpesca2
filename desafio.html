@@ -133,8 +133,8 @@ input[type="range"]::-webkit-slider-thumb{height:24px;width:24px;border-radius:5
 </header>
 
 <div class="card">
-  <div class="secao-titulo"><span>⚡</span> Curva da briga (20 min) — role na horizontal pra editar <span id="curvaSyncStatus" class="cal-sub" style="margin-left:auto;text-transform:none;letter-spacing:0;"></span></div>
-  <div style="font-size:0.78rem;color:var(--text-dim);margin-bottom:12px;display:flex;gap:20px;flex-wrap:wrap;align-items:center;">
+  <div class="secao-titulo"><button class="btn-colapso" id="cfgColBtn" onclick="toggleConfigRow()" title="Ocultar/mostrar os ajustes" style="margin-right:6px;">▾</button><span>⚡</span> Curva da briga (20 min) — role na horizontal pra editar <span id="curvaSyncStatus" class="cal-sub" style="margin-left:auto;text-transform:none;letter-spacing:0;"></span></div>
+  <div id="configRow" style="font-size:0.78rem;color:var(--text-dim);margin-bottom:12px;display:flex;gap:20px;flex-wrap:wrap;align-items:center;">
     <span>⏱ <b>Duração:</b> <input type="number" id="duracaoTotalMin" min="1" max="60" step="1" value="20" oninput="salvarDuracaoTotal()" style="width:56px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:monospace;text-align:center;padding:4px 6px;outline:none;"> min</span>
     <span>🎣 <b>Faixa de linha:</b> <input type="number" id="faixaMinIn" step="1" value="5" oninput="salvarFaixa()" style="width:56px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:monospace;text-align:center;padding:4px 6px;"> a <input type="number" id="faixaMaxIn" step="1" value="15" oninput="salvarFaixa()" style="width:56px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:monospace;text-align:center;padding:4px 6px;"> m</span>
     <span>🏆 <b>Tempo mín. vitória:</b> <input type="number" id="tempoMinIn" min="0" step="1" value="20" oninput="salvarTempoMin()" style="width:56px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:monospace;text-align:center;padding:4px 6px;"> s</span>
@@ -191,6 +191,7 @@ input[type="range"]::-webkit-slider-thumb{height:24px;width:24px;border-radius:5
     <span>🎣 você recolheu <b id="jogoPlayerReeled" style="color:#00e676">0.0 m</b></span>
     <span>🧵 carretel <b id="jogoCarretel">0.0 m</b></span>
   </div>
+  <div style="display:flex;gap:10px;justify-content:center;font-size:0.8rem;opacity:0.7;">🧪 <button class="btn btn-outline" style="padding:3px 10px;" onclick="simEncoder(1)">🐟 peixe +1m (↑)</button><button class="btn btn-outline" style="padding:3px 10px;" onclick="simEncoder(-1)">🎣 recolher 1m (↓)</button></div>
   <div><button class="btn btn-red" onclick="desistirJogo()">■ Desistir</button></div>
   <div class="jogo-result" id="jogoResult"></div>
 </div>
@@ -762,10 +763,13 @@ function atualizarContadores(){ const g=document.getElementById('ctGanhos'); if(
   const pl=document.getElementById('preLinhaNum'); if(pl) pl.textContent=Math.abs(net).toFixed(1)+' m'; }   // espelha no pré-jogo (garante o contador mesmo se o preJogoLoop falhar)
 function zerarContadores(){ metrosGanhos=0; metrosPerdidos=0; contagemEncoder=0; contAnt=0; primeiraLeitura=true; travaAtiva=false; salvarContagem(); if(linhaChar){ try{ linhaChar.writeValue(new Uint8Array([0])); }catch(e){} } atualizarContadores(); }
 function testarLinha(){ const el=document.getElementById('testeLinhaIn'); let m=el?parseFloat(el.value):0; if(!isFinite(m)) m=0; contagemEncoder=Math.round((m/metrosPorVolta())*4096*(inverterDir()?-1:1)); contAnt=contagemEncoder; primeiraLeitura=true; travaAtiva=false; salvarContagem(); atualizarContadores(); }   // TESTE sem hardware: força a linha do carretel = m (pré-jogo/loop leem via linhaCarretel())
+function simEncoder(dM){ const cur=linhaCarretel(); const sign=cur>=0?1:-1; const novoAbs=Math.max(0,Math.abs(cur)+dM); const novoM=novoAbs*sign; contagemEncoder=Math.round((novoM/metrosPorVolta())*4096*(inverterDir()?-1:1)); salvarContagem(); atualizarContadores(); }   // TESTE sem hardware: +dM = peixe puxa (linha sai) · −dM = você recolhe (linha entra); nunca passa de 0
+window.addEventListener('keydown', e=>{ if(e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return; if(e.key==='ArrowUp'){ simEncoder(1); e.preventDefault(); } else if(e.key==='ArrowDown'){ simEncoder(-1); e.preventDefault(); } });   // ↑ peixe puxa 1m · ↓ recolhe 1m (teste sem hardware)
 function inverterLado(){ const novo=!(localStorage.getItem('simpesca2_cal_inv')==='1'); localStorage.setItem('simpesca2_cal_inv', novo?'1':'0'); const tmp=metrosGanhos; metrosGanhos=metrosPerdidos; metrosPerdidos=tmp; travaAtiva=false; atualizarContadores(); agendarSyncCal(); }
 function salvarLimite(){ const lim=parseFloat(document.getElementById('calLimite').value); if(isFinite(lim)&&lim!==0){ localStorage.setItem('simpesca2_cal_limite',lim); travaAtiva=false; atualizarContadores(); agendarSyncCal(); } else { alert('Limite inválido (não pode ser 0/vazio)'); } }
 function toggleCarretelBtns(){ const el=document.getElementById('carretelCtrls'); if(!el) return; const ocultar=el.style.display!=='none'; el.style.display=ocultar?'none':''; localStorage.setItem('simpesca2_carretel_btns', ocultar?'0':'1'); }
 function toggleCard(el){ const card=el.closest('.card'); if(!card) return; const rec=!card.classList.contains('card-colapsado'); card.classList.toggle('card-colapsado',rec); const k=el.dataset.cardkey; if(k) localStorage.setItem('simpesca2_cardcol_'+k, rec?'1':'0'); }
+function toggleConfigRow(){ const el=document.getElementById('configRow'), btn=document.getElementById('cfgColBtn'); if(!el) return; const oc=el.style.display!=='none'; el.style.display=oc?'none':''; if(btn) btn.textContent=oc?'▸':'▾'; localStorage.setItem('simpesca2_aleat_cfgrow', oc?'0':'1'); }   // oculta/mostra a linha de ajustes (Duração/Faixa/Tempo/Teste)
 // ── BLE: lê o encoder ao vivo (Ganhos/Perdidos/Linha) e zera via linhaChar ──
 async function conectarBLE(){ if(!navigator.bluetooth){ alert('Sem Web Bluetooth. Use Chrome/Edge no PC ou Android.'); return; } try{ btUI('','🔵 Procurando...'); bleDevice=await navigator.bluetooth.requestDevice({filters:[{services:[SERVICE_UUID]}]}); await ligar(bleDevice); }catch(e){ btUI('','🔵 Conectar'); } }
 async function ligar(device){
@@ -842,6 +846,7 @@ for(let i=0;i<NSIMS;i++) montarBloco(i);   // 1 bloco (pirarará, 20 min)
 { const carr=document.querySelector('[data-cardkey="linha"]'); const cardCarr=carr?carr.closest('.card'):null; const sc=document.getElementById('simsContainer'); const cardCurva=sc?sc.closest('.card'):null; if(cardCarr&&cardCurva&&cardCurva.parentNode) cardCurva.parentNode.insertBefore(cardCarr, cardCurva); }
 { const dm=parseFloat(localStorage.getItem('simpesca2_aleat_duracao')); if(isFinite(dm)&&dm>0){ DURACAO=Math.round(dm*60); const el=document.getElementById('duracaoTotalMin'); if(el) el.value=dm; } }   // duração salva -> seta DURACAO antes de gerar/render
 { const mn=document.getElementById('faixaMinIn'), mx=document.getElementById('faixaMaxIn'); if(mn) mn.value=faixaMin(); if(mx) mx.value=faixaMax(); const tm=document.getElementById('tempoMinIn'); if(tm) tm.value=tempoMinVit(); }   // faixa + tempo mín. salvos -> refletem nos campos da página
+if(localStorage.getItem('simpesca2_aleat_cfgrow')==='0'){ const el=document.getElementById('configRow'), btn=document.getElementById('cfgColBtn'); if(el) el.style.display='none'; if(btn) btn.textContent='▸'; }   // restaura a linha de ajustes oculta
 for(let i=0;i<NSIMS;i++){ carregarGenCfg(i); setupArea(i); SIMS[i].pontos = carregarPontosStore(i) || gerarCurvaEspecie(i); salvarPontos(i); renderTicks(i); renderCurva(i); }   // 1ª vez: gera/carrega a curva
 document.querySelectorAll('.gen-row input').forEach(el=>el.addEventListener('change',()=>salvarGenCfg(+el.id.slice(-1)||0)));   // persiste ajustes ao editar (idx pelo sufixo do id)
 // ── Ao abrir: puxa a curva do DESAFIO do GitHub (curvas.json -> desafio), fonte de verdade. Ajusta a duração pelo último ponto. Depois libera o push (podeSyncCurva). ──
