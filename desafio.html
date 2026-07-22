@@ -549,7 +549,7 @@ function toggleColapso(i){ const corpo=document.getElementById('corpo'+i); if(!c
 // ── PLAY (prévia VISUAL — playhead + gauge, SEM motor/BLE) ──
 let simRodando=false, simRaf=null, simT0=0, simPausaT=0;
 function fmt(s){ return Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0'); }
-function atualizarSimGauge(idx,pct){ pct=Math.max(-100,Math.min(100,pct)); const p=document.getElementById('simPct'+idx),v=document.getElementById('simVolt'+idx),f=document.getElementById('simFill'+idx); if(!p)return; const mag=Math.abs(pct), pull=pct>0.5, brake=pct<-0.5, cor=pull?'#00d4ff':brake?'#ffa838':'#3d5d7e'; p.textContent=(pull?'+':brake?'−':'')+mag.toFixed(0)+'%'; v.textContent=pull?'≈'+Math.round(rpmAlvo(pct))+'RPM':brake?'≈'+ampMotor(pct).toFixed(1)+'A':''; f.style.width=mag+'%'; f.style.background=cor; }
+function atualizarSimGauge(idx,pct){ pct=Math.max(-100,Math.min(100,pct)); const p=document.getElementById('simPct'+idx),v=document.getElementById('simVolt'+idx),f=document.getElementById('simFill'+idx); if(!p||!v||!f)return; const mag=Math.abs(pct), pull=pct>0.5, brake=pct<-0.5, cor=pull?'#00d4ff':brake?'#ffa838':'#3d5d7e'; p.textContent=(pull?'+':brake?'−':'')+mag.toFixed(0)+'%'; v.textContent=pull?'≈'+Math.round(rpmAlvo(pct))+'RPM':brake?'≈'+ampMotor(pct).toFixed(1)+'A':''; f.style.width=mag+'%'; f.style.background=cor; }
 function loopPlay(idx){ if(!simRodando) return; const t=Math.min(DURACAO,(performance.now()-simT0)/1000); const ph=document.getElementById('playhead'+idx); if(ph) ph.style.left=(t/DURACAO*100)+'%'; const wrap=document.getElementById('tl'+idx); if(wrap) wrap.scrollLeft=(t/DURACAO)*(DURACAO*PX_POR_S) - wrap.clientWidth*0.5;   /* a timeline rola seguindo o playhead */ const pot=interpolarPontos(SIMS[idx].pontos,t)*escalaPeso(LETRAS[idx],pesoSimValor(idx)); atualizarSimGauge(idx,pot); const ts=document.getElementById('tsDisplay'+idx); if(ts) ts.textContent=fmt(t)+' / '+fmt(DURACAO); if(t>=DURACAO){ stopSim(idx); return; } simRaf=requestAnimationFrame(()=>loopPlay(idx)); }
 function playSim(idx){ if(simRodando) return; simRodando=true; simT0=performance.now()-simPausaT*1000; loopPlay(idx); }
 function pauseSim(idx){ simRodando=false; if(simRaf) cancelAnimationFrame(simRaf); simPausaT=(performance.now()-simT0)/1000; }
@@ -641,8 +641,8 @@ function abrirPreJogo(){
   const fl=document.getElementById('faixaLbl'); if(fl) fl.textContent=faixaMin()+'–'+faixaMax();
   recolherFase=0; fecharHUDJogo(); fecharRank();
   document.getElementById('jogoContagem').classList.remove('on'); document.getElementById('preJogo').classList.add('on');
-  aplicarMotor(0);                                   // eixo livre (o usuário pode enrolar na vara)
-  clearInterval(preTimer); preTimer=setInterval(preJogoLoop, 150); preJogoLoop();   // roda 1x já pra mostrar o valor ATUAL do carretel na hora
+  clearInterval(preTimer); preTimer=setInterval(preJogoLoop, 150); preJogoLoop();   // inicia o loop ANTES do motor (se aplicarMotor falhar sem hardware, o contador já roda)
+  try{ aplicarMotor(0); }catch(e){}                  // eixo livre (o usuário pode enrolar na vara)
 }
 function preJogoLoop(){
   const L=Math.abs(linhaCarretel()), mn=faixaMin(), mx=faixaMax(), lim=Math.abs(limiteLinha());
@@ -740,7 +740,8 @@ function inverterDir(){ return (localStorage.getItem('simpesca2_cal_inv')||'1')=
 function contagemParaMetros(c){ let m=(c/4096)*metrosPorVolta(); if(inverterDir()) m=-m; return m; }
 function limiteLinha(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_limite')); return (isFinite(v)&&v!==0)?v:-150; }
 function linhaCarretel(){ return contagemParaMetros(contagemEncoder); }
-function atualizarContadores(){ const g=document.getElementById('ctGanhos'); if(!g) return; const net=linhaCarretel(), L=limiteLinha(); g.textContent=metrosGanhos.toFixed(1)+' m'; document.getElementById('ctPerdidos').textContent=metrosPerdidos.toFixed(1)+' m'; const s=document.getElementById('ctSaldo'); s.textContent=net.toFixed(1)+' / '+L.toFixed(0)+' m'; s.style.color=(Math.abs(net)>=Math.abs(L))?'var(--red)':''; }
+function atualizarContadores(){ const g=document.getElementById('ctGanhos'); if(!g) return; const net=linhaCarretel(), L=limiteLinha(); g.textContent=metrosGanhos.toFixed(1)+' m'; document.getElementById('ctPerdidos').textContent=metrosPerdidos.toFixed(1)+' m'; const s=document.getElementById('ctSaldo'); s.textContent=net.toFixed(1)+' / '+L.toFixed(0)+' m'; s.style.color=(Math.abs(net)>=Math.abs(L))?'var(--red)':'';
+  const pl=document.getElementById('preLinhaNum'); if(pl) pl.textContent=Math.abs(net).toFixed(1)+' m'; }   // espelha no pré-jogo (garante o contador mesmo se o preJogoLoop falhar)
 function zerarContadores(){ metrosGanhos=0; metrosPerdidos=0; contagemEncoder=0; contAnt=0; primeiraLeitura=true; travaAtiva=false; salvarContagem(); if(linhaChar){ try{ linhaChar.writeValue(new Uint8Array([0])); }catch(e){} } atualizarContadores(); }
 function testarLinha(){ const el=document.getElementById('testeLinhaIn'); let m=el?parseFloat(el.value):0; if(!isFinite(m)) m=0; contagemEncoder=Math.round((m/metrosPorVolta())*4096*(inverterDir()?-1:1)); contAnt=contagemEncoder; primeiraLeitura=true; travaAtiva=false; salvarContagem(); atualizarContadores(); }   // TESTE sem hardware: força a linha do carretel = m (pré-jogo/loop leem via linhaCarretel())
 function inverterLado(){ const novo=!(localStorage.getItem('simpesca2_cal_inv')==='1'); localStorage.setItem('simpesca2_cal_inv', novo?'1':'0'); const tmp=metrosGanhos; metrosGanhos=metrosPerdidos; metrosPerdidos=tmp; travaAtiva=false; atualizarContadores(); agendarSyncCal(); }
