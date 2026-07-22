@@ -616,6 +616,8 @@ function loopJogo(){
   const raw=v;
   if(Math.abs(v)<0.5) v = freioRepousoForca();      // zona morta -> freio de repouso (eixo nunca livre)
   aplicarMotor(v, raw);
+  const out=(limiteLinha()<0?-1:1);
+  if(linhaCarretel()*out < 0){ contagemEncoder=0; contAnt=0; primeiraLeitura=true; salvarContagem(); }   // recolheu ALÉM do 0 (peixe no barco) -> trava em 0; o carretel NUNCA vira positivo
   const L=Math.abs(linhaCarretel()), lim=Math.abs(linhaMaxJogo());   // derrota do JOGO = |carretel| chegar em |linhaMaxJogo| (aceita −; separado do limite de segurança)
   const dL=L-lastLjogo; lastLjogo=L;
   if(dL>0) fishPulled+=dL; else playerReeled+=-dL;   // peixe puxou (linha saiu) vs jogador recolheu (linha entrou)
@@ -779,7 +781,8 @@ function atualizarContadores(){ const g=document.getElementById('ctGanhos'); if(
   const pl=document.getElementById('preLinhaNum'); if(pl) pl.textContent=net.toFixed(1)+' m'; }   // espelha no pré-jogo COM sinal (carretel real)
 function zerarContadores(){ metrosGanhos=0; metrosPerdidos=0; contagemEncoder=0; contAnt=0; primeiraLeitura=true; travaAtiva=false; salvarContagem(); if(linhaChar){ try{ linhaChar.writeValue(new Uint8Array([0])); }catch(e){} } atualizarContadores(); }
 function testarLinha(){ const el=document.getElementById('testeLinhaIn'); let m=el?parseFloat(el.value):0; if(!isFinite(m)) m=0; contagemEncoder=Math.round((m/metrosPorVolta())*4096*(inverterDir()?-1:1)); contAnt=contagemEncoder; primeiraLeitura=true; travaAtiva=false; salvarContagem(); atualizarContadores(); }   // TESTE sem hardware: força a linha do carretel = m (pré-jogo/loop leem via linhaCarretel())
-function simEncoder(dM){ const novoM=linhaCarretel()+dM; contagemEncoder=Math.round((novoM/metrosPorVolta())*4096*(inverterDir()?-1:1)); salvarContagem(); atualizarContadores(); }   // TESTE sem hardware: soma dM AO valor COM SINAL (−1 deixa o carretel mais negativo)
+function simEncoder(dM){ let novoM=linhaCarretel()+dM; if(jogoAtivo){ const out=(limiteLinha()<0?-1:1); if(novoM*out<0) novoM=0; }   // no jogo, recolher não passa do 0 (não vira positivo)
+  contagemEncoder=Math.round((novoM/metrosPorVolta())*4096*(inverterDir()?-1:1)); salvarContagem(); atualizarContadores(); }   // TESTE sem hardware: soma dM AO valor COM SINAL (−1 deixa o carretel mais negativo)
 window.addEventListener('keydown', e=>{ if(e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return; if(e.key==='ArrowUp'){ simEncoder(1); e.preventDefault(); } else if(e.key==='ArrowDown'){ simEncoder(-1); e.preventDefault(); } });   // ↑ peixe puxa 1m · ↓ recolhe 1m (teste sem hardware)
 function inverterLado(){ const novo=!(localStorage.getItem('simpesca2_cal_inv')==='1'); localStorage.setItem('simpesca2_cal_inv', novo?'1':'0'); const tmp=metrosGanhos; metrosGanhos=metrosPerdidos; metrosPerdidos=tmp; travaAtiva=false; atualizarContadores(); agendarSyncCal(); }
 function salvarLimite(){ const lim=parseFloat(document.getElementById('calLimite').value); if(isFinite(lim)&&lim!==0){ localStorage.setItem('simpesca2_cal_limite',lim); travaAtiva=false; atualizarContadores(); agendarSyncCal(); } else { alert('Limite inválido (não pode ser 0/vazio)'); } }
