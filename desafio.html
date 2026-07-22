@@ -657,9 +657,9 @@ let startL=0, preTimer=null, contTimer=null, recolherFase=0, autoRefL=0, autoRef
 let fishPulled=0, playerReeled=0, lastLjogo=0, jogoOffset=0;   // acumuladores do jogo + buffer guardado ao zerar o carretel no início
 function faixaMin(){ const v=parseFloat(localStorage.getItem('simpesca2_aleat_faixa_min')); return isFinite(v)?v:5; }
 function faixaMax(){ const v=parseFloat(localStorage.getItem('simpesca2_aleat_faixa_max')); return isFinite(v)?v:15; }
-function salvarFaixa(){ const mn=document.getElementById('faixaMinIn'), mx=document.getElementById('faixaMaxIn'); if(mn) localStorage.setItem('simpesca2_aleat_faixa_min', mn.value); if(mx) localStorage.setItem('simpesca2_aleat_faixa_max', mx.value); }
+function salvarFaixa(){ const mn=document.getElementById('faixaMinIn'), mx=document.getElementById('faixaMaxIn'); if(mn) localStorage.setItem('simpesca2_aleat_faixa_min', mn.value); if(mx) localStorage.setItem('simpesca2_aleat_faixa_max', mx.value); agendarSyncCal(); }
 function tempoMinVit(){ const v=parseFloat(localStorage.getItem('simpesca2_aleat_tempomin')); return (isFinite(v)&&v>=0)?v:20; }   // tempo mín. (s) antes de a vitória poder disparar
-function salvarTempoMin(){ const el=document.getElementById('tempoMinIn'); if(el) localStorage.setItem('simpesca2_aleat_tempomin', el.value); }
+function salvarTempoMin(){ const el=document.getElementById('tempoMinIn'); if(el) localStorage.setItem('simpesca2_aleat_tempomin', el.value); agendarSyncCal(); }
 function beep(freq, dur){ try{ const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return; const ac=new AC(); const o=ac.createOscillator(), g=ac.createGain(); o.frequency.value=freq||880; o.connect(g); g.connect(ac.destination); g.gain.value=0.18; o.start(); setTimeout(()=>{ try{o.stop();ac.close();}catch(e){} }, dur||120); }catch(e){} }
 function contagemRegressiva(n, onEnd){ const cd=document.getElementById('jogoContagem'); if(!cd){ if(onEnd) onEnd(); return; } cd.classList.add('on'); let k=n; const tick=()=>{ if(k<=0){ cd.classList.remove('on'); cd.textContent=''; if(onEnd) onEnd(); return; } cd.textContent=k; beep(880,120); k--; contTimer=setTimeout(tick,1000); }; tick(); }
 function abrirPreJogo(){
@@ -688,7 +688,7 @@ function fecharPreJogo(){ clearInterval(preTimer); preTimer=null; clearTimeout(c
 // ══ FASE 3: pontuação + ranking do Desafio (separado do ranking normal) ════════
 function scoreKp(){ const v=parseFloat(localStorage.getItem('simpesca2_aleat_score_kp')); return isFinite(v)?v:50; }
 function scoreKv(){ const v=parseFloat(localStorage.getItem('simpesca2_aleat_score_kv')); return isFinite(v)?v:2; }
-function salvarScoreCfg(){ const kp=document.getElementById('scoreKp'), kv=document.getElementById('scoreKv'); if(kp) localStorage.setItem('simpesca2_aleat_score_kp', kp.value); if(kv) localStorage.setItem('simpesca2_aleat_score_kv', kv.value); }
+function salvarScoreCfg(){ const kp=document.getElementById('scoreKp'), kv=document.getElementById('scoreKv'); if(kp) localStorage.setItem('simpesca2_aleat_score_kp', kp.value); if(kv) localStorage.setItem('simpesca2_aleat_score_kv', kv.value); agendarSyncCal(); }
 function scoreDesafio(peso, tempo){ return Math.round((peso||0)*scoreKp() + Math.max(0, DURACAO - tempo)*scoreKv()); }   // peso (dificuldade+base) + bônus de velocidade (tempo restante)
 function lerRankDesafio(){ try{ const r=JSON.parse(localStorage.getItem('simpesca2_aleat_ranking')||'[]'); return Array.isArray(r)?r:[]; }catch(e){ return []; } }
 function escHtml(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
@@ -814,10 +814,17 @@ async function enviarSyncCal(){
     else { setSyncBadge('err'); return; }
   }catch(e){ return; }
   if(!cfg || typeof cfg!=='object'){ setSyncBadge('err'); return; }   // existe mas não deu pra ler -> ABORTA (não apaga gen/sync)
-  cfg.cal=cfg.cal||{}; cfg.cal.limite=limiteLinha(); cfg.cal.inv=localStorage.getItem('simpesca2_cal_inv')||'1'; cfg.criado=new Date().toISOString();
-  const body={message:'auto: carretel (limite/inv)', content:btoa(unescape(encodeURIComponent(JSON.stringify(cfg,null,2))))}; if(sha) body.sha=sha;
+  cfg.cal=cfg.cal||{}; cfg.cal.limite=limiteLinha(); cfg.cal.inv=localStorage.getItem('simpesca2_cal_inv')||'1';
+  cfg.desafio=cfg.desafio||{}; cfg.desafio.faixaMin=faixaMin(); cfg.desafio.faixaMax=faixaMax(); cfg.desafio.tempoMin=tempoMinVit(); cfg.desafio.scoreKp=scoreKp(); cfg.desafio.scoreKv=scoreKv();   // bloco separado do Desafio
+  cfg.criado=new Date().toISOString();
+  const body={message:'auto: carretel + desafio', content:btoa(unescape(encodeURIComponent(JSON.stringify(cfg,null,2))))}; if(sha) body.sha=sha;
   let r=null; try{ r=await fetch(url,{method:'PUT',headers,body:JSON.stringify(body)}); }catch(e){}
   if(r&&r.ok){ localStorage.removeItem('simpesca2_sync_pend'); setSyncBadge('ok'); } else setSyncBadge('err');
+}
+function aplicarConfigDesafio(d){ if(!d || typeof d!=='object') return;   // aplica o bloco config.desafio do GitHub nas chaves locais + reflete nos campos
+  const set=(k,v)=>{ if(v!=null && isFinite(v)) localStorage.setItem(k, v); };
+  set('simpesca2_aleat_faixa_min', d.faixaMin); set('simpesca2_aleat_faixa_max', d.faixaMax); set('simpesca2_aleat_tempomin', d.tempoMin); set('simpesca2_aleat_score_kp', d.scoreKp); set('simpesca2_aleat_score_kv', d.scoreKv);
+  const mn=document.getElementById('faixaMinIn'); if(mn) mn.value=faixaMin(); const mx=document.getElementById('faixaMaxIn'); if(mx) mx.value=faixaMax(); const tm=document.getElementById('tempoMinIn'); if(tm) tm.value=tempoMinVit(); const kp=document.getElementById('scoreKp'); if(kp) kp.value=scoreKp(); const kv=document.getElementById('scoreKv'); if(kv) kv.value=scoreKv();
 }
 // ── Curva do DESAFIO -> salva no curvas.json como 7ª sim (chave "desafio"), read-modify-write (preserva as 6 espécies). Gated por token. ──
 const GH_CURVAS_A='curvas.json';
@@ -846,7 +853,7 @@ window.addEventListener('storage', e=>{ if(!e.key) return;
   if(e.key==='simpesca2_cal_limite' || e.key==='simpesca2_cal_inv' || e.key==='simpesca2_cal_mpv'){ const li=document.getElementById('calLimite'); if(li) li.value=limiteLinha(); atualizarContadores(); } });
 // ── Ao abrir: aplica o cal do config.json (limite/inv/mpv global, read-only) e mostra ──
 { const li=document.getElementById('calLimite'); if(li) li.value=limiteLinha(); atualizarContadores(); }
-(async()=>{ if(navigator.onLine){ try{ const r=await fetch('config.json',{cache:'no-store'}); if(r&&r.ok){ const d=await r.json(); const c=(d&&d.cal)||{}; if(c.limite!=null) localStorage.setItem('simpesca2_cal_limite',c.limite); if(c.inv!=null) localStorage.setItem('simpesca2_cal_inv',c.inv); if(c.mpv) localStorage.setItem('simpesca2_cal_mpv',c.mpv); } }catch(e){} }
+(async()=>{ if(navigator.onLine){ try{ const r=await fetch('config.json',{cache:'no-store'}); if(r&&r.ok){ const d=await r.json(); const c=(d&&d.cal)||{}; if(c.limite!=null) localStorage.setItem('simpesca2_cal_limite',c.limite); if(c.inv!=null) localStorage.setItem('simpesca2_cal_inv',c.inv); if(c.mpv) localStorage.setItem('simpesca2_cal_mpv',c.mpv); aplicarConfigDesafio((d&&d.desafio)||null); } }catch(e){} }
   const li=document.getElementById('calLimite'); if(li) li.value=limiteLinha(); atualizarContadores();
   if(ghTokenA() && navigator.onLine && localStorage.getItem('simpesca2_sync_pend')) enviarSyncCal(); })();
 
