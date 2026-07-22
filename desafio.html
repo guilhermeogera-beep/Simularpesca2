@@ -568,6 +568,7 @@ function escPeso(){ return escalaPeso(LETRAS[0], pesoSimValor(0)); }
 function freioRepousoEscalado(){ const e=escPeso(); return freioRepMin()+e*(freioRepMax()-freioRepMin()); }
 function freioPosSimA(){ return freioMaxA()*escPeso(); }
 function freioRepousoForca(){ const r=freioRepousoEscalado(), fm=freioMaxA(); return (r>0&&fm>0)?Math.max(-100,Math.round(-20*r/fm)):0; }   // força negativa que gera o freio de repouso (eixo nunca livre na zona morta)
+function travado(){ return Math.abs(linhaCarretel()) >= Math.abs(limiteLinha()); }   // linha no/além do limite → trava a puxada
 function aplicarMotor(pct, estadoRaw){ pct=Math.max(-100,Math.min(100,pct));
   if(travado() && pct>0) pct=0;                    // trava bloqueia só a PUXADA (o freio não gasta linha)
   pct=comOffset(pct); escreverMotorBLE(pct);
