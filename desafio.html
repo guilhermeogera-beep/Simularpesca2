@@ -137,6 +137,7 @@ input[type="range"]::-webkit-slider-thumb{height:24px;width:24px;border-radius:5
   <div style="font-size:0.78rem;color:var(--text-dim);margin-bottom:12px;display:flex;gap:20px;flex-wrap:wrap;align-items:center;">
     <span>⏱ <b>Duração:</b> <input type="number" id="duracaoTotalMin" min="1" max="60" step="1" value="20" oninput="salvarDuracaoTotal()" style="width:56px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:monospace;text-align:center;padding:4px 6px;outline:none;"> min</span>
     <span>🎣 <b>Faixa de linha:</b> <input type="number" id="faixaMinIn" step="1" value="5" oninput="salvarFaixa()" style="width:56px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:monospace;text-align:center;padding:4px 6px;"> a <input type="number" id="faixaMaxIn" step="1" value="15" oninput="salvarFaixa()" style="width:56px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:monospace;text-align:center;padding:4px 6px;"> m</span>
+    <span>🏆 <b>Tempo mín. vitória:</b> <input type="number" id="tempoMinIn" min="0" step="1" value="20" oninput="salvarTempoMin()" style="width:56px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:monospace;text-align:center;padding:4px 6px;"> s</span>
     <span style="border-left:1px solid var(--border);padding-left:16px;">🧪 <b>Teste s/ hardware:</b> carretel <input type="number" id="testeLinhaIn" step="1" value="10" style="width:64px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:monospace;text-align:center;padding:4px 6px;"> m <button class="btn btn-outline" style="padding:4px 10px;" onclick="testarLinha()">aplicar</button> <span style="opacity:0.55">· simula o encoder nesse valor de linha</span></span>
   </div>
   <div id="simsContainer"></div>
@@ -610,7 +611,7 @@ function loopJogo(){
   if(fishPulled>3) jaPuxou=true;   // o peixe já puxou linha (>3m) -> a vitória pode disparar quando o jogador recuperar tudo (SEM timer)
   atualizarHUDJogo(t, L, lim);
   if(L>=lim){ terminarJogo('perdeu', t); return; }   // acabou a linha (limite do carretel) -> peixe fugiu
-  if(jaPuxou && playerReeled>=fishPulled){ terminarJogo('ganhou', t); return; }   // jogador recolheu MAIS/igual que o peixe puxou -> peixe no barco
+  if(jaPuxou && t>=tempoMinVit() && playerReeled>=fishPulled){ terminarJogo('ganhou', t); return; }   // jogador recolheu MAIS/igual que o peixe puxou (após o tempo mín.) -> peixe no barco
 }
 function fmtT(s){ return Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0'); }
 function atualizarHUDJogo(t, L, lim){
@@ -649,6 +650,8 @@ let fishPulled=0, playerReeled=0, lastLjogo=0, jogoOffset=0;   // acumuladores d
 function faixaMin(){ const v=parseFloat(localStorage.getItem('simpesca2_aleat_faixa_min')); return isFinite(v)?v:5; }
 function faixaMax(){ const v=parseFloat(localStorage.getItem('simpesca2_aleat_faixa_max')); return isFinite(v)?v:15; }
 function salvarFaixa(){ const mn=document.getElementById('faixaMinIn'), mx=document.getElementById('faixaMaxIn'); if(mn) localStorage.setItem('simpesca2_aleat_faixa_min', mn.value); if(mx) localStorage.setItem('simpesca2_aleat_faixa_max', mx.value); }
+function tempoMinVit(){ const v=parseFloat(localStorage.getItem('simpesca2_aleat_tempomin')); return (isFinite(v)&&v>=0)?v:20; }   // tempo mín. (s) antes de a vitória poder disparar
+function salvarTempoMin(){ const el=document.getElementById('tempoMinIn'); if(el) localStorage.setItem('simpesca2_aleat_tempomin', el.value); }
 function beep(freq, dur){ try{ const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return; const ac=new AC(); const o=ac.createOscillator(), g=ac.createGain(); o.frequency.value=freq||880; o.connect(g); g.connect(ac.destination); g.gain.value=0.18; o.start(); setTimeout(()=>{ try{o.stop();ac.close();}catch(e){} }, dur||120); }catch(e){} }
 function contagemRegressiva(n, onEnd){ const cd=document.getElementById('jogoContagem'); if(!cd){ if(onEnd) onEnd(); return; } cd.classList.add('on'); let k=n; const tick=()=>{ if(k<=0){ cd.classList.remove('on'); cd.textContent=''; if(onEnd) onEnd(); return; } cd.textContent=k; beep(880,120); k--; contTimer=setTimeout(tick,1000); }; tick(); }
 function abrirPreJogo(){
@@ -838,7 +841,7 @@ for(let i=0;i<NSIMS;i++) montarBloco(i);   // 1 bloco (pirarará, 20 min)
 // Carretel no TOPO da página (antes da curva)
 { const carr=document.querySelector('[data-cardkey="linha"]'); const cardCarr=carr?carr.closest('.card'):null; const sc=document.getElementById('simsContainer'); const cardCurva=sc?sc.closest('.card'):null; if(cardCarr&&cardCurva&&cardCurva.parentNode) cardCurva.parentNode.insertBefore(cardCarr, cardCurva); }
 { const dm=parseFloat(localStorage.getItem('simpesca2_aleat_duracao')); if(isFinite(dm)&&dm>0){ DURACAO=Math.round(dm*60); const el=document.getElementById('duracaoTotalMin'); if(el) el.value=dm; } }   // duração salva -> seta DURACAO antes de gerar/render
-{ const mn=document.getElementById('faixaMinIn'), mx=document.getElementById('faixaMaxIn'); if(mn) mn.value=faixaMin(); if(mx) mx.value=faixaMax(); }   // faixa de linha salva -> reflete nos campos da página
+{ const mn=document.getElementById('faixaMinIn'), mx=document.getElementById('faixaMaxIn'); if(mn) mn.value=faixaMin(); if(mx) mx.value=faixaMax(); const tm=document.getElementById('tempoMinIn'); if(tm) tm.value=tempoMinVit(); }   // faixa + tempo mín. salvos -> refletem nos campos da página
 for(let i=0;i<NSIMS;i++){ carregarGenCfg(i); setupArea(i); SIMS[i].pontos = carregarPontosStore(i) || gerarCurvaEspecie(i); salvarPontos(i); renderTicks(i); renderCurva(i); }   // 1ª vez: gera/carrega a curva
 document.querySelectorAll('.gen-row input').forEach(el=>el.addEventListener('change',()=>salvarGenCfg(+el.id.slice(-1)||0)));   // persiste ajustes ao editar (idx pelo sufixo do id)
 // ── Ao abrir: puxa a curva do DESAFIO do GitHub (curvas.json -> desafio), fonte de verdade. Ajusta a duração pelo último ponto. Depois libera o push (podeSyncCurva). ──
