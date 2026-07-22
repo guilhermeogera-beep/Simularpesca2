@@ -681,12 +681,12 @@ function preJogoLoop(){
   const st=document.getElementById('preStatus'), btn=document.getElementById('btnIniciarJogo');
   if(cur>=lo && cur<=hi){ recolherFase=0; aplicarMotor(0); if(st) st.textContent='✅ linha na faixa — pode iniciar'; if(btn) btn.disabled=false; return; }
   if(btn) btn.disabled=true;
-  const demais = out<0 ? (cur<lo) : (cur>hi);   // linha FORA demais (além da faixa, na direção do limite)
-  if(!demais){ recolherFase=0; aplicarMotor(0); if(st) st.textContent='🎣 pouca linha fora — ajuste até a faixa ('+lo.toFixed(0)+' a '+hi.toFixed(0)+' m)'; return; }
-  // linha demais: motor recolhe puxando devagar, com contagem 3s+bip ANTES
-  const alvo = out<0 ? lo : hi;
-  if(recolherFase===0){ recolherFase=1; if(st) st.textContent='⚠️ linha demais — recolhendo em…'; contagemRegressiva(3, ()=>{ if(recolherFase===1){ recolherFase=2; autoRefL=linhaCarretel(); autoRefT=performance.now(); } }); }
-  else if(recolherFase===2){ aplicarMotor(2); if(st) st.textContent='⟲ recolhendo (motor)… '+cur.toFixed(1)+' → '+alvo.toFixed(0)+' m'; if(performance.now()-autoRefT>2500){ if((cur-autoRefL)*(-out)<1){ recolherFase=0; aplicarMotor(0); if(st) st.textContent='⚠️ não reduziu — recolha na mão / confira o sentido'; } else { autoRefL=cur; autoRefT=performance.now(); } } }
+  const demais = out<0 ? (cur<lo) : (cur>hi);   // linha FORA demais: precisa ficar MAIS POSITIVO -> só o pescador enrola (o motor NÃO recolhe linha)
+  if(demais){ recolherFase=0; aplicarMotor(0); if(st) st.textContent='⚠️ linha demais — ENROLE a linha na mão até a faixa ('+lo.toFixed(0)+' a '+hi.toFixed(0)+' m) · eixo liberado'; return; }
+  // pouca linha fora: o MOTOR puxa linha PRA FORA (deixa mais negativo) até a faixa, com contagem 3s+bip ANTES
+  const alvo = out<0 ? hi : lo;
+  if(recolherFase===0){ recolherFase=1; if(st) st.textContent='⚙️ puxando linha em…'; contagemRegressiva(3, ()=>{ if(recolherFase===1){ recolherFase=2; autoRefL=linhaCarretel(); autoRefT=performance.now(); } }); }
+  else if(recolherFase===2){ aplicarMotor(2); if(st) st.textContent='⟲ puxando linha (motor)… '+cur.toFixed(1)+' → '+alvo.toFixed(0)+' m'; if(performance.now()-autoRefT>2500){ if(Math.abs(cur-autoRefL)<1){ recolherFase=0; aplicarMotor(0); if(st) st.textContent='⚠️ não puxou — confira o motor/sentido'; } else { autoRefL=cur; autoRefT=performance.now(); } } }
 }
 function iniciarComContagem(){ const btn=document.getElementById('btnIniciarJogo'); if(btn&&btn.disabled) return; clearInterval(preTimer); preTimer=null; recolherFase=0; aplicarMotor(0); contagemRegressiva(3, ()=>{ beep(1320,220); iniciarJogoReal(); }); }
 function fecharPreJogo(){ clearInterval(preTimer); preTimer=null; clearTimeout(contTimer); recolherFase=0; const cd=document.getElementById('jogoContagem'); if(cd) cd.classList.remove('on'); const pj=document.getElementById('preJogo'); if(pj) pj.classList.remove('on'); if(!jogoAtivo && motorChar) aplicarMotor(0); }
