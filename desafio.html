@@ -608,10 +608,10 @@ function loopJogo(){
   const L=Math.abs(linhaCarretel()), lim=Math.abs(limiteLinha());
   const dL=L-lastLjogo; lastLjogo=L;
   if(dL>0) fishPulled+=dL; else playerReeled+=-dL;   // peixe puxou (linha saiu) vs jogador recolheu (linha entrou)
-  if(fishPulled>3) jaPuxou=true;   // o peixe já puxou linha (>3m) -> a vitória pode disparar quando o jogador recuperar tudo (SEM timer)
+  if(fishPulled>0) jaPuxou=true;   // o peixe já puxou linha -> a vitória pode disparar quando o jogador recuperar tudo
   atualizarHUDJogo(t, L, lim);
   if(L>=lim){ terminarJogo('perdeu', t); return; }   // acabou a linha (limite do carretel) -> peixe fugiu
-  if(jaPuxou && t>=tempoMinVit() && playerReeled>=fishPulled){ terminarJogo('ganhou', t); return; }   // jogador recolheu MAIS/igual que o peixe puxou (após o tempo mín.) -> peixe no barco
+  if(jaPuxou && t>=tempoMinVit() && playerReeled>=fishPulled){ terminarJogo('ganhou', t); return; }   // deu o tempo mín. E a linha está zerada (recolheu ≥ que o peixe puxou) -> peixe no barco
 }
 function fmtT(s){ return Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0'); }
 function atualizarHUDJogo(t, L, lim){
