@@ -1,7 +1,7 @@
 {
   "versao": 2,
   "tipo": "config",
-  "criado": "2026-07-22T17:39:29.073Z",
+  "criado": "2026-07-22T17:45:23.383Z",
   "cal": {
     "mpv": 34,
     "limite": -150,
@@ -91,7 +91,7 @@
   },
   "desafio": {
     "faixaMin": -10,
-    "faixaMax": -12,
+    "faixaMax": -11,
     "tempoMin": 20,
     "linhaMax": -30,
     "scoreKp": 50,
