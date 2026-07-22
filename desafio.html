@@ -63,8 +63,6 @@ input[type="range"]::-webkit-slider-thumb{height:24px;width:24px;border-radius:5
 .cal-campo input:focus{border-color:var(--accent);}
 .cal-val{font-size:1.6rem;font-weight:800;font-family:monospace;}
 .cal-val.metros{color:var(--green);} .cal-val.cont{color:var(--accent);}
-#btnJogar{font-size:0.85rem;font-weight:700;padding:9px 20px;border-radius:20px;background:rgba(0,230,118,0.14);border:1px solid var(--green);color:var(--green);cursor:pointer;font-family:inherit;letter-spacing:1px;}
-#btnJogar:active{transform:scale(0.96);}
 #jogoHUD{display:none;position:fixed;inset:0;z-index:500;background:rgba(5,10,15,0.97);flex-direction:column;align-items:center;justify-content:center;gap:26px;padding:24px;text-align:center;}
 #jogoHUD.on{display:flex;}
 .jogo-topo{font-size:1.8rem;font-family:monospace;color:var(--text-dim);}
@@ -129,7 +127,6 @@ input[type="range"]::-webkit-slider-thumb{height:24px;width:24px;border-radius:5
 <header>
   <span style="font-size:1.5rem">🎯</span>
   <h1>Modo Desafio</h1>
-  <button id="btnJogar" onclick="abrirPreJogo()">🎮 Jogar</button>
   <button id="btnBT" onclick="conectarBLE()">🔵 Conectar</button>
   <a href="#" class="btn-link" onclick="abrirRank();return false;">🏆 Ranking</a>
   <a href="dashboard.html" class="btn-link">↩ Dashboard</a>
@@ -581,7 +578,6 @@ function pararHoldPosSim(){ if(holdTimer){ clearInterval(holdTimer); holdTimer=n
 function iniciarHoldPosSim(){ pararHoldPosSim(); const fFreio=ESC_NEG*escPeso(); aplicarMotor(fFreio); const fim=performance.now()+HOLD_POS_SIM_MS; holdTimer=setInterval(()=>{ if(performance.now()>=fim){ pararHoldPosSim(); aplicarMotor(0); } else aplicarMotor(fFreio); },150); }
 // ── O JOGO: motor toca a curva × peso; você recolhe; GANHA em L→0, PERDE em L→limite ──
 function iniciarJogoReal(){
-  if(!motorChar){ alert('Conecte o Bluetooth primeiro (🔵 no topo).'); return; }
   if(jogoAtivo) return;
   if(simRodando) stopSim(0);                        // corta a prévia visual, se estiver rolando
   jogoAtivo=true; jaPuxou=false; pararHoldPosSim();
@@ -640,7 +636,6 @@ function salvarFaixa(){ const mn=document.getElementById('faixaMinIn'), mx=docum
 function beep(freq, dur){ try{ const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return; const ac=new AC(); const o=ac.createOscillator(), g=ac.createGain(); o.frequency.value=freq||880; o.connect(g); g.connect(ac.destination); g.gain.value=0.18; o.start(); setTimeout(()=>{ try{o.stop();ac.close();}catch(e){} }, dur||120); }catch(e){} }
 function contagemRegressiva(n, onEnd){ const cd=document.getElementById('jogoContagem'); if(!cd){ if(onEnd) onEnd(); return; } cd.classList.add('on'); let k=n; const tick=()=>{ if(k<=0){ cd.classList.remove('on'); cd.textContent=''; if(onEnd) onEnd(); return; } cd.textContent=k; beep(880,120); k--; contTimer=setTimeout(tick,1000); }; tick(); }
 function abrirPreJogo(){
-  if(!motorChar){ alert('Conecte o Bluetooth primeiro (🔵 no topo).'); return; }
   if(jogoAtivo) return; if(simRodando) stopSim(0);
   const mn=document.getElementById('faixaMinIn'), mx=document.getElementById('faixaMaxIn'); if(mn) mn.value=faixaMin(); if(mx) mx.value=faixaMax();
   recolherFase=0; fecharHUDJogo(); fecharRank();
@@ -705,7 +700,7 @@ function montarBloco(i){
         '<button class="btn" style="background:#c1121f;color:#fff" onclick="gerarNegativo('+i+')" title="🎲 Gerar o FREIO (vermelho, −) nas janelas. Mantém a puxada que já existe.">🎲−</button>'+
         '<button class="btn btn-outline" onclick="limparPositivo('+i+')" title="Apagar só a PUXADA (parte +)">🧹+</button>'+
         '<button class="btn btn-outline" onclick="limparNegativo('+i+')" title="Apagar só o FREIO (parte −)">🧹−</button>'+
-        '<button class="btn btn-green" onclick="playSim('+i+')" title="Prévia visual (sem motor)">▶</button><button class="btn btn-yellow" onclick="pauseSim('+i+')">⏸</button><button class="btn btn-red" onclick="stopSim('+i+')">■</button>'+
+        '<button class="btn btn-green" onclick="abrirPreJogo()" title="🎮 Jogar: coloca a linha e começa o desafio">▶ Jogar</button>'+
         '<button class="btn btn-outline" onclick="copiarCurva('+i+')" title="Copiar curva">📄</button>'+
         '<button class="btn btn-accent btnColar" id="colar'+i+'" onclick="colarCurva('+i+')" disabled title="Colar curva copiada">📋</button>'+
         '<div id="tsDisplay'+i+'" class="ts-badge">0:00 / 1:30</div>'+
