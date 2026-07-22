@@ -87,6 +87,10 @@ input[type=text]:focus{border-color:var(--accent);}
 #hudSync button{background:rgba(255,170,0,0.16);border:1px solid #ffb84d;color:#ffc061;border-radius:13px;font-family:inherit;font-size:0.82rem;font-weight:800;padding:5px 11px;cursor:pointer;}
 #hudSync button:active{background:rgba(255,170,0,0.38);}
 #hudSync .hs-val{min-width:46px;text-align:center;font-family:monospace;font-weight:800;}
+#hudTeste{position:fixed;bottom:14px;left:14px;z-index:64;display:none;align-items:center;gap:8px;background:rgba(0,0,0,0.6);border:1px solid #4aa3ff;border-radius:22px;padding:5px 10px 5px 13px;color:#8cc6ff;font-size:0.85rem;font-weight:700;}
+#hudTeste.visivel{display:flex;}
+#hudTeste button{background:rgba(74,163,255,0.16);border:1px solid #4aa3ff;color:#8cc6ff;border-radius:13px;font-family:inherit;font-size:0.82rem;font-weight:800;padding:5px 11px;cursor:pointer;}
+#hudTeste button:active{background:rgba(74,163,255,0.38);}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(0,212,255,0.15);border:1px solid rgba(0,212,255,0.4);border-radius:20px;padding:6px 18px;font-size:0.7rem;color:var(--accent);pointer-events:none;opacity:0;transition:opacity .3s;z-index:200;white-space:nowrap;}
 .toast.visivel{opacity:1;}
 .rk-filtros{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;}
@@ -126,6 +130,7 @@ input[type=text]:focus{border-color:var(--accent);}
 <div id="hudCarretel">📍 0.0 m</div>
 <div id="hudTimeline"><canvas id="tlCanvas" width="600" height="80"></canvas></div>
 <div id="hudSync"><span>⏱</span><button onclick="nudgeSync(-0.2)">−0.2</button><span class="hs-val" id="hudSyncVal">0.0s</span><button onclick="nudgeSync(0.2)">+0.2</button></div>
+<div id="hudTeste"><span>🧪</span><button onclick="simEncoder(1)">🎣 +1m</button><button onclick="simEncoder(-1)">🐟 −1m</button></div>
 <div id="hudConfig">
   <div class="hc-header"><span class="hc-tit" style="margin:0;">👁 Exibir na tela</span><button class="hc-fechar" onclick="toggleConfig()" aria-label="Fechar" title="Fechar">✕</button></div>
   <label><input type="checkbox" id="cfgLinha" checked> Linha enrolada</label>
@@ -260,6 +265,8 @@ async function tentarReconectar(){
 function escreverMotorBLE(pct){ if(!motorChar) return; const b=new Int8Array([Math.max(-100,Math.min(100,Math.round(pct)))]); try{ motorChar.writeValueWithoutResponse?motorChar.writeValueWithoutResponse(b):motorChar.writeValue(b); }catch(e){} }   // força COM SINAL (int8): + puxa, − freia (firmware VESC)
 // Zera a LINHA do carretel (re-spool): operador usa após re-enrolar a linha na carretilha/molinete
 function zerarEncoder(){ contagemEncoder=0; contAnt=0; primeiraLeitura=true; metrosGanhos=0; metrosPerdidos=0; salvarContagem(); atualizarLinha(); if(linhaChar){ try{ linhaChar.writeValue(new Uint8Array([0])); }catch(e){} } }
+// TESTE sem hardware: simula o encoder mexendo dM metros (+1 = recolhe/enrola · −1 = solta linha). Conta ganhos/perdidos e checa a trava, igual ao encoder real.
+function simEncoder(dM){ const dCount=Math.round((dM/metrosPorVolta())*4096*(inverterDir()?-1:1)); const dMet=contagemParaMetros(dCount); if(contando){ if(dMet>0) metrosGanhos+=dMet; else metrosPerdidos+=-dMet; } contagemEncoder+=dCount; salvarContagem(); if(contando) checarLimiteSeguranca(); atualizarLinha(); }
 // Novo jogador: zera só a contagem DESTE jogo (HUD/ranking); a linha do carretel continua acumulada
 function novoJogoContadores(){ metrosGanhos=0; metrosPerdidos=0; contAnt=contagemEncoder; atualizarLinha(); }
 function resetarLinha(){ if(confirm('Zerar a linha acumulada do carretel?\nFaça isso só DEPOIS de re-enrolar a linha na carretilha/molinete.')){ zerarEncoder(); mostrarToast('Linha do carretel zerada'); } }
@@ -581,6 +588,7 @@ function atualizarVisibilidadeHUD(){
   document.getElementById('hudTimeline').classList.toggle('visivel', emJogo && hudCfg.barra);
   document.getElementById('hudCarretel').classList.toggle('visivel', emJogo && hudCfg.carretel);
   document.getElementById('hudSync').classList.toggle('visivel', emJogo && hudCfg.sync);
+  document.getElementById('hudTeste').classList.toggle('visivel', emJogo);   // botões de teste (sem hardware) durante o jogo
   if(emJogo && hudCfg.sync) atualizarHudSync();
   const rodar = simTocando!=null && hudCfg.barra;
   if(rodar){ if(!tlRAF) tlRAF=requestAnimationFrame(loopTimeline); }
@@ -669,9 +677,10 @@ function confirmarNome(){ const v=document.getElementById('inputNome').value.tri
 document.getElementById('inputNome').addEventListener('keydown',e=>{ if(e.key==='Enter') confirmarNome(); });
 
 // Leva os overlays (contagem/pausa/resultado) pra DENTRO do vídeo (aparecerem em tela cheia) e devolve depois
-const OVERLAYS_FS=['countdownOverlay','pauseOverlay','resultadoOverlay','hudLinha','hudEstado','hudCarretel','hudTimeline','hudSync'];
+const OVERLAYS_FS=['countdownOverlay','pauseOverlay','resultadoOverlay','hudLinha','hudEstado','hudCarretel','hudTimeline','hudSync','hudTeste'];
 function moverOverlaysPara(parent){ OVERLAYS_FS.forEach(id=>parent.appendChild(document.getElementById(id))); }
 function devolverOverlays(){ OVERLAYS_FS.forEach(id=>document.body.appendChild(document.getElementById(id))); }
+window.addEventListener('keydown', e=>{ if(!emJogo) return; if(e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return; if(e.key==='ArrowUp'){ simEncoder(1); e.preventDefault(); } else if(e.key==='ArrowDown'){ simEncoder(-1); e.preventDefault(); } });   // ↑ recolhe 1m · ↓ solta 1m (teste sem hardware)
 // Chamado DIRETO do clique/Enter (gesto do usuário) -> pode entrar em tela cheia
 // Bip da contagem — UM AudioContext reaproveitado + oscilador curto descartável (sem arquivo de som, sem leak)
 let audioCtx=null;
