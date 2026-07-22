@@ -132,12 +132,12 @@ input[type="range"]::-webkit-slider-thumb{height:24px;width:24px;border-radius:5
   <a href="dashboard.html" class="btn-link">↩ Dashboard</a>
 </header>
 
-<div class="nota">🎯 <b>Modo Desafio:</b> a curva de 20 min salva no GitHub como a <b>7ª simulação</b> (<code>curvas.json</code> → <code>desafio</code>) — não mistura com as 6 espécies. O <b>Controle de Carretel</b> é config GLOBAL (compartilha com o dash). ▶ play é prévia visual (sem motor/BLE por ora).</div>
-
 <div class="card">
   <div class="secao-titulo"><span>⚡</span> Curva da briga (20 min) — role na horizontal pra editar <span id="curvaSyncStatus" class="cal-sub" style="margin-left:auto;text-transform:none;letter-spacing:0;"></span></div>
-  <div class="dica-editor">✏️ <b>🎲+</b> puxada · <b>🎲−</b> freio · <b>clique</b> = ponto · <b>arraste</b> = mover · <b>clique no ponto</b> = editar/remover. · A timeline é LARGA: <b>role na horizontal</b> (≈90 s por tela) até o fim pra ajustar tudo.</div>
-  <div style="font-size:0.72rem;color:var(--text-dim);margin-bottom:12px;">⏱ <b>Duração:</b> <input type="number" id="duracaoTotalMin" min="1" max="60" step="1" value="20" oninput="salvarDuracaoTotal()" style="width:56px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:monospace;text-align:center;padding:4px 6px;outline:none;"> min · o gerador (🎲) preenche esse tempo decaindo com a fadiga <i>(regere após mudar)</i></div>
+  <div style="font-size:0.78rem;color:var(--text-dim);margin-bottom:12px;display:flex;gap:20px;flex-wrap:wrap;align-items:center;">
+    <span>⏱ <b>Duração:</b> <input type="number" id="duracaoTotalMin" min="1" max="60" step="1" value="20" oninput="salvarDuracaoTotal()" style="width:56px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:monospace;text-align:center;padding:4px 6px;outline:none;"> min</span>
+    <span>🎣 <b>Faixa de linha:</b> <input type="number" id="faixaMinIn" step="1" value="5" oninput="salvarFaixa()" style="width:56px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:monospace;text-align:center;padding:4px 6px;"> a <input type="number" id="faixaMaxIn" step="1" value="15" oninput="salvarFaixa()" style="width:56px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:monospace;text-align:center;padding:4px 6px;"> m</span>
+  </div>
   <div id="simsContainer"></div>
 
   <div id="pontoEditor">
@@ -196,7 +196,7 @@ input[type="range"]::-webkit-slider-thumb{height:24px;width:24px;border-radius:5
     <div class="jogo-linha-sub" id="preStatus">verificando…</div>
     <div class="jogo-bar"><div class="jogo-bar-fill" id="preBarFill"></div></div>
   </div>
-  <div style="font-size:0.8rem;color:var(--text-dim);">faixa de linha: <input type="number" id="faixaMinIn" step="1" value="5" oninput="salvarFaixa()" style="width:60px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:monospace;text-align:center;padding:4px 6px;"> a <input type="number" id="faixaMaxIn" step="1" value="15" oninput="salvarFaixa()" style="width:60px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:monospace;text-align:center;padding:4px 6px;"> m <span style="opacity:0.6">· linha demais → recolha na mão (motor: pendência); de menos → puxe</span></div>
+  <div style="font-size:0.8rem;color:var(--text-dim);">🎯 faixa: <b id="faixaLbl">5–15</b> m <span style="opacity:0.6">· linha demais → recolha na mão; de menos → puxe</span></div>
   <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;">
     <button class="btn btn-green" id="btnIniciarJogo" onclick="iniciarComContagem()" disabled>▶ Iniciar</button>
     <button class="btn btn-outline" onclick="fecharPreJogo()">✕ Cancelar</button>
@@ -637,7 +637,7 @@ function beep(freq, dur){ try{ const AC=window.AudioContext||window.webkitAudioC
 function contagemRegressiva(n, onEnd){ const cd=document.getElementById('jogoContagem'); if(!cd){ if(onEnd) onEnd(); return; } cd.classList.add('on'); let k=n; const tick=()=>{ if(k<=0){ cd.classList.remove('on'); cd.textContent=''; if(onEnd) onEnd(); return; } cd.textContent=k; beep(880,120); k--; contTimer=setTimeout(tick,1000); }; tick(); }
 function abrirPreJogo(){
   if(jogoAtivo) return; if(simRodando) stopSim(0);
-  const mn=document.getElementById('faixaMinIn'), mx=document.getElementById('faixaMaxIn'); if(mn) mn.value=faixaMin(); if(mx) mx.value=faixaMax();
+  const fl=document.getElementById('faixaLbl'); if(fl) fl.textContent=faixaMin()+'–'+faixaMax();
   recolherFase=0; fecharHUDJogo(); fecharRank();
   document.getElementById('jogoContagem').classList.remove('on'); document.getElementById('preJogo').classList.add('on');
   aplicarMotor(0);                                   // eixo livre (o usuário pode enrolar na vara)
@@ -820,6 +820,7 @@ for(let i=0;i<NSIMS;i++) montarBloco(i);   // 1 bloco (pirarará, 20 min)
 // Carretel no TOPO da página (antes da curva)
 { const carr=document.querySelector('[data-cardkey="linha"]'); const cardCarr=carr?carr.closest('.card'):null; const sc=document.getElementById('simsContainer'); const cardCurva=sc?sc.closest('.card'):null; if(cardCarr&&cardCurva&&cardCurva.parentNode) cardCurva.parentNode.insertBefore(cardCarr, cardCurva); }
 { const dm=parseFloat(localStorage.getItem('simpesca2_aleat_duracao')); if(isFinite(dm)&&dm>0){ DURACAO=Math.round(dm*60); const el=document.getElementById('duracaoTotalMin'); if(el) el.value=dm; } }   // duração salva -> seta DURACAO antes de gerar/render
+{ const mn=document.getElementById('faixaMinIn'), mx=document.getElementById('faixaMaxIn'); if(mn) mn.value=faixaMin(); if(mx) mx.value=faixaMax(); }   // faixa de linha salva -> reflete nos campos da página
 for(let i=0;i<NSIMS;i++){ carregarGenCfg(i); setupArea(i); SIMS[i].pontos = carregarPontosStore(i) || gerarCurvaEspecie(i); salvarPontos(i); renderTicks(i); renderCurva(i); }   // 1ª vez: gera/carrega a curva
 document.querySelectorAll('.gen-row input').forEach(el=>el.addEventListener('change',()=>salvarGenCfg(+el.id.slice(-1)||0)));   // persiste ajustes ao editar (idx pelo sufixo do id)
 // ── Ao abrir: puxa a curva do DESAFIO do GitHub (curvas.json -> desafio), fonte de verdade. Ajusta a duração pelo último ponto. Depois libera o push (podeSyncCurva). ──
