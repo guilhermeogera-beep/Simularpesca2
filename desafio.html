@@ -182,8 +182,13 @@ input[type="range"]::-webkit-slider-thumb{height:24px;width:24px;border-radius:5
   <div class="jogo-estado" id="jogoEstado">🎣 RECOLHA A LINHA!</div>
   <div class="jogo-linha">
     <div class="jogo-linha-num" id="jogoLinhaNum">0.0 m</div>
-    <div class="jogo-linha-sub">linha que o peixe puxou (de <span id="jogoLimite">150</span> m) — <b>recolha até zerar</b></div>
+    <div class="jogo-linha-sub">linha FORA (de <span id="jogoLimite">150</span> m) — <b>não deixe acabar</b></div>
     <div class="jogo-bar"><div class="jogo-bar-fill" id="jogoBarFill"></div></div>
+  </div>
+  <div style="display:flex;gap:24px;justify-content:center;flex-wrap:wrap;font-size:1.05rem;">
+    <span>🐟 peixe puxou <b id="jogoFishPulled" style="color:#ff5f5f">0.0 m</b></span>
+    <span>🎣 você recolheu <b id="jogoPlayerReeled" style="color:#00e676">0.0 m</b></span>
+    <span>🧵 carretel <b id="jogoCarretel">0.0 m</b></span>
   </div>
   <div><button class="btn btn-red" onclick="desistirJogo()">■ Desistir</button></div>
   <div class="jogo-result" id="jogoResult"></div>
@@ -584,6 +589,7 @@ function iniciarJogoReal(){
   if(simRodando) stopSim(0);                        // corta a prévia visual, se estiver rolando
   jogoAtivo=true; jaPuxou=false; pararHoldPosSim();
   startL=Math.abs(linhaCarretel());                 // linha no início (o pré-jogo posicionou na faixa) — NÃO zera
+  fishPulled=0; playerReeled=0; lastLjogo=startL;   // zera os acumuladores da briga (medidos a partir do início)
   enviarConfigRPM(freioRepousoEscalado(), freioPosSimA()); enviarRepouso(true);   // configura o ESP + liga o freio de repouso
   fecharPreJogo();
   document.getElementById('jogoResult').classList.remove('on'); document.getElementById('jogoHUD').classList.add('on');
@@ -598,10 +604,12 @@ function loopJogo(){
   if(Math.abs(v)<0.5) v = freioRepousoForca();      // zona morta -> freio de repouso (eixo nunca livre)
   aplicarMotor(v, raw);
   const L=Math.abs(linhaCarretel()), lim=Math.abs(limiteLinha());
-  if(L>startL+3 || t>20) jaPuxou=true;   // o peixe puxou linha além do início (ou 20s) -> a vitória pode disparar quando recolher tudo
+  const dL=L-lastLjogo; lastLjogo=L;
+  if(dL>0) fishPulled+=dL; else playerReeled+=-dL;   // peixe puxou (linha saiu) vs jogador recolheu (linha entrou)
+  if(L>startL+3 || t>20) jaPuxou=true;   // o peixe puxou linha além do início (ou 20s) -> a vitória pode disparar quando recolher de volta
   atualizarHUDJogo(t, L, lim);
-  if(L>=lim){ terminarJogo('perdeu', t); return; }
-  if(jaPuxou && L<=1.5){ terminarJogo('ganhou', t); return; }
+  if(L>=lim){ terminarJogo('perdeu', t); return; }   // acabou a linha (limite absoluto do carretel) -> peixe fugiu
+  if(jaPuxou && L<=startL){ terminarJogo('ganhou', t); return; }   // recolheu de volta ao início (recuperou tudo que o peixe puxou); o buffer/faixa NÃO conta
 }
 function fmtT(s){ return Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0'); }
 function atualizarHUDJogo(t, L, lim){
@@ -609,6 +617,9 @@ function atualizarHUDJogo(t, L, lim){
   const ln=document.getElementById('jogoLinhaNum'); if(ln) ln.textContent=L.toFixed(1)+' m';
   const li=document.getElementById('jogoLimite'); if(li) li.textContent=lim.toFixed(0);
   const bf=document.getElementById('jogoBarFill'); if(bf){ const f=Math.max(0,Math.min(100,(L/lim)*100)); bf.style.width=f+'%'; bf.style.background=f>80?'#ff1744':f>50?'#ffd600':'#00e676'; }
+  const fp=document.getElementById('jogoFishPulled'); if(fp) fp.textContent=fishPulled.toFixed(1)+' m';
+  const pr=document.getElementById('jogoPlayerReeled'); if(pr) pr.textContent=playerReeled.toFixed(1)+' m';
+  const cr=document.getElementById('jogoCarretel'); if(cr) cr.textContent=linhaCarretel().toFixed(1)+' m';
 }
 function terminarJogo(res, t){
   if(!jogoAtivo) return; jogoAtivo=false; clearInterval(jogoTimer);
@@ -632,6 +643,7 @@ function desistirJogo(){ if(jogoAtivo){ jogoAtivo=false; clearInterval(jogoTimer
 
 // ══ PRÉ-JOGO (Fase 2): posiciona a linha na faixa antes de começar ════════════
 let startL=0, preTimer=null, contTimer=null, recolherFase=0, autoRefL=0, autoRefT=0, ultimoJogo=null;
+let fishPulled=0, playerReeled=0, lastLjogo=0;   // acumuladores do jogo: linha que o PEIXE puxou (fora) e que o JOGADOR recolheu
 function faixaMin(){ const v=parseFloat(localStorage.getItem('simpesca2_aleat_faixa_min')); return isFinite(v)?v:5; }
 function faixaMax(){ const v=parseFloat(localStorage.getItem('simpesca2_aleat_faixa_max')); return isFinite(v)?v:15; }
 function salvarFaixa(){ const mn=document.getElementById('faixaMinIn'), mx=document.getElementById('faixaMaxIn'); if(mn) localStorage.setItem('simpesca2_aleat_faixa_min', mn.value); if(mx) localStorage.setItem('simpesca2_aleat_faixa_max', mx.value); }
