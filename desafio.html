@@ -139,7 +139,7 @@ input[type="range"]::-webkit-slider-thumb{height:24px;width:24px;border-radius:5
     <span>🎣 <b>Faixa de linha:</b> <input type="number" id="faixaMinIn" step="1" value="-10" oninput="salvarFaixa()" style="width:56px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:monospace;text-align:center;padding:4px 6px;"> a <input type="number" id="faixaMaxIn" step="1" value="-12" oninput="salvarFaixa()" style="width:56px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:monospace;text-align:center;padding:4px 6px;"> m</span>
     <span>🏆 <b>Tempo mín. vitória:</b> <input type="number" id="tempoMinIn" min="0" step="1" value="20" oninput="salvarTempoMin()" style="width:56px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:monospace;text-align:center;padding:4px 6px;"> s</span>
     <span>🐟 <b>Linha máx (perde):</b> <input type="number" id="linhaMaxIn" step="1" value="-30" oninput="salvarLinhaMax()" title="Quanto de linha o PEIXE pode puxar durante o jogo antes de fugir (medido do início do jogo). É separado do limite de segurança do carretel." style="width:56px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:monospace;text-align:center;padding:4px 6px;"> m</span>
-    <span style="border-left:1px solid var(--border);padding-left:16px;">🧪 <b>Teste s/ hardware:</b> carretel <input type="number" id="testeLinhaIn" step="1" value="-10" style="width:64px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:monospace;text-align:center;padding:4px 6px;"> m <button class="btn btn-outline" style="padding:4px 10px;" onclick="testarLinha()">aplicar</button> <span style="opacity:0.55">· simula o encoder nesse valor de linha</span></span>
+    <span class="teste-ui" style="border-left:1px solid var(--border);padding-left:16px;">🧪 <b>Teste s/ hardware:</b> carretel <input type="number" id="testeLinhaIn" step="1" value="-10" style="width:64px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:monospace;text-align:center;padding:4px 6px;"> m <button class="btn btn-outline" style="padding:4px 10px;" onclick="testarLinha()">aplicar</button> <span style="opacity:0.55">· simula o encoder nesse valor de linha</span></span>
   </div>
   <div id="simsContainer"></div>
 
@@ -193,7 +193,7 @@ input[type="range"]::-webkit-slider-thumb{height:24px;width:24px;border-radius:5
     <span>🧵 carretel <b id="jogoCarretel">0.0 m</b></span>
     <span>💀 perde em <b id="jogoLimite">30</b> m</span>
   </div>
-  <div style="display:flex;gap:10px;justify-content:center;font-size:0.8rem;opacity:0.7;">🧪 <button class="btn btn-outline" style="padding:3px 10px;" onclick="simEncoder(-1)">🐟 peixe puxa 1m (↓)</button><button class="btn btn-outline" style="padding:3px 10px;" onclick="simEncoder(1)">🎣 recolher 1m (↑)</button></div>
+  <div class="teste-ui" style="display:flex;gap:10px;justify-content:center;font-size:0.8rem;opacity:0.7;">🧪 <button class="btn btn-outline" style="padding:3px 10px;" onclick="simEncoder(-1)">🐟 peixe puxa 1m (↓)</button><button class="btn btn-outline" style="padding:3px 10px;" onclick="simEncoder(1)">🎣 recolher 1m (↑)</button></div>
   <div><button class="btn btn-red" onclick="desistirJogo()">■ Desistir</button></div>
   <div class="jogo-result" id="jogoResult"></div>
 </div>
@@ -207,7 +207,7 @@ input[type="range"]::-webkit-slider-thumb{height:24px;width:24px;border-radius:5
     <div class="jogo-bar"><div class="jogo-bar-fill" id="preBarFill"></div></div>
   </div>
   <div style="font-size:0.8rem;color:var(--text-dim);">🎯 faixa: <b id="faixaLbl">5–15</b> m <span style="opacity:0.6">· linha demais → recolha na mão; de menos → puxe</span></div>
-  <div style="display:flex;gap:10px;justify-content:center;font-size:0.8rem;opacity:0.7;">🧪 <button class="btn btn-outline" style="padding:3px 10px;" onclick="simEncoder(1)">+1m (↑)</button><button class="btn btn-outline" style="padding:3px 10px;" onclick="simEncoder(-1)">−1m (↓)</button></div>
+  <div class="teste-ui" style="display:flex;gap:10px;justify-content:center;font-size:0.8rem;opacity:0.7;">🧪 <button class="btn btn-outline" style="padding:3px 10px;" onclick="simEncoder(1)">+1m (↑)</button><button class="btn btn-outline" style="padding:3px 10px;" onclick="simEncoder(-1)">−1m (↓)</button></div>
   <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;">
     <button class="btn btn-green" id="btnIniciarJogo" onclick="iniciarComContagem()" disabled>▶ Iniciar</button>
     <button class="btn btn-outline" onclick="fecharPreJogo()">✕ Cancelar</button>
@@ -857,7 +857,9 @@ async function enviarSyncCurva(){
   setCurvaBadge(r&&r.ok?'ok':'err');
 }
 // ── Sincroniza AO VIVO com o dash (mesmas chaves): se os dois estiverem abertos, reflete a mudança ──
+function aplicarMostrarTeste(){ const mostrar = localStorage.getItem('simpesca2_mostrar_teste')!=='0'; document.querySelectorAll('.teste-ui').forEach(el=>{ el.style.display = mostrar ? '' : 'none'; }); }   // liga/desliga os botões de teste (controlado pelo toggle no player "👁 Exibir")
 window.addEventListener('storage', e=>{ if(!e.key) return;
+  if(e.key==='simpesca2_mostrar_teste'){ aplicarMostrarTeste(); return; }   // toggle dos testes veio de outra aba (player)
   if(e.key==='simpesca2_contagem_encoder'){ if(!linhaChar){ contagemEncoder=parseInt(e.newValue)||0; atualizarContadores(); } return; }   // carretel sincroniza entre abas (só se esta aba não for a dona do BLE)
   if(e.key==='simpesca2_cal_limite' || e.key==='simpesca2_cal_inv' || e.key==='simpesca2_cal_mpv'){ const li=document.getElementById('calLimite'); if(li) li.value=limiteLinha(); atualizarContadores(); } });
 // ── Ao abrir: aplica o cal do config.json (limite/inv/mpv global, read-only) e mostra ──
@@ -874,6 +876,7 @@ for(let i=0;i<NSIMS;i++) montarBloco(i);   // 1 bloco (pirarará, 20 min)
 { const mn=document.getElementById('faixaMinIn'), mx=document.getElementById('faixaMaxIn'); if(mn) mn.value=faixaMin(); if(mx) mx.value=faixaMax(); const tm=document.getElementById('tempoMinIn'); if(tm) tm.value=tempoMinVit(); const lmx=document.getElementById('linhaMaxIn'); if(lmx) lmx.value=linhaMaxJogo(); }   // faixa + tempo mín. + linha máx salvos -> refletem nos campos da página
 if(localStorage.getItem('simpesca2_aleat_cfgrow')==='0'){ const el=document.getElementById('configRow'), btn=document.getElementById('cfgColBtn'); if(el) el.style.display='none'; if(btn) btn.textContent='▸'; }   // restaura a linha de ajustes oculta
 if(localStorage.getItem('simpesca2_carretel_btns')==='0'){ const el=document.getElementById('carretelCtrls'); if(el) el.style.display='none'; }   // restaura os botões do carretel (zerar/inverter) ocultos
+aplicarMostrarTeste();   // aplica o toggle dos botões de teste (chave compartilhada com o player)
 for(let i=0;i<NSIMS;i++){ carregarGenCfg(i); setupArea(i); SIMS[i].pontos = carregarPontosStore(i) || gerarCurvaEspecie(i); salvarPontos(i); renderTicks(i); renderCurva(i); }   // 1ª vez: gera/carrega a curva
 document.querySelectorAll('.gen-row input').forEach(el=>el.addEventListener('change',()=>salvarGenCfg(+el.id.slice(-1)||0)));   // persiste ajustes ao editar (idx pelo sufixo do id)
 // ── Ao abrir: puxa a curva do DESAFIO do GitHub (curvas.json -> desafio), fonte de verdade. Ajusta a duração pelo último ponto. Depois libera o push (podeSyncCurva). ──

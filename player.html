@@ -139,6 +139,7 @@ input[type=text]:focus{border-color:var(--accent);}
   <label><input type="checkbox" id="cfgCarretel"> Linha no carretel / trava</label>
   <label><input type="checkbox" id="cfgSync" checked> Ajuste de sincronia (⏱)</label>
   <label><input type="checkbox" id="cfgPeso" checked> Barra de peso (⚖️)</label>
+  <label><input type="checkbox" id="cfgTeste" checked> 🧪 Botões de teste (player + desafio)</label>
   <div class="hc-tit" style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);">🐟 Peixes na tela</div>
   <div id="cfgPeixes"></div>
 </div>
@@ -546,7 +547,7 @@ function aplicarMotor(pct, estadoRaw){ pct=Math.max(-100,Math.min(100,pct));
 let simTocando=null, tlRAF=null, emJogo=false;
 const TL_PASSADO=1.4, TL_FUTURO=6.0;   // segundos à esquerda (passado) e à direita (futuro) do "AGORA"
 const ESC_POS=40, ESC_NEG=-20, ESC_RANGE=ESC_POS-ESC_NEG;   // escala da barra (igual ao dashboard): +40 puxa (topo) · -20 freia (base) · 0 a ~⅔
-const hudCfg={linha:true, estado:true, barra:true, carretel:true, sync:true, peso:true};
+const hudCfg={linha:true, estado:true, barra:true, carretel:true, sync:true, peso:true, teste:true};
 function loopTimeline(){ tlRAF=requestAnimationFrame(loopTimeline); if(simTocando!=null) desenharTimeline(SIMS[simTocando]); }
 function desenharTimeline(sim){
   const cv=document.getElementById('tlCanvas'); if(!cv) return;
@@ -588,7 +589,7 @@ function atualizarVisibilidadeHUD(){
   document.getElementById('hudTimeline').classList.toggle('visivel', emJogo && hudCfg.barra);
   document.getElementById('hudCarretel').classList.toggle('visivel', emJogo && hudCfg.carretel);
   document.getElementById('hudSync').classList.toggle('visivel', emJogo && hudCfg.sync);
-  document.getElementById('hudTeste').classList.toggle('visivel', emJogo);   // botões de teste (sem hardware) durante o jogo
+  document.getElementById('hudTeste').classList.toggle('visivel', emJogo && hudCfg.teste);   // botões de teste (sem hardware) durante o jogo
   if(emJogo && hudCfg.sync) atualizarHudSync();
   const rodar = simTocando!=null && hudCfg.barra;
   if(rodar){ if(!tlRAF) tlRAF=requestAnimationFrame(loopTimeline); }
@@ -608,18 +609,19 @@ function nudgeSync(delta){
 // mostra/esconde o campo ⏱ sincronia nos cards (tela de seleção) conforme o toggle do EXIBIR
 function atualizarSyncCards(){ document.querySelectorAll('.card-sync').forEach(el=>{ el.style.display = hudCfg.sync ? '' : 'none'; }); }
 function atualizarPesoCards(){ document.querySelectorAll('.card-peso').forEach(el=>{ el.style.display = hudCfg.peso ? '' : 'none'; }); }
-function salvarHudCfg(){ localStorage.setItem('simpesca2_hud_linha',hudCfg.linha?'1':'0'); localStorage.setItem('simpesca2_hud_estado',hudCfg.estado?'1':'0'); localStorage.setItem('simpesca2_hud_barra',hudCfg.barra?'1':'0'); localStorage.setItem('simpesca2_hud_carretel',hudCfg.carretel?'1':'0'); localStorage.setItem('simpesca2_hud_sync',hudCfg.sync?'1':'0'); localStorage.setItem('simpesca2_hud_peso',hudCfg.peso?'1':'0'); }
+function salvarHudCfg(){ localStorage.setItem('simpesca2_hud_linha',hudCfg.linha?'1':'0'); localStorage.setItem('simpesca2_hud_estado',hudCfg.estado?'1':'0'); localStorage.setItem('simpesca2_hud_barra',hudCfg.barra?'1':'0'); localStorage.setItem('simpesca2_hud_carretel',hudCfg.carretel?'1':'0'); localStorage.setItem('simpesca2_hud_sync',hudCfg.sync?'1':'0'); localStorage.setItem('simpesca2_hud_peso',hudCfg.peso?'1':'0'); localStorage.setItem('simpesca2_mostrar_teste',hudCfg.teste?'1':'0'); }
 function carregarHudCfg(){
   const g=(k,d)=>{ const v=localStorage.getItem(k); return v===null?d:v==='1'; };
-  hudCfg.linha=g('simpesca2_hud_linha',true); hudCfg.estado=g('simpesca2_hud_estado',true); hudCfg.barra=g('simpesca2_hud_barra',true); hudCfg.carretel=g('simpesca2_hud_carretel',true); hudCfg.sync=g('simpesca2_hud_sync',true); hudCfg.peso=g('simpesca2_hud_peso',true);
-  const cl=document.getElementById('cfgLinha'), ce=document.getElementById('cfgEstado'), cb=document.getElementById('cfgBarra'), cc=document.getElementById('cfgCarretel'), cs=document.getElementById('cfgSync'), cp=document.getElementById('cfgPeso');
-  cl.checked=hudCfg.linha; ce.checked=hudCfg.estado; cb.checked=hudCfg.barra; cc.checked=hudCfg.carretel; cs.checked=hudCfg.sync; cp.checked=hudCfg.peso;
+  hudCfg.linha=g('simpesca2_hud_linha',true); hudCfg.estado=g('simpesca2_hud_estado',true); hudCfg.barra=g('simpesca2_hud_barra',true); hudCfg.carretel=g('simpesca2_hud_carretel',true); hudCfg.sync=g('simpesca2_hud_sync',true); hudCfg.peso=g('simpesca2_hud_peso',true); hudCfg.teste=g('simpesca2_mostrar_teste',true);
+  const cl=document.getElementById('cfgLinha'), ce=document.getElementById('cfgEstado'), cb=document.getElementById('cfgBarra'), cc=document.getElementById('cfgCarretel'), cs=document.getElementById('cfgSync'), cp=document.getElementById('cfgPeso'), ct=document.getElementById('cfgTeste');
+  cl.checked=hudCfg.linha; ce.checked=hudCfg.estado; cb.checked=hudCfg.barra; cc.checked=hudCfg.carretel; cs.checked=hudCfg.sync; cp.checked=hudCfg.peso; ct.checked=hudCfg.teste;
   cl.addEventListener('change',()=>{ hudCfg.linha=cl.checked; salvarHudCfg(); atualizarVisibilidadeHUD(); });
   ce.addEventListener('change',()=>{ hudCfg.estado=ce.checked; salvarHudCfg(); atualizarVisibilidadeHUD(); });
   cb.addEventListener('change',()=>{ hudCfg.barra=cb.checked; salvarHudCfg(); atualizarVisibilidadeHUD(); });
   cc.addEventListener('change',()=>{ hudCfg.carretel=cc.checked; salvarHudCfg(); atualizarVisibilidadeHUD(); });
   cs.addEventListener('change',()=>{ hudCfg.sync=cs.checked; salvarHudCfg(); atualizarVisibilidadeHUD(); atualizarSyncCards(); });
   cp.addEventListener('change',()=>{ hudCfg.peso=cp.checked; salvarHudCfg(); atualizarPesoCards(); });
+  ct.addEventListener('change',()=>{ hudCfg.teste=ct.checked; salvarHudCfg(); atualizarVisibilidadeHUD(); });
   atualizarSyncCards();   // aplica o estado salvo aos campos dos cards no load
   atualizarPesoCards();
   montarCfgPeixes();      // checkboxes de "peixes na tela"
@@ -680,7 +682,7 @@ document.getElementById('inputNome').addEventListener('keydown',e=>{ if(e.key===
 const OVERLAYS_FS=['countdownOverlay','pauseOverlay','resultadoOverlay','hudLinha','hudEstado','hudCarretel','hudTimeline','hudSync','hudTeste'];
 function moverOverlaysPara(parent){ OVERLAYS_FS.forEach(id=>parent.appendChild(document.getElementById(id))); }
 function devolverOverlays(){ OVERLAYS_FS.forEach(id=>document.body.appendChild(document.getElementById(id))); }
-window.addEventListener('keydown', e=>{ if(!emJogo) return; if(e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return; if(e.key==='ArrowUp'){ simEncoder(1); e.preventDefault(); } else if(e.key==='ArrowDown'){ simEncoder(-1); e.preventDefault(); } });   // ↑ recolhe 1m · ↓ solta 1m (teste sem hardware)
+window.addEventListener('keydown', e=>{ if(!emJogo || !hudCfg.teste) return; if(e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return; if(e.key==='ArrowUp'){ simEncoder(1); e.preventDefault(); } else if(e.key==='ArrowDown'){ simEncoder(-1); e.preventDefault(); } });   // ↑ recolhe 1m · ↓ solta 1m (teste sem hardware)
 // Chamado DIRETO do clique/Enter (gesto do usuário) -> pode entrar em tela cheia
 // Bip da contagem — UM AudioContext reaproveitado + oscilador curto descartável (sem arquivo de som, sem leak)
 let audioCtx=null;
