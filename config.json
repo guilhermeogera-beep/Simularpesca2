@@ -1,7 +1,7 @@
 {
   "versao": 2,
   "tipo": "config",
-  "criado": "2026-07-22T08:38:29.895Z",
+  "criado": "2026-07-10T00:00:00.000Z",
   "cal": {
     "mpv": 34,
     "limite": -150,
@@ -93,7 +93,7 @@
     "faixaMin": -10,
     "faixaMax": -12,
     "tempoMin": 20,
-    "linhaMax": 30,
+    "linhaMax": -30,
     "scoreKp": 50,
     "scoreKv": 2
   }

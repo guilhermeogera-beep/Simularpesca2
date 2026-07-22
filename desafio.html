@@ -135,11 +135,11 @@ input[type="range"]::-webkit-slider-thumb{height:24px;width:24px;border-radius:5
 <div class="card">
   <div class="secao-titulo"><button class="btn-colapso" id="cfgColBtn" onclick="toggleConfigRow()" title="Ocultar/mostrar os ajustes" style="margin-right:6px;">▾</button><span>⚡</span> Curva da briga (20 min) — role na horizontal pra editar <span id="curvaSyncStatus" class="cal-sub" style="margin-left:auto;text-transform:none;letter-spacing:0;"></span></div>
   <div id="configRow" style="font-size:0.78rem;color:var(--text-dim);margin-bottom:12px;display:flex;gap:20px;flex-wrap:wrap;align-items:center;">
-    <span>⏱ <b>Duração:</b> <input type="number" id="duracaoTotalMin" min="1" max="60" step="1" value="20" oninput="salvarDuracaoTotal()" style="width:56px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:monospace;text-align:center;padding:4px 6px;outline:none;"> min</span>
-    <span>🎣 <b>Faixa de linha:</b> <input type="number" id="faixaMinIn" step="1" value="5" oninput="salvarFaixa()" style="width:56px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:monospace;text-align:center;padding:4px 6px;"> a <input type="number" id="faixaMaxIn" step="1" value="15" oninput="salvarFaixa()" style="width:56px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:monospace;text-align:center;padding:4px 6px;"> m</span>
+    <span>⏱ <b>Duração:</b> <input type="number" id="duracaoTotalMin" min="1" max="60" step="1" value="25" oninput="salvarDuracaoTotal()" style="width:56px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:monospace;text-align:center;padding:4px 6px;outline:none;"> min</span>
+    <span>🎣 <b>Faixa de linha:</b> <input type="number" id="faixaMinIn" step="1" value="-10" oninput="salvarFaixa()" style="width:56px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:monospace;text-align:center;padding:4px 6px;"> a <input type="number" id="faixaMaxIn" step="1" value="-12" oninput="salvarFaixa()" style="width:56px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:monospace;text-align:center;padding:4px 6px;"> m</span>
     <span>🏆 <b>Tempo mín. vitória:</b> <input type="number" id="tempoMinIn" min="0" step="1" value="20" oninput="salvarTempoMin()" style="width:56px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:monospace;text-align:center;padding:4px 6px;"> s</span>
-    <span>🐟 <b>Linha máx (perde):</b> <input type="number" id="linhaMaxIn" min="1" step="1" value="30" oninput="salvarLinhaMax()" title="Quanto de linha o PEIXE pode puxar durante o jogo antes de fugir (medido do início do jogo). É separado do limite de segurança do carretel." style="width:56px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:monospace;text-align:center;padding:4px 6px;"> m</span>
-    <span style="border-left:1px solid var(--border);padding-left:16px;">🧪 <b>Teste s/ hardware:</b> carretel <input type="number" id="testeLinhaIn" step="1" value="10" style="width:64px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:monospace;text-align:center;padding:4px 6px;"> m <button class="btn btn-outline" style="padding:4px 10px;" onclick="testarLinha()">aplicar</button> <span style="opacity:0.55">· simula o encoder nesse valor de linha</span></span>
+    <span>🐟 <b>Linha máx (perde):</b> <input type="number" id="linhaMaxIn" step="1" value="-30" oninput="salvarLinhaMax()" title="Quanto de linha o PEIXE pode puxar durante o jogo antes de fugir (medido do início do jogo). É separado do limite de segurança do carretel." style="width:56px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:monospace;text-align:center;padding:4px 6px;"> m</span>
+    <span style="border-left:1px solid var(--border);padding-left:16px;">🧪 <b>Teste s/ hardware:</b> carretel <input type="number" id="testeLinhaIn" step="1" value="-10" style="width:64px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:monospace;text-align:center;padding:4px 6px;"> m <button class="btn btn-outline" style="padding:4px 10px;" onclick="testarLinha()">aplicar</button> <span style="opacity:0.55">· simula o encoder nesse valor de linha</span></span>
   </div>
   <div id="simsContainer"></div>
 
@@ -183,14 +183,15 @@ input[type="range"]::-webkit-slider-thumb{height:24px;width:24px;border-radius:5
   <div class="jogo-topo">⏱ <span id="jogoTempo">0:00</span></div>
   <div class="jogo-estado" id="jogoEstado">🎣 RECOLHA A LINHA!</div>
   <div class="jogo-linha">
-    <div class="jogo-linha-num" id="jogoLinhaNum">0.0 m</div>
-    <div class="jogo-linha-sub">linha FORA (de <span id="jogoLimite">150</span> m) — <b>não deixe acabar</b></div>
+    <div style="display:flex;gap:40px;justify-content:center;flex-wrap:wrap;">
+      <div><div class="jogo-linha-num" id="jogoPlayerReeled" style="color:#00e676">0.0 m</div><div class="jogo-linha-sub">🎣 você recolheu</div></div>
+      <div><div class="jogo-linha-num" id="jogoFishPulled" style="color:#ff5f5f">0.0 m</div><div class="jogo-linha-sub">🐟 peixe puxou</div></div>
+    </div>
     <div class="jogo-bar"><div class="jogo-bar-fill" id="jogoBarFill"></div></div>
   </div>
-  <div style="display:flex;gap:24px;justify-content:center;flex-wrap:wrap;font-size:1.05rem;">
-    <span>🐟 peixe puxou <b id="jogoFishPulled" style="color:#ff5f5f">0.0 m</b></span>
-    <span>🎣 você recolheu <b id="jogoPlayerReeled" style="color:#00e676">0.0 m</b></span>
+  <div style="display:flex;gap:24px;justify-content:center;flex-wrap:wrap;font-size:0.95rem;opacity:0.85;">
     <span>🧵 carretel <b id="jogoCarretel">0.0 m</b></span>
+    <span>💀 perde em <b id="jogoLimite">30</b> m</span>
   </div>
   <div style="display:flex;gap:10px;justify-content:center;font-size:0.8rem;opacity:0.7;">🧪 <button class="btn btn-outline" style="padding:3px 10px;" onclick="simEncoder(-1)">🐟 peixe puxa 1m (↓)</button><button class="btn btn-outline" style="padding:3px 10px;" onclick="simEncoder(1)">🎣 recolher 1m (↑)</button></div>
   <div><button class="btn btn-red" onclick="desistirJogo()">■ Desistir</button></div>
@@ -237,7 +238,7 @@ input[type="range"]::-webkit-slider-thumb{height:24px;width:24px;border-radius:5
 //  (Lê simpesca2_cal_* só pra estimativa/gauge — calibração é global do aparelho, read-only.)
 // ══════════════════════════════════════════════════════════════════════════════
 const ESC_POS=40, ESC_NEG=-20, ESC_RANGE=ESC_POS-ESC_NEG, PX_POR_S=10;   // PX_POR_S = px por segundo na timeline ROLÁVEL (~90s por tela na largura do card)
-let DURACAO=1200;   // 20 min (⏱ configurável). Curva ÚNICA; timeline LARGA e rolável na horizontal.
+let DURACAO=1500;   // 25 min (⏱ configurável). Curva ÚNICA; timeline LARGA e rolável na horizontal.
 const FREIO_MAX_DEF={pirarara:11}, PESO_MAX_DEF={pirarara:50}, PESO_MIN=1, MAX_PUXADA_A=30;
 const LETRAS=['pirarara'], NOMES=['Pirarará'], NSIMS=1;
 const SIMS=[{pontos:[]}];
@@ -456,7 +457,7 @@ function salvarGenCfg(idx){ GEN_CAMPOS.forEach(c=>{ const el=document.getElement
 function carregarGenCfg(idx){ GEN_CAMPOS.forEach(c=>{ const v=localStorage.getItem('simpesca2_aleat_gen_'+LETRAS[idx]+'_'+c); if(v!==null){ const el=document.getElementById(c+idx); if(el) el.value=v; } }); const q=document.getElementById('freioQuad'+idx); const qv=localStorage.getItem('simpesca2_aleat_gen_'+LETRAS[idx]+'_freioquad'); if(q&&qv!==null) q.checked=(qv==='1'); const fv=document.getElementById('freioVar'+idx); const fvv=localStorage.getItem('simpesca2_aleat_gen_'+LETRAS[idx]+'_freiovar'); if(fv&&fvv!==null) fv.checked=(fvv==='1'); }
 
 // ══ RENDER ═════════════════════════════════════════════════════════════════════
-function salvarDuracaoTotal(){ const el=document.getElementById('duracaoTotalMin'); let m=el?parseFloat(el.value):20; if(!(m>0)) m=20; DURACAO=Math.round(m*60); localStorage.setItem('simpesca2_aleat_duracao', m); renderTicks(0); renderCurva(0); }   // muda a duração da briga (⏱ min), redesenha as marcas + re-larga a timeline; regere (🎲) pra a curva escalar
+function salvarDuracaoTotal(){ const el=document.getElementById('duracaoTotalMin'); let m=el?parseFloat(el.value):25; if(!(m>0)) m=25; DURACAO=Math.round(m*60); localStorage.setItem('simpesca2_aleat_duracao', m); renderTicks(0); renderCurva(0); }   // muda a duração da briga (⏱ min), redesenha as marcas + re-larga a timeline; regere (🎲) pra a curva escalar
 function yOf(v){ return ((ESC_POS-v)/ESC_RANGE)*100; }
 function renderTicks(idx){
   const inner=document.getElementById('tlInner'+idx); if(!inner) return;
@@ -615,7 +616,7 @@ function loopJogo(){
   const raw=v;
   if(Math.abs(v)<0.5) v = freioRepousoForca();      // zona morta -> freio de repouso (eixo nunca livre)
   aplicarMotor(v, raw);
-  const L=Math.abs(linhaCarretel()), lim=linhaMaxJogo();   // derrota do JOGO = peixe puxar 'linhaMaxJogo' (separado do limite de segurança do carretel)
+  const L=Math.abs(linhaCarretel()), lim=Math.abs(linhaMaxJogo());   // derrota do JOGO = |carretel| chegar em |linhaMaxJogo| (aceita −; separado do limite de segurança)
   const dL=L-lastLjogo; lastLjogo=L;
   if(dL>0) fishPulled+=dL; else playerReeled+=-dL;   // peixe puxou (linha saiu) vs jogador recolheu (linha entrou)
   if(fishPulled>0) jaPuxou=true;   // o peixe já puxou linha -> a vitória pode disparar quando o jogador recuperar tudo
@@ -626,8 +627,7 @@ function loopJogo(){
 function fmtT(s){ return Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0'); }
 function atualizarHUDJogo(t, L, lim){
   const te=document.getElementById('jogoTempo'); if(te) te.textContent=fmtT(t);
-  const ln=document.getElementById('jogoLinhaNum'); if(ln) ln.textContent=L.toFixed(1)+' m';
-  const li=document.getElementById('jogoLimite'); if(li) li.textContent=lim.toFixed(0);
+  const li=document.getElementById('jogoLimite'); if(li) li.textContent=linhaMaxJogo().toFixed(0);   // mostra o valor configurado (com sinal)
   const bf=document.getElementById('jogoBarFill'); if(bf){ const f=Math.max(0,Math.min(100,(L/lim)*100)); bf.style.width=f+'%'; bf.style.background=f>80?'#ff1744':f>50?'#ffd600':'#00e676'; }
   const fp=document.getElementById('jogoFishPulled'); if(fp) fp.textContent=fishPulled.toFixed(1)+' m';
   const pr=document.getElementById('jogoPlayerReeled'); if(pr) pr.textContent=playerReeled.toFixed(1)+' m';
@@ -657,12 +657,12 @@ function desistirJogo(){ if(jogoAtivo){ jogoAtivo=false; clearInterval(jogoTimer
 // ══ PRÉ-JOGO (Fase 2): posiciona a linha na faixa antes de começar ════════════
 let startL=0, preTimer=null, contTimer=null, recolherFase=0, autoRefL=0, autoRefT=0, ultimoJogo=null;
 let fishPulled=0, playerReeled=0, lastLjogo=0, jogoOffset=0;   // acumuladores do jogo + buffer guardado ao zerar o carretel no início
-function faixaMin(){ const v=parseFloat(localStorage.getItem('simpesca2_aleat_faixa_min')); return isFinite(v)?v:-5; }
-function faixaMax(){ const v=parseFloat(localStorage.getItem('simpesca2_aleat_faixa_max')); return isFinite(v)?v:-15; }
+function faixaMin(){ const v=parseFloat(localStorage.getItem('simpesca2_aleat_faixa_min')); return isFinite(v)?v:-10; }
+function faixaMax(){ const v=parseFloat(localStorage.getItem('simpesca2_aleat_faixa_max')); return isFinite(v)?v:-12; }
 function salvarFaixa(){ const mn=document.getElementById('faixaMinIn'), mx=document.getElementById('faixaMaxIn'); if(mn) localStorage.setItem('simpesca2_aleat_faixa_min', mn.value); if(mx) localStorage.setItem('simpesca2_aleat_faixa_max', mx.value); agendarSyncCal(); }
 function tempoMinVit(){ const v=parseFloat(localStorage.getItem('simpesca2_aleat_tempomin')); return (isFinite(v)&&v>=0)?v:20; }   // tempo mín. (s) antes de a vitória poder disparar
 function salvarTempoMin(){ const el=document.getElementById('tempoMinIn'); if(el) localStorage.setItem('simpesca2_aleat_tempomin', el.value); agendarSyncCal(); }
-function linhaMaxJogo(){ const v=parseFloat(localStorage.getItem('simpesca2_aleat_linhamax')); return (isFinite(v)&&v>0)?v:30; }   // linha máx que o peixe pode puxar no jogo antes de fugir (m, do início) — separado do limite de segurança
+function linhaMaxJogo(){ const v=parseFloat(localStorage.getItem('simpesca2_aleat_linhamax')); return (isFinite(v)&&v!==0)?v:-30; }   // linha máx que o peixe pode puxar no jogo antes de fugir (aceita + ou −; a derrota usa o VALOR ABSOLUTO) — separado do limite de segurança
 function salvarLinhaMax(){ const el=document.getElementById('linhaMaxIn'); if(el) localStorage.setItem('simpesca2_aleat_linhamax', el.value); agendarSyncCal(); }
 function beep(freq, dur){ try{ const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return; const ac=new AC(); const o=ac.createOscillator(), g=ac.createGain(); o.frequency.value=freq||880; o.connect(g); g.connect(ac.destination); g.gain.value=0.18; o.start(); setTimeout(()=>{ try{o.stop();ac.close();}catch(e){} }, dur||120); }catch(e){} }
 function contagemRegressiva(n, onEnd){ const cd=document.getElementById('jogoContagem'); if(!cd){ if(onEnd) onEnd(); return; } cd.classList.add('on'); let k=n; const tick=()=>{ if(k<=0){ cd.classList.remove('on'); cd.textContent=''; if(onEnd) onEnd(); return; } cd.textContent=k; beep(880,120); k--; contTimer=setTimeout(tick,1000); }; tick(); }
