@@ -138,6 +138,7 @@ input[type="range"]::-webkit-slider-thumb{height:24px;width:24px;border-radius:5
     <span>⏱ <b>Duração:</b> <input type="number" id="duracaoTotalMin" min="1" max="60" step="1" value="20" oninput="salvarDuracaoTotal()" style="width:56px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:monospace;text-align:center;padding:4px 6px;outline:none;"> min</span>
     <span>🎣 <b>Faixa de linha:</b> <input type="number" id="faixaMinIn" step="1" value="5" oninput="salvarFaixa()" style="width:56px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:monospace;text-align:center;padding:4px 6px;"> a <input type="number" id="faixaMaxIn" step="1" value="15" oninput="salvarFaixa()" style="width:56px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:monospace;text-align:center;padding:4px 6px;"> m</span>
     <span>🏆 <b>Tempo mín. vitória:</b> <input type="number" id="tempoMinIn" min="0" step="1" value="20" oninput="salvarTempoMin()" style="width:56px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:monospace;text-align:center;padding:4px 6px;"> s</span>
+    <span>🐟 <b>Linha máx (perde):</b> <input type="number" id="linhaMaxIn" min="1" step="1" value="30" oninput="salvarLinhaMax()" title="Quanto de linha o PEIXE pode puxar durante o jogo antes de fugir (medido do início do jogo). É separado do limite de segurança do carretel." style="width:56px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:monospace;text-align:center;padding:4px 6px;"> m</span>
     <span style="border-left:1px solid var(--border);padding-left:16px;">🧪 <b>Teste s/ hardware:</b> carretel <input type="number" id="testeLinhaIn" step="1" value="10" style="width:64px;background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:monospace;text-align:center;padding:4px 6px;"> m <button class="btn btn-outline" style="padding:4px 10px;" onclick="testarLinha()">aplicar</button> <span style="opacity:0.55">· simula o encoder nesse valor de linha</span></span>
   </div>
   <div id="simsContainer"></div>
@@ -614,7 +615,7 @@ function loopJogo(){
   const raw=v;
   if(Math.abs(v)<0.5) v = freioRepousoForca();      // zona morta -> freio de repouso (eixo nunca livre)
   aplicarMotor(v, raw);
-  const L=Math.abs(linhaCarretel()), lim=Math.abs(limiteLinha());
+  const L=Math.abs(linhaCarretel()), lim=linhaMaxJogo();   // derrota do JOGO = peixe puxar 'linhaMaxJogo' (separado do limite de segurança do carretel)
   const dL=L-lastLjogo; lastLjogo=L;
   if(dL>0) fishPulled+=dL; else playerReeled+=-dL;   // peixe puxou (linha saiu) vs jogador recolheu (linha entrou)
   if(fishPulled>0) jaPuxou=true;   // o peixe já puxou linha -> a vitória pode disparar quando o jogador recuperar tudo
@@ -661,6 +662,8 @@ function faixaMax(){ const v=parseFloat(localStorage.getItem('simpesca2_aleat_fa
 function salvarFaixa(){ const mn=document.getElementById('faixaMinIn'), mx=document.getElementById('faixaMaxIn'); if(mn) localStorage.setItem('simpesca2_aleat_faixa_min', mn.value); if(mx) localStorage.setItem('simpesca2_aleat_faixa_max', mx.value); agendarSyncCal(); }
 function tempoMinVit(){ const v=parseFloat(localStorage.getItem('simpesca2_aleat_tempomin')); return (isFinite(v)&&v>=0)?v:20; }   // tempo mín. (s) antes de a vitória poder disparar
 function salvarTempoMin(){ const el=document.getElementById('tempoMinIn'); if(el) localStorage.setItem('simpesca2_aleat_tempomin', el.value); agendarSyncCal(); }
+function linhaMaxJogo(){ const v=parseFloat(localStorage.getItem('simpesca2_aleat_linhamax')); return (isFinite(v)&&v>0)?v:30; }   // linha máx que o peixe pode puxar no jogo antes de fugir (m, do início) — separado do limite de segurança
+function salvarLinhaMax(){ const el=document.getElementById('linhaMaxIn'); if(el) localStorage.setItem('simpesca2_aleat_linhamax', el.value); agendarSyncCal(); }
 function beep(freq, dur){ try{ const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return; const ac=new AC(); const o=ac.createOscillator(), g=ac.createGain(); o.frequency.value=freq||880; o.connect(g); g.connect(ac.destination); g.gain.value=0.18; o.start(); setTimeout(()=>{ try{o.stop();ac.close();}catch(e){} }, dur||120); }catch(e){} }
 function contagemRegressiva(n, onEnd){ const cd=document.getElementById('jogoContagem'); if(!cd){ if(onEnd) onEnd(); return; } cd.classList.add('on'); let k=n; const tick=()=>{ if(k<=0){ cd.classList.remove('on'); cd.textContent=''; if(onEnd) onEnd(); return; } cd.textContent=k; beep(880,120); k--; contTimer=setTimeout(tick,1000); }; tick(); }
 function abrirPreJogo(){
@@ -818,7 +821,7 @@ async function enviarSyncCal(){
   }catch(e){ return; }
   if(!cfg || typeof cfg!=='object'){ setSyncBadge('err'); return; }   // existe mas não deu pra ler -> ABORTA (não apaga gen/sync)
   cfg.cal=cfg.cal||{}; cfg.cal.limite=limiteLinha(); cfg.cal.inv=localStorage.getItem('simpesca2_cal_inv')||'1';
-  cfg.desafio=cfg.desafio||{}; cfg.desafio.faixaMin=faixaMin(); cfg.desafio.faixaMax=faixaMax(); cfg.desafio.tempoMin=tempoMinVit(); cfg.desafio.scoreKp=scoreKp(); cfg.desafio.scoreKv=scoreKv();   // bloco separado do Desafio
+  cfg.desafio=cfg.desafio||{}; cfg.desafio.faixaMin=faixaMin(); cfg.desafio.faixaMax=faixaMax(); cfg.desafio.tempoMin=tempoMinVit(); cfg.desafio.linhaMax=linhaMaxJogo(); cfg.desafio.scoreKp=scoreKp(); cfg.desafio.scoreKv=scoreKv();   // bloco separado do Desafio
   cfg.criado=new Date().toISOString();
   const body={message:'auto: carretel + desafio', content:btoa(unescape(encodeURIComponent(JSON.stringify(cfg,null,2))))}; if(sha) body.sha=sha;
   let r=null; try{ r=await fetch(url,{method:'PUT',headers,body:JSON.stringify(body)}); }catch(e){}
@@ -826,8 +829,8 @@ async function enviarSyncCal(){
 }
 function aplicarConfigDesafio(d){ if(!d || typeof d!=='object') return;   // aplica o bloco config.desafio do GitHub nas chaves locais + reflete nos campos
   const set=(k,v)=>{ if(v!=null && isFinite(v)) localStorage.setItem(k, v); };
-  set('simpesca2_aleat_faixa_min', d.faixaMin); set('simpesca2_aleat_faixa_max', d.faixaMax); set('simpesca2_aleat_tempomin', d.tempoMin); set('simpesca2_aleat_score_kp', d.scoreKp); set('simpesca2_aleat_score_kv', d.scoreKv);
-  const mn=document.getElementById('faixaMinIn'); if(mn) mn.value=faixaMin(); const mx=document.getElementById('faixaMaxIn'); if(mx) mx.value=faixaMax(); const tm=document.getElementById('tempoMinIn'); if(tm) tm.value=tempoMinVit(); const kp=document.getElementById('scoreKp'); if(kp) kp.value=scoreKp(); const kv=document.getElementById('scoreKv'); if(kv) kv.value=scoreKv();
+  set('simpesca2_aleat_faixa_min', d.faixaMin); set('simpesca2_aleat_faixa_max', d.faixaMax); set('simpesca2_aleat_tempomin', d.tempoMin); set('simpesca2_aleat_linhamax', d.linhaMax); set('simpesca2_aleat_score_kp', d.scoreKp); set('simpesca2_aleat_score_kv', d.scoreKv);
+  const mn=document.getElementById('faixaMinIn'); if(mn) mn.value=faixaMin(); const mx=document.getElementById('faixaMaxIn'); if(mx) mx.value=faixaMax(); const tm=document.getElementById('tempoMinIn'); if(tm) tm.value=tempoMinVit(); const lmx=document.getElementById('linhaMaxIn'); if(lmx) lmx.value=linhaMaxJogo(); const kp=document.getElementById('scoreKp'); if(kp) kp.value=scoreKp(); const kv=document.getElementById('scoreKv'); if(kv) kv.value=scoreKv();
 }
 // ── Curva do DESAFIO -> salva no curvas.json como 7ª sim (chave "desafio"), read-modify-write (preserva as 6 espécies). Gated por token. ──
 const GH_CURVAS_A='curvas.json';
@@ -865,7 +868,7 @@ for(let i=0;i<NSIMS;i++) montarBloco(i);   // 1 bloco (pirarará, 20 min)
 // Carretel no TOPO da página (antes da curva)
 { const carr=document.querySelector('[data-cardkey="linha"]'); const cardCarr=carr?carr.closest('.card'):null; const sc=document.getElementById('simsContainer'); const cardCurva=sc?sc.closest('.card'):null; if(cardCarr&&cardCurva&&cardCurva.parentNode) cardCurva.parentNode.insertBefore(cardCarr, cardCurva); }
 { const dm=parseFloat(localStorage.getItem('simpesca2_aleat_duracao')); if(isFinite(dm)&&dm>0){ DURACAO=Math.round(dm*60); const el=document.getElementById('duracaoTotalMin'); if(el) el.value=dm; } }   // duração salva -> seta DURACAO antes de gerar/render
-{ const mn=document.getElementById('faixaMinIn'), mx=document.getElementById('faixaMaxIn'); if(mn) mn.value=faixaMin(); if(mx) mx.value=faixaMax(); const tm=document.getElementById('tempoMinIn'); if(tm) tm.value=tempoMinVit(); }   // faixa + tempo mín. salvos -> refletem nos campos da página
+{ const mn=document.getElementById('faixaMinIn'), mx=document.getElementById('faixaMaxIn'); if(mn) mn.value=faixaMin(); if(mx) mx.value=faixaMax(); const tm=document.getElementById('tempoMinIn'); if(tm) tm.value=tempoMinVit(); const lmx=document.getElementById('linhaMaxIn'); if(lmx) lmx.value=linhaMaxJogo(); }   // faixa + tempo mín. + linha máx salvos -> refletem nos campos da página
 if(localStorage.getItem('simpesca2_aleat_cfgrow')==='0'){ const el=document.getElementById('configRow'), btn=document.getElementById('cfgColBtn'); if(el) el.style.display='none'; if(btn) btn.textContent='▸'; }   // restaura a linha de ajustes oculta
 for(let i=0;i<NSIMS;i++){ carregarGenCfg(i); setupArea(i); SIMS[i].pontos = carregarPontosStore(i) || gerarCurvaEspecie(i); salvarPontos(i); renderTicks(i); renderCurva(i); }   // 1ª vez: gera/carrega a curva
 document.querySelectorAll('.gen-row input').forEach(el=>el.addEventListener('change',()=>salvarGenCfg(+el.id.slice(-1)||0)));   // persiste ajustes ao editar (idx pelo sufixo do id)
