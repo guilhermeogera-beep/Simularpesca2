@@ -641,12 +641,12 @@ function abrirPreJogo(){
   recolherFase=0; fecharHUDJogo(); fecharRank();
   document.getElementById('jogoContagem').classList.remove('on'); document.getElementById('preJogo').classList.add('on');
   aplicarMotor(0);                                   // eixo livre (o usuário pode enrolar na vara)
-  clearInterval(preTimer); preTimer=setInterval(preJogoLoop, 150);
+  clearInterval(preTimer); preTimer=setInterval(preJogoLoop, 150); preJogoLoop();   // roda 1x já pra mostrar o valor ATUAL do carretel na hora
 }
 function preJogoLoop(){
   const L=Math.abs(linhaCarretel()), mn=faixaMin(), mx=faixaMax(), lim=Math.abs(limiteLinha());
   const ln=document.getElementById('preLinhaNum'); if(ln) ln.textContent=L.toFixed(1)+' m';
-  const bf=document.getElementById('preBarFill'); if(bf){ const f=Math.max(0,Math.min(100,(L/lim)*100)); bf.style.width=f+'%'; bf.style.background=(L>=mn&&L<=mx)?'#00e676':'#ffd600'; }
+  const bf=document.getElementById('preBarFill'); if(bf){ const topo=Math.max(mx*2, mn+4, L*1.05); const f=Math.max(0,Math.min(100,(L/topo)*100)); bf.style.width=f+'%'; bf.style.background=(L>=mn&&L<=mx)?'#00e676':(L>mx?'#ffd600':'#ff5252'); }   // barra escalada à FAIXA (não ao limite de 150) — movimento visível
   const st=document.getElementById('preStatus'), btn=document.getElementById('btnIniciarJogo');
   if(L>=mn && L<=mx){ recolherFase=0; aplicarMotor(0); if(st) st.textContent='✅ linha na faixa — pode iniciar'; if(btn) btn.disabled=false; return; }
   if(btn) btn.disabled=true;
