@@ -588,8 +588,9 @@ function iniciarJogoReal(){
   if(jogoAtivo) return;
   if(simRodando) stopSim(0);                        // corta a prévia visual, se estiver rolando
   jogoAtivo=true; jaPuxou=false; pararHoldPosSim();
-  startL=Math.abs(linhaCarretel());                 // linha no início (o pré-jogo posicionou na faixa) — NÃO zera
-  fishPulled=0; playerReeled=0; lastLjogo=startL;   // zera os acumuladores da briga (medidos a partir do início)
+  jogoOffset=contagemEncoder;                        // guarda a linha que JÁ tinha no carretel (buffer do pré-jogo)
+  contagemEncoder=0; salvarContagem();               // ZERA o carretel pro jogo — display limpo, tudo medido do 0
+  startL=0; fishPulled=0; playerReeled=0; lastLjogo=0; atualizarContadores();
   enviarConfigRPM(freioRepousoEscalado(), freioPosSimA()); enviarRepouso(true);   // configura o ESP + liga o freio de repouso
   fecharPreJogo();
   document.getElementById('jogoResult').classList.remove('on'); document.getElementById('jogoHUD').classList.add('on');
@@ -606,10 +607,10 @@ function loopJogo(){
   const L=Math.abs(linhaCarretel()), lim=Math.abs(limiteLinha());
   const dL=L-lastLjogo; lastLjogo=L;
   if(dL>0) fishPulled+=dL; else playerReeled+=-dL;   // peixe puxou (linha saiu) vs jogador recolheu (linha entrou)
-  if(L>startL+3 || t>20) jaPuxou=true;   // o peixe puxou linha além do início (ou 20s) -> a vitória pode disparar quando recolher de volta
+  if(fishPulled>3) jaPuxou=true;   // o peixe já puxou linha (>3m) -> a vitória pode disparar quando o jogador recuperar tudo (SEM timer)
   atualizarHUDJogo(t, L, lim);
-  if(L>=lim){ terminarJogo('perdeu', t); return; }   // acabou a linha (limite absoluto do carretel) -> peixe fugiu
-  if(jaPuxou && L<=startL){ terminarJogo('ganhou', t); return; }   // recolheu de volta ao início (recuperou tudo que o peixe puxou); o buffer/faixa NÃO conta
+  if(L>=lim){ terminarJogo('perdeu', t); return; }   // acabou a linha (limite do carretel) -> peixe fugiu
+  if(jaPuxou && playerReeled>=fishPulled){ terminarJogo('ganhou', t); return; }   // jogador recolheu MAIS/igual que o peixe puxou -> peixe no barco
 }
 function fmtT(s){ return Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0'); }
 function atualizarHUDJogo(t, L, lim){
@@ -623,6 +624,7 @@ function atualizarHUDJogo(t, L, lim){
 }
 function terminarJogo(res, t){
   if(!jogoAtivo) return; jogoAtivo=false; clearInterval(jogoTimer);
+  contagemEncoder+=jogoOffset; jogoOffset=0; salvarContagem(); atualizarContadores();   // devolve o buffer que tinha antes de zerar -> carretel volta ao valor real
   enviarRepouso(false); iniciarHoldPosSim();         // segura o freio 5s (segurança) e solta
   const r=document.getElementById('jogoResult');
   if(res==='ganhou'){
@@ -639,11 +641,11 @@ function terminarJogo(res, t){
     r.classList.add('on');
   }
 }
-function desistirJogo(){ if(jogoAtivo){ jogoAtivo=false; clearInterval(jogoTimer); enviarRepouso(false); iniciarHoldPosSim(); } fecharHUDJogo(); }
+function desistirJogo(){ if(jogoAtivo){ jogoAtivo=false; clearInterval(jogoTimer); contagemEncoder+=jogoOffset; jogoOffset=0; salvarContagem(); atualizarContadores(); enviarRepouso(false); iniciarHoldPosSim(); } fecharHUDJogo(); }
 
 // ══ PRÉ-JOGO (Fase 2): posiciona a linha na faixa antes de começar ════════════
 let startL=0, preTimer=null, contTimer=null, recolherFase=0, autoRefL=0, autoRefT=0, ultimoJogo=null;
-let fishPulled=0, playerReeled=0, lastLjogo=0;   // acumuladores do jogo: linha que o PEIXE puxou (fora) e que o JOGADOR recolheu
+let fishPulled=0, playerReeled=0, lastLjogo=0, jogoOffset=0;   // acumuladores do jogo + buffer guardado ao zerar o carretel no início
 function faixaMin(){ const v=parseFloat(localStorage.getItem('simpesca2_aleat_faixa_min')); return isFinite(v)?v:5; }
 function faixaMax(){ const v=parseFloat(localStorage.getItem('simpesca2_aleat_faixa_max')); return isFinite(v)?v:15; }
 function salvarFaixa(){ const mn=document.getElementById('faixaMinIn'), mx=document.getElementById('faixaMaxIn'); if(mn) localStorage.setItem('simpesca2_aleat_faixa_min', mn.value); if(mx) localStorage.setItem('simpesca2_aleat_faixa_max', mx.value); }
