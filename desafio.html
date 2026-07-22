@@ -656,8 +656,8 @@ function desistirJogo(){ if(jogoAtivo){ jogoAtivo=false; clearInterval(jogoTimer
 // ══ PRÉ-JOGO (Fase 2): posiciona a linha na faixa antes de começar ════════════
 let startL=0, preTimer=null, contTimer=null, recolherFase=0, autoRefL=0, autoRefT=0, ultimoJogo=null;
 let fishPulled=0, playerReeled=0, lastLjogo=0, jogoOffset=0;   // acumuladores do jogo + buffer guardado ao zerar o carretel no início
-function faixaMin(){ const v=parseFloat(localStorage.getItem('simpesca2_aleat_faixa_min')); return isFinite(v)?v:5; }
-function faixaMax(){ const v=parseFloat(localStorage.getItem('simpesca2_aleat_faixa_max')); return isFinite(v)?v:15; }
+function faixaMin(){ const v=parseFloat(localStorage.getItem('simpesca2_aleat_faixa_min')); return isFinite(v)?v:-5; }
+function faixaMax(){ const v=parseFloat(localStorage.getItem('simpesca2_aleat_faixa_max')); return isFinite(v)?v:-15; }
 function salvarFaixa(){ const mn=document.getElementById('faixaMinIn'), mx=document.getElementById('faixaMaxIn'); if(mn) localStorage.setItem('simpesca2_aleat_faixa_min', mn.value); if(mx) localStorage.setItem('simpesca2_aleat_faixa_max', mx.value); agendarSyncCal(); }
 function tempoMinVit(){ const v=parseFloat(localStorage.getItem('simpesca2_aleat_tempomin')); return (isFinite(v)&&v>=0)?v:20; }   // tempo mín. (s) antes de a vitória poder disparar
 function salvarTempoMin(){ const el=document.getElementById('tempoMinIn'); if(el) localStorage.setItem('simpesca2_aleat_tempomin', el.value); agendarSyncCal(); }
@@ -665,23 +665,25 @@ function beep(freq, dur){ try{ const AC=window.AudioContext||window.webkitAudioC
 function contagemRegressiva(n, onEnd){ const cd=document.getElementById('jogoContagem'); if(!cd){ if(onEnd) onEnd(); return; } cd.classList.add('on'); let k=n; const tick=()=>{ if(k<=0){ cd.classList.remove('on'); cd.textContent=''; if(onEnd) onEnd(); return; } cd.textContent=k; beep(880,120); k--; contTimer=setTimeout(tick,1000); }; tick(); }
 function abrirPreJogo(){
   if(jogoAtivo) return; if(simRodando) stopSim(0);
-  const fl=document.getElementById('faixaLbl'); if(fl) fl.textContent=faixaMin()+'–'+faixaMax();
+  const fl=document.getElementById('faixaLbl'); if(fl) fl.textContent=Math.min(faixaMin(),faixaMax())+' a '+Math.max(faixaMin(),faixaMax());
   recolherFase=0; fecharHUDJogo(); fecharRank();
   document.getElementById('jogoContagem').classList.remove('on'); document.getElementById('preJogo').classList.add('on');
   clearInterval(preTimer); preTimer=setInterval(preJogoLoop, 150); preJogoLoop();   // inicia o loop ANTES do motor (se aplicarMotor falhar sem hardware, o contador já roda)
   try{ aplicarMotor(0); }catch(e){}                  // eixo livre (o usuário pode enrolar na vara)
 }
 function preJogoLoop(){
-  const cur=linhaCarretel(), out=(limiteLinha()<0?-1:1), L=cur*out, mn=faixaMin(), mx=faixaMax();   // L = linha FORA (na direção do limite); 'cur' = carretel COM sinal (mostra negativo)
+  const cur=linhaCarretel(), out=(limiteLinha()<0?-1:1), mn=faixaMin(), mx=faixaMax(), lo=Math.min(mn,mx), hi=Math.max(mn,mx);   // faixa em valores de CARRETEL (com sinal); ordem-independente
   const ln=document.getElementById('preLinhaNum'); if(ln) ln.textContent=cur.toFixed(1)+' m';
-  const bf=document.getElementById('preBarFill'); if(bf){ const topo=Math.max(mx*2, mn+4, Math.abs(L)*1.05); const f=Math.max(0,Math.min(100,(L/topo)*100)); bf.style.width=f+'%'; bf.style.background=(L>=mn&&L<=mx)?'#00e676':(L>mx?'#ffd600':'#ff5252'); }   // barra escalada à FAIXA
+  const bf=document.getElementById('preBarFill'); if(bf){ const span=Math.max(hi-lo,1)*3, base=(lo+hi)/2-span/2; const f=Math.max(0,Math.min(100,((cur-base)/span)*100)); bf.style.width=f+'%'; bf.style.background=(cur>=lo&&cur<=hi)?'#00e676':'#ffd600'; }
   const st=document.getElementById('preStatus'), btn=document.getElementById('btnIniciarJogo');
-  if(L>=mn && L<=mx){ recolherFase=0; aplicarMotor(0); if(st) st.textContent='✅ linha na faixa — pode iniciar'; if(btn) btn.disabled=false; return; }
+  if(cur>=lo && cur<=hi){ recolherFase=0; aplicarMotor(0); if(st) st.textContent='✅ linha na faixa — pode iniciar'; if(btn) btn.disabled=false; return; }
   if(btn) btn.disabled=true;
-  if(L<mn){ recolherFase=0; aplicarMotor(0); if(st) st.textContent='🎣 pouca linha fora — solte linha até '+mn.toFixed(0)+' m (eixo liberado)'; return; }
-  // L > mx: motor recolhe puxando devagar, com contagem 3s+bip ANTES
-  if(recolherFase===0){ recolherFase=1; if(st) st.textContent='⚠️ linha demais — recolhendo em…'; contagemRegressiva(3, ()=>{ if(recolherFase===1){ recolherFase=2; autoRefL=linhaCarretel()*out; autoRefT=performance.now(); } }); }
-  else if(recolherFase===2){ aplicarMotor(2); if(st) st.textContent='⟲ recolhendo (motor)… '+L.toFixed(1)+' → '+mx.toFixed(0)+' m'; if(performance.now()-autoRefT>2500){ if(autoRefL-L<1){ recolherFase=0; aplicarMotor(0); if(st) st.textContent='⚠️ não reduziu — recolha na mão / confira o sentido'; } else { autoRefL=L; autoRefT=performance.now(); } } }
+  const demais = out<0 ? (cur<lo) : (cur>hi);   // linha FORA demais (além da faixa, na direção do limite)
+  if(!demais){ recolherFase=0; aplicarMotor(0); if(st) st.textContent='🎣 pouca linha fora — ajuste até a faixa ('+lo.toFixed(0)+' a '+hi.toFixed(0)+' m)'; return; }
+  // linha demais: motor recolhe puxando devagar, com contagem 3s+bip ANTES
+  const alvo = out<0 ? lo : hi;
+  if(recolherFase===0){ recolherFase=1; if(st) st.textContent='⚠️ linha demais — recolhendo em…'; contagemRegressiva(3, ()=>{ if(recolherFase===1){ recolherFase=2; autoRefL=linhaCarretel(); autoRefT=performance.now(); } }); }
+  else if(recolherFase===2){ aplicarMotor(2); if(st) st.textContent='⟲ recolhendo (motor)… '+cur.toFixed(1)+' → '+alvo.toFixed(0)+' m'; if(performance.now()-autoRefT>2500){ if((cur-autoRefL)*(-out)<1){ recolherFase=0; aplicarMotor(0); if(st) st.textContent='⚠️ não reduziu — recolha na mão / confira o sentido'; } else { autoRefL=cur; autoRefT=performance.now(); } } }
 }
 function iniciarComContagem(){ const btn=document.getElementById('btnIniciarJogo'); if(btn&&btn.disabled) return; clearInterval(preTimer); preTimer=null; recolherFase=0; aplicarMotor(0); contagemRegressiva(3, ()=>{ beep(1320,220); iniciarJogoReal(); }); }
 function fecharPreJogo(){ clearInterval(preTimer); preTimer=null; clearTimeout(contTimer); recolherFase=0; const cd=document.getElementById('jogoContagem'); if(cd) cd.classList.remove('on'); const pj=document.getElementById('preJogo'); if(pj) pj.classList.remove('on'); if(!jogoAtivo && motorChar) aplicarMotor(0); }
