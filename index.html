@@ -86,12 +86,14 @@
             const grid=document.getElementById('localGrid'); grid.innerHTML='';
             for(const id of ESPECIES_IDS){
                 let tem=false; try{ tem=await temVideoDB('video_'+id); }catch(e){}
+                const nomeArq=localStorage.getItem('simpesca2_video_nome_'+id)||'';
                 const div=document.createElement('div'); div.className='local-item';
                 div.innerHTML=
                     '<label for="fi_'+id+'" style="cursor:pointer;display:flex;align-items:center;gap:6px;width:100%;padding:4px 0;">'+
                     '<span class="dot'+(tem?' ok':'')+'" id="dot_'+id+'"></span>'+
                     '<span id="lbl_'+id+'" style="'+(tem?'color:#00e676;font-weight:bold':'')+'">'+(tem?'✅ ':'')+ESPECIES_NOMES[id]+'</span>'+
-                    '</label>';
+                    '</label>'+
+                    '<div id="arq_'+id+'" style="font-size:10px;color:#3d5d7e;padding-left:15px;margin-top:-2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+nomeArq+'">'+nomeArq+'</div>';
                 grid.appendChild(div);
             }
         }
@@ -100,8 +102,10 @@
             const f=input.files[0]; if(!f) return;
             try{
                 await salvarVideoDB('video_'+id,f);
+                localStorage.setItem('simpesca2_video_nome_'+id, f.name);
                 document.getElementById('dot_'+id).className='dot ok';
                 const lbl=document.getElementById('lbl_'+id); lbl.style.color='#00e676'; lbl.style.fontWeight='bold'; lbl.textContent='✅ '+ESPECIES_NOMES[id];
+                const arq=document.getElementById('arq_'+id); if(arq){ arq.textContent=f.name; arq.title=f.name; }
             }catch(e){ alert('Erro ao salvar: '+e); }
             input.value='';
         }
