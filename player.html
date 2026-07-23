@@ -68,9 +68,9 @@ input[type=text]:focus{border-color:var(--accent);}
 #hudEstado.puxando{color:var(--red);border-color:var(--red);background:rgba(255,23,68,0.22);}
 #hudEstado.recolher{color:var(--green);border-color:var(--green);background:rgba(0,230,118,0.22);}
 #hudEstado.freando{color:#ffc061;border-color:#ffb84d;background:rgba(255,170,0,0.22);}
-#hudCarretel{position:fixed;top:12px;right:14px;z-index:62;border:2px solid var(--red);border-radius:14px;padding:10px 18px;font-size:1.9rem;font-weight:800;letter-spacing:1px;display:none;background:rgba(0,0,0,0.55);color:var(--red);pointer-events:none;text-shadow:0 0 12px rgba(255,23,68,0.5);}
+#hudCarretel{position:fixed;top:12px;right:14px;z-index:62;border:2px solid #00e676;border-radius:14px;padding:10px 18px;font-size:1.9rem;font-weight:800;letter-spacing:1px;display:none;background:rgba(0,0,0,0.55);color:#00e676;pointer-events:none;text-shadow:0 0 12px rgba(0,230,118,0.5);}
 #hudCarretel.visivel{display:block;}
-#hudCarretel.travado{color:#fff;border-color:var(--red);background:rgba(255,23,68,0.85);}
+#hudCarretel.sem-linha{color:#fff;border-color:var(--red);background:rgba(255,23,68,0.85);text-shadow:none;}
 #hudTimeline{position:fixed;top:58px;left:14px;z-index:61;width:280px;max-width:58vw;height:38px;background:rgba(0,0,0,0.4);border:1px solid var(--border);border-radius:9px;padding:3px;display:none;pointer-events:none;}
 #hudTimeline.visivel{display:block;}
 #tlCanvas{width:100%;height:100%;display:block;border-radius:6px;}
@@ -288,11 +288,12 @@ function metrosAtuais(){ return Math.max(0, metrosGanhos); }   // só os metros 
 function atualizarLinha(){ const m=metrosAtuais(); document.getElementById('linhaBadge').textContent='LINHA '+m.toFixed(1)+' m'; document.getElementById('hudLinha').textContent='🎣 Enrolada: '+m.toFixed(1)+' m';
   const car=linhaCarretel(), L=limiteLinha(), travadoLin=Math.abs(car)>=Math.abs(L);
   const hc=document.getElementById('hudCarretel');
-  hc.textContent='📍 Carretel: '+car.toFixed(1)+' / '+L.toFixed(0)+' m'; hc.classList.toggle('travado', travadoLin);
+  hc.textContent='📍 Carretel: '+car.toFixed(1)+' / '+L.toFixed(0)+' m';
   const bar=document.getElementById('carretelBar'); bar.textContent='Carretel: '+car.toFixed(1)+' m';   // barra fixa embaixo (seleção + resultado): limpo, só o valor atual
   const semLinha=linhaDisponivel()<linhaNecessariaMax();   // não cabe nem a sim mais exigente -> avisar pra recolher/re-spool ANTES de escolher
   bar.classList.toggle('sem-linha', semLinha);                       // vermelho
   bar.classList.toggle('linha-ok', !semLinha && car>=0);             // verde: carretel no 0/positivo = linha sobrando
+  hc.classList.toggle('sem-linha', semLinha);                        // hudCarretel: verde (padrão) · vermelho só quando NÃO cabe a próxima jogada
   const bl=document.getElementById('btnLinha'); bl.textContent='⟲ '+car.toFixed(1)+' / '+L.toFixed(0)+' m'; bl.style.color=travadoLin?'#ff5a7d':''; bl.style.borderColor=travadoLin?'#ff5a7d':'';
   atualizarLinhaOverlay(); }
 // Linha ABSOLUTA do carretel (posição líquida do encoder) — ACUMULA entre jogadores, NÃO zera por jogo
