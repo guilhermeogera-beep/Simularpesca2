@@ -74,8 +74,8 @@ input[type="range"]::-webkit-slider-thumb{height:24px;width:24px;border-radius:5
 .jogo-bar-fill{height:100%;width:0%;background:#00e676;border-radius:13px;transition:width 0.15s linear,background 0.3s;}
 .jogo-barra2{display:flex;align-items:center;gap:12px;margin-top:18px;width:100%;max-width:660px;}
 .jb-ico{font-size:2.1rem;line-height:1;flex-shrink:0;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.5));}
-.jb-track{position:relative;flex:1;height:26px;border-radius:13px;background:linear-gradient(90deg,#00e676 0%,#ffd600 50%,#ff1744 100%);box-shadow:inset 0 0 0 1px rgba(255,255,255,0.12);}
-.jb-peixe{position:absolute;top:50%;left:0%;transform:translate(-50%,-50%);font-size:2rem;line-height:1;transition:left 0.15s linear;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.7));will-change:left;}
+.jb-track{position:relative;flex:1;height:26px;border-radius:13px;background:#00e676;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.12);transition:background 0.2s linear;}
+.jb-peixe{position:absolute;top:50%;left:0%;transform:translate(-50%,-50%);font-size:4rem;line-height:1;transition:left 0.15s linear;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.7));will-change:left;z-index:2;pointer-events:none;}
 .jogo-result{display:none;position:absolute;inset:0;background:rgba(5,10,15,0.98);flex-direction:column;align-items:center;justify-content:center;gap:22px;padding:24px;}
 .jogo-result.on{display:flex;}
 .jogo-res-titulo{font-size:3.2rem;font-weight:800;}
@@ -193,7 +193,7 @@ input[type="range"]::-webkit-slider-thumb{height:24px;width:24px;border-radius:5
     </div>
     <div class="jogo-barra2">
       <span class="jb-ico" title="pescador ganha">🎣</span>
-      <div class="jb-track"><span class="jb-peixe" id="jogoPeixeMarker">🐟</span></div>
+      <div class="jb-track" id="jogoBarTrack"><span class="jb-peixe" id="jogoPeixeMarker">🐟</span></div>
       <span class="jb-ico" title="peixe foge">💀</span>
     </div>
   </div>
@@ -635,10 +635,13 @@ function loopJogo(){
   if(jaPuxou && t>=tempoMinVit() && playerReeled>=fishPulled){ terminarJogo('ganhou', t); return; }   // deu o tempo mín. E a linha está zerada (recolheu ≥ que o peixe puxou) -> peixe no barco
 }
 function fmtT(s){ return Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0'); }
+function corGradiente(f){ const g=[0,230,118], y=[255,214,0], r=[255,23,68]; let a,b,t; if(f<=50){ a=g; b=y; t=f/50; } else { a=y; b=r; t=(f-50)/50; } const c=i=>Math.round(a[i]+(b[i]-a[i])*t); return 'rgb('+c(0)+','+c(1)+','+c(2)+')'; }   // cor no ponto f(0-100) do degradê verde->amarelo->vermelho
 function atualizarHUDJogo(t, L, lim){
   const te=document.getElementById('jogoTempo'); if(te) te.textContent=fmtT(t);
   const li=document.getElementById('jogoLimite'); if(li) li.textContent=linhaMaxJogo().toFixed(0);   // mostra o valor configurado (com sinal)
-  const pm=document.getElementById('jogoPeixeMarker'); if(pm){ const f=Math.max(0,Math.min(100,(L/lim)*100)); pm.style.left=f+'%'; pm.style.transform='translate(-50%,-50%) scaleX('+(f>50?-1:1)+')'; }   // 🐟 anda: 0% (esq/🎣 ganha) -> 100% (dir/💀 perde); vira pra encarar o lado
+  const f=Math.max(0,Math.min(100,(L/lim)*100));
+  const pm=document.getElementById('jogoPeixeMarker'); if(pm){ pm.style.left=f+'%'; pm.style.transform='translate(-50%,-50%) scaleX('+(f>50?-1:1)+')'; }   // 🐟 anda: 0% (esq/🎣 ganha) -> 100% (dir/💀 perde); vira pra encarar o lado
+  const tr=document.getElementById('jogoBarTrack'); if(tr) tr.style.background=corGradiente(f);   // barra INTEIRA na cor da posição do peixe (verde->amarelo->vermelho)
   const fp=document.getElementById('jogoFishPulled'); if(fp) fp.textContent=fishPulled.toFixed(1)+'m';
   const pr=document.getElementById('jogoPlayerReeled'); if(pr) pr.textContent=playerReeled.toFixed(1)+'m';
   const cr=document.getElementById('jogoCarretel'); if(cr) cr.textContent=linhaCarretel().toFixed(1)+' m';
