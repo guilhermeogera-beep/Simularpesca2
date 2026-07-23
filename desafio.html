@@ -266,7 +266,8 @@ function ampMotor(pct){ const m=Math.abs(pct); return pct>=0 ? m/100*MAX_PUXADA_
 function estimarLinha(pts, esc=1){ if(!pts||!pts.length) return 0; let m=0; for(let i=0;i<pts.length-1;i++){ const a=pts[i], b=pts[i+1], dt=b.t-a.t; if(dt<=0) continue; const steps=Math.max(1,Math.round(dt/0.25)), sdt=dt/steps; for(let s=0;s<steps;s++){ const pot=(a.pot+(b.pot-a.pot)*((s+0.5)/steps))*esc; if(pot>0.5) m+=rpmParaMs(rpmAlvo(pot))*sdt; } } return m; }   // integra por SEGMENTO (rápido; sem varrer os pontos a cada amostra)
 function escalaPeso(id,w){ const mx=pesoMaxDash(id); return mx>0 ? Math.min(1, Math.pow(w/mx, 2/3)) : 1; }
 function pesoMaxDash(id){ return PESO_MAX_DEF[id]||20; }
-function pesoSimValor(i){ const el=document.getElementById('pesoSim'+i); const mx=pesoMaxDash(LETRAS[i]); const v=el?parseFloat(el.value):NaN; return isFinite(v)?Math.max(PESO_MIN,Math.min(mx,v)):mx; }
+function pesoStep(id){ const mx=pesoMaxDash(id); return mx>0 ? mx/10 : 1; }   // escolha de 10 em 10% do máximo (igual ao player/dash)
+function pesoSimValor(i){ const el=document.getElementById('pesoSim'+i); const id=LETRAS[i], mx=pesoMaxDash(id), st=pesoStep(id); let v=el?parseFloat(el.value):NaN; if(!isFinite(v)) v=mx; return Math.max(st, Math.min(mx, Math.round(v/st)*st)); }   // GRUDA no degrau de 10%
 
 // ══ GERADOR (cópia fiel do dashboard) ══════════════════════════════════════════
 let genFreioMax=0, genFreioQuad=false, genFreioVar=false, genFreioFad=0, genMinPux=7;
@@ -735,7 +736,7 @@ function montarBloco(i){
   const cont=document.getElementById('simsContainer');
   const e={id:LETRAS[i], nome:NOMES[i]}, cls=['a','b','c'][i%3];
   const eixoHtml=[40,30,20,10,0,-10,-20].map(v=>{ const top=(40-v)/60*100, ty=v===40?'0':v===-20?'-100%':'-50%'; return '<span style="position:absolute;left:3px;top:'+top.toFixed(2)+'%;transform:translateY('+ty+');font-size:8.5px;font-family:monospace;color:rgba(200,216,232,0.6);text-shadow:0 0 3px #03070b,0 0 2px #03070b;">'+(v>0?'+':'')+v+'</span>'; }).join('');
-  const pmx=pesoMaxDash(e.id); const pwv=(function(){ const v=parseFloat(localStorage.getItem('simpesca2_aleat_peso_'+e.id)); return isFinite(v)?Math.max(PESO_MIN,Math.min(pmx,v)):pmx; })();
+  const pmx=pesoMaxDash(e.id), pst=pesoStep(e.id); const pwv=(function(){ let v=parseFloat(localStorage.getItem('simpesca2_aleat_peso_'+e.id)); if(!isFinite(v)) v=pmx; return Math.max(pst, Math.min(pmx, Math.round(v/pst)*pst)); })();
   const col=localStorage.getItem('simpesca2_aleat_colapso_'+e.id)==='1';
   const d=document.createElement('div'); d.className='sim-bloco'+(col?' colapsado':'');
   d.innerHTML=
@@ -770,7 +771,7 @@ function montarBloco(i){
       '<label title="Freio com VARIAÇÃO: a resistência SURTA e AFROUXA dentro da janela (mais real). Só no modo característico (freio quadrado DESmarcado). Regere o freio (🎲−).">〰 <input type="checkbox" id="freioVar'+i+'" onchange="togFreioVar('+i+')" style="width:auto"> freio variado</label>'+
       '<label title="Onde a briga gerada pelo 🎲 começa. Antes desse tempo a curva fica livre pra você desenhar as fisgadas MANUALMENTE." style="border-left:1px solid var(--border);padding-left:8px;margin-left:2px;">🎣 início da briga <input type="number" id="fisFisDur'+i+'" min="0" max="30" step="0.5" value="5" oninput="renderCurva('+i+')">s</label>'+
     '</div>'+
-    '<div class="peso-row" style="display:flex;align-items:center;gap:8px;font-size:0.62rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin:4px 0 2px;">⚖️ peso (prévia) <input type="range" id="pesoSim'+i+'" min="'+PESO_MIN+'" max="'+pmx+'" step="0.5" value="'+pwv+'" oninput="ajustarPesoSim('+i+')" style="flex:1;max-width:260px;accent-color:#ffcc66;"><span id="pesoSimLbl'+i+'" style="font-family:monospace;color:var(--text);min-width:185px;text-transform:none;letter-spacing:0;"></span></div>'+
+    '<div class="peso-row" style="display:flex;align-items:center;gap:8px;font-size:0.62rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin:4px 0 2px;">⚖️ peso (prévia) <input type="range" id="pesoSim'+i+'" min="'+pst+'" max="'+pmx+'" step="'+pst+'" value="'+pwv+'" oninput="ajustarPesoSim('+i+')" style="flex:1;max-width:260px;accent-color:#ffcc66;"><span id="pesoSimLbl'+i+'" style="font-family:monospace;color:var(--text);min-width:185px;text-transform:none;letter-spacing:0;"></span></div>'+
     '<div class="tl-row">'+
       '<div class="curve-eixo-fixo"><div class="eixo-inner">'+eixoHtml+'</div></div>'+
       '<div id="tl'+i+'" class="timeline-wrap"><div id="tlInner'+i+'" class="tl-inner"><div class="curve-area" id="curva'+i+'"></div><div id="playhead'+i+'" class="tl-playhead"></div></div></div>'+
