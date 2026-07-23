@@ -181,6 +181,13 @@ input[type=text]:focus{border-color:var(--accent);}
   <div class="rk-filtros" id="rkFiltros">
     <button class="rk-filtro ativo" data-sim="todos" onclick="filtrarRanking('todos',this)">Todas</button>
   </div>
+  <div class="rk-filtros" id="rkFiltrosCls">
+    <button class="rk-filtro ativo" data-cls="todas" onclick="filtrarRankingCls('todas',this)">Todo peso</button>
+    <button class="rk-filtro" data-cls="leve" onclick="filtrarRankingCls('leve',this)">Leve</button>
+    <button class="rk-filtro" data-cls="medio" onclick="filtrarRankingCls('medio',this)">Médio</button>
+    <button class="rk-filtro" data-cls="pesado" onclick="filtrarRankingCls('pesado',this)">Pesado</button>
+    <button class="rk-filtro" data-cls="trofeu" onclick="filtrarRankingCls('trofeu',this)">Troféu</button>
+  </div>
   <div class="rk-lista" id="rkLista"></div>
   <div class="fs-btns"><button class="btn-fs btn-sec" onclick="fecharRanking()">Fechar</button></div>
 </div>
@@ -437,7 +444,11 @@ function aplicarConfigPlayer(d){
 const PESO_MAX_DEF={pirarara:50, tambaqui:40, tucunare:13, dourado:30, trairao:15, jau:80};   // pesos validados (FishBase/IGFA); trairão = comum (H. lacerdae)   // peso máx pesquisado (gigante) por espécie; ajustável no dashboard
 const PESO_MIN=1;   // o slider começa em 1 kg
 function pesoMaxEsp(id){ return PESO_MAX_DEF[id]||20; }   // peso que vale 100% — fixo no pesquisado (mesma fonte que o dashboard)
-function pesoEsp(id){ const mx=pesoMaxEsp(id); const v=parseFloat(localStorage.getItem('simpesca2_peso_'+id)); return isFinite(v)?Math.max(PESO_MIN,Math.min(mx,v)):mx; }   // selecionado (padrão = máx)
+function pesoStep(id){ const mx=pesoMaxEsp(id); return mx>0 ? mx/10 : 1; }   // escolha de 10 em 10% do máximo
+function pesoEsp(id){ const mx=pesoMaxEsp(id), st=pesoStep(id); let v=parseFloat(localStorage.getItem('simpesca2_peso_'+id)); if(!isFinite(v)) v=mx; return Math.max(st, Math.min(mx, Math.round(v/st)*st)); }   // selecionado, GRUDADO no degrau de 10% (padrão = máx)
+const CLASSES_PESO=[{id:'leve',nome:'Leve',cor:'#00e676',max:30},{id:'medio',nome:'Médio',cor:'#ffd600',max:60},{id:'pesado',nome:'Pesado',cor:'#ff8f3c',max:90},{id:'trofeu',nome:'Troféu',cor:'#b388ff',max:100}];   // classe por % do máximo da espécie
+function classePesoPct(pct){ for(let i=0;i<CLASSES_PESO.length;i++){ if(pct<=CLASSES_PESO[i].max) return CLASSES_PESO[i]; } return CLASSES_PESO[3]; }
+function classePesoReg(r){ const mx=pesoMaxEsp(r.sim); const pct=(mx>0&&isFinite(r.peso))?(r.peso/mx*100):100; return classePesoPct(pct); }
 function escalaPeso(id){ const mx=pesoMaxEsp(id), w=pesoEsp(id); return mx>0 ? Math.min(1, Math.pow(w/mx, 2/3)) : 1; }   // peso -> escala pela lei FÍSICA peso^⅔ (arrasto ∝ área ∝ peso^⅔): 1kg≈0,85kgf (base) · gigante=100% (freio máx) · meio na curva; sem piso
 function salvarPeso(id){ const el=document.getElementById('peso_'+id); if(!el) return; localStorage.setItem('simpesca2_peso_'+id, el.value); const lbl=document.getElementById('pesolbl_'+id); if(lbl) lbl.textContent=parseFloat(el.value).toFixed(1)+' kg'; invalidarLinhaNecessaria(); atualizarLinha(); }   // peso mudou -> a linha necessária muda -> reavalia a cor da barra
 // Se o PESO mudar em OUTRA aba (ex.: o dashboard no mesmo PC), reflete no slider/rótulo do card na hora
@@ -502,7 +513,7 @@ window.addEventListener('load',async()=>{
         '<div class="video-progress"><div class="video-progress-bar" id="prog_'+e.id+'"></div></div>'+
         '<div class="overlay" id="overlay_'+e.id+'"><button class="btn-play" onclick="pedirNome(\''+e.id+'\')"><svg width="26" height="26" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button><span class="sim-nome-overlay">'+e.nome+'</span></div>'+
       '</div>'+
-      '<div class="card-peso" style="display:flex;align-items:center;gap:8px;justify-content:center;margin-top:8px;font-size:0.74rem;color:#7b8d9e;"><span title="Tamanho/peso do peixe. Maior = mais força (puxa e freia). O máximo (gigante) = 100% da curva.">⚖️</span><input type="range" id="peso_'+e.id+'" min="'+PESO_MIN+'" max="'+pesoMaxEsp(e.id)+'" step="0.5" value="'+pesoEsp(e.id)+'" oninput="salvarPeso(\''+e.id+'\')" style="flex:1;max-width:150px;accent-color:#00d4ff;"><span id="pesolbl_'+e.id+'" style="min-width:54px;text-align:right;font-weight:700;color:#c8d8e8;font-family:monospace;">'+pesoEsp(e.id).toFixed(1)+' kg</span></div>'+
+      '<div class="card-peso" style="display:flex;align-items:center;gap:8px;justify-content:center;margin-top:8px;font-size:0.74rem;color:#7b8d9e;"><span title="Tamanho/peso do peixe. Maior = mais força (puxa e freia). O máximo (gigante) = 100% da curva.">⚖️</span><input type="range" id="peso_'+e.id+'" min="'+pesoStep(e.id)+'" max="'+pesoMaxEsp(e.id)+'" step="'+pesoStep(e.id)+'" value="'+pesoEsp(e.id)+'" oninput="salvarPeso(\''+e.id+'\')" style="flex:1;max-width:150px;accent-color:#00d4ff;"><span id="pesolbl_'+e.id+'" style="min-width:54px;text-align:right;font-weight:700;color:#c8d8e8;font-family:monospace;">'+pesoEsp(e.id).toFixed(1)+' kg</span></div>'+
       '<div class="card-sync" style="text-align:center;margin-top:6px;font-size:0.72rem;color:#7b8d9e;"><label title="Atraso da simulação em relação ao vídeo (s). Positivo = as ações do motor acontecem mais tarde. Ajuste pra casar a briga com o vídeo.">⏱ sincronia <input type="number" id="sync_'+e.id+'" step="0.1" value="0" onchange="salvarSync(\''+e.id+'\')" style="width:62px;text-align:center;background:#0d151d;border:1px solid #1a2736;border-radius:5px;color:#e0e6ed;font-family:monospace;padding:3px 4px;outline:none;"> s</label></div>';
     grid.appendChild(bloco);
   });
@@ -788,13 +799,16 @@ function fecharResultado(){ document.getElementById('resultadoOverlay').classLis
 let rkFiltro='todos';
 function abrirRanking(){ renderRanking(); document.getElementById('rankingOverlay').classList.add('visivel'); }
 function fecharRanking(){ document.getElementById('rankingOverlay').classList.remove('visivel'); }
-function filtrarRanking(sim,btn){ rkFiltro=sim; document.querySelectorAll('.rk-filtro').forEach(b=>b.classList.remove('ativo')); btn.classList.add('ativo'); renderRanking(); }
+function filtrarRanking(sim,btn){ rkFiltro=sim; document.querySelectorAll('#rkFiltros .rk-filtro').forEach(b=>b.classList.remove('ativo')); btn.classList.add('ativo'); renderRanking(); }
+let rkFiltroCls='todas';
+function filtrarRankingCls(cls,btn){ rkFiltroCls=cls; document.querySelectorAll('#rkFiltrosCls .rk-filtro').forEach(b=>b.classList.remove('ativo')); btn.classList.add('ativo'); renderRanking(); }
 function escHtml(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function renderRanking(){
   let lista=[]; try{ lista=JSON.parse(localStorage.getItem('simpesca2_ranking'))||[]; }catch(e){}
   lista=lista.filter(r=>nomeValido(r.nome));         // não mostra jogadas sem nome / "Jogador"
   if(rkFiltro!=='todos') lista=lista.filter(r=>r.sim===rkFiltro);
   else lista=lista.filter(r=>peixeVisivel(r.sim));   // "Todas" esconde os peixes desmarcados no EXIBIR
+  if(rkFiltroCls!=='todas') lista=lista.filter(r=>classePesoReg(r).id===rkFiltroCls);   // filtro por classe de peso
   lista.sort((a,b)=>scoreRank(b)-scoreRank(a));   // ordena pela PONTUAÇÃO (metros × peso)
   const el=document.getElementById('rkLista');
   if(!lista.length){ el.innerHTML='<div class="rk-vazio">Nenhuma jogada registrada ainda. 🎣</div>'; return; }
@@ -802,7 +816,8 @@ function renderRanking(){
     const cls=i===0?'top1':i===1?'top2':i===2?'top3':'';
     const medalha=i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'º';
     const d=new Date(r.data); const data=d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-    return `<div class="rk-linha ${cls}"><div class="rk-pos">${medalha}</div><div class="rk-info"><div class="rk-nome">${escHtml(r.nome)}</div><div class="rk-meta">🐟 ${nomePeixe(r.sim)} · ${isFinite(r.peso)?'⚖️ '+r.peso.toFixed(1)+' kg · ':''}🎣 ${r.metros.toFixed(1)} m · ${data}</div></div><div class="rk-metros">${scoreRank(r)} pts</div></div>`;
+    const cp=classePesoReg(r);
+    return `<div class="rk-linha ${cls}"><div class="rk-pos">${medalha}</div><div class="rk-info"><div class="rk-nome">${escHtml(r.nome)}</div><div class="rk-meta">🐟 ${nomePeixe(r.sim)} · ${isFinite(r.peso)?'⚖️ '+r.peso.toFixed(1)+' kg <b style="color:'+cp.cor+'">'+cp.nome+'</b> · ':''}🎣 ${r.metros.toFixed(1)} m · ${data}</div></div><div class="rk-metros">${scoreRank(r)} pts</div></div>`;
   }).join('');
 }
 

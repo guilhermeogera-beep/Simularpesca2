@@ -58,6 +58,13 @@ header h1{font-size:1.4rem;font-weight:800;color:var(--gold);letter-spacing:1px;
 <div class="filtros" id="filtros">
   <button class="filtro ativo" data-sim="todos" onclick="filtrar('todos',this)">Todas</button>
 </div>
+<div class="filtros" id="filtrosCls">
+  <button class="filtro ativo" data-cls="todas" onclick="filtrarCls('todas',this)">Todo peso</button>
+  <button class="filtro" data-cls="leve" onclick="filtrarCls('leve',this)">Leve</button>
+  <button class="filtro" data-cls="medio" onclick="filtrarCls('medio',this)">Médio</button>
+  <button class="filtro" data-cls="pesado" onclick="filtrarCls('pesado',this)">Pesado</button>
+  <button class="filtro" data-cls="trofeu" onclick="filtrarCls('trofeu',this)">Troféu</button>
+</div>
 
 <div class="lista" id="lista"></div>
 
@@ -79,6 +86,11 @@ function fmtData(iso){ const d=new Date(iso); return d.toLocaleDateString('pt-BR
 // Expoente do peso na pontuação (peso^EXP) — CONFIGURÁVEL aqui (campo ⚙️). Salvo no aparelho; o player lê a mesma chave.
 function pesoExp(){ const v=parseFloat(localStorage.getItem('simpesca2_rank_pesoexp')); return (isFinite(v)&&v>=0)?v:2.4; }
 function scoreRank(r){ const p=(isFinite(r.peso)&&r.peso>0)?r.peso:1; return Math.round((r.metros||0)*Math.pow(p, pesoExp())); }   // RECALCULA sempre (registro antigo re-ordena consistente)
+const PESO_MAX_DEF={pirarara:50, tambaqui:40, tucunare:13, dourado:30, trairao:15, jau:80};   // peso máx (100%) por espécie — mesma fonte do player/dashboard
+function pesoMaxEsp(id){ return PESO_MAX_DEF[id]||20; }
+const CLASSES_PESO=[{id:'leve',nome:'Leve',cor:'#00e676',max:30},{id:'medio',nome:'Médio',cor:'#ffd600',max:60},{id:'pesado',nome:'Pesado',cor:'#ff8f3c',max:90},{id:'trofeu',nome:'Troféu',cor:'#b388ff',max:100}];
+function classePesoPct(pct){ for(let i=0;i<CLASSES_PESO.length;i++){ if(pct<=CLASSES_PESO[i].max) return CLASSES_PESO[i]; } return CLASSES_PESO[3]; }
+function classePesoReg(r){ const mx=pesoMaxEsp(r.sim); const pct=(mx>0&&isFinite(r.peso))?(r.peso/mx*100):100; return classePesoPct(pct); }
 function atualizarPesoHint(){ const e=pesoExp(), h=document.getElementById('cfgPesoHint'); if(h) h.textContent='com a MESMA linha, um peixe de 50 kg vale ×'+Math.pow(50,e).toFixed(1)+' que um de 1 kg · 0 = ignora peso · 1 = peso cheio'; }
 function salvarPesoExp(){ const el=document.getElementById('cfgPesoExp'); const v=parseFloat(el.value); if(isFinite(v)&&v>=0){ localStorage.setItem('simpesca2_rank_pesoexp', v); atualizarPesoHint(); render(); syncPesoExp(); } else el.value=pesoExp(); }
 // Sobe cal.pesoexp pro config.json (read-modify-write) — só num aparelho COM token (o totem só lê, via player/aplicarConfig).
@@ -101,6 +113,7 @@ async function syncPesoExp(){
 function render(){
   const todos=carregar().filter(r=>nomeValido(r.nome));   // esconde jogadas sem nome / "Jogador"
   let lista = filtroAtual==='todos' ? todos : todos.filter(r=>r.sim===filtroAtual);
+  if(filtroCls!=='todas') lista=lista.filter(r=>classePesoReg(r).id===filtroCls);   // filtro por classe de peso
   lista.sort((a,b)=>scoreRank(b)-scoreRank(a));   // ordena pela PONTUAÇÃO
   const el=document.getElementById('lista');
   if(!lista.length){ el.innerHTML='<div class="vazio">Nenhuma jogada registrada ainda.<br>Jogue uma simulação para aparecer aqui! 🎣</div>'; return; }
@@ -109,13 +122,15 @@ function render(){
     const medalha = i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'º';
     return `<div class="linha-rank ${cls}">
       <div class="pos">${medalha}</div>
-      <div class="info"><div class="nome">${escapeHtml(r.nome)}</div><div class="meta">🐟 ${nomePeixe(r.sim)} · ${isFinite(r.peso)?'⚖️ '+r.peso.toFixed(1)+' kg · ':''}🎣 ${r.metros.toFixed(1)} m · ${fmtData(r.data)}</div></div>
+      <div class="info"><div class="nome">${escapeHtml(r.nome)}</div><div class="meta">🐟 ${nomePeixe(r.sim)} · ${isFinite(r.peso)?'⚖️ '+r.peso.toFixed(1)+' kg <b style="color:'+classePesoReg(r).cor+'">'+classePesoReg(r).nome+'</b> · ':''}🎣 ${r.metros.toFixed(1)} m · ${fmtData(r.data)}</div></div>
       <div class="metros">${scoreRank(r)} pts</div>
     </div>`;
   }).join('');
 }
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-function filtrar(sim,btn){ filtroAtual=sim; document.querySelectorAll('.filtro').forEach(b=>b.classList.remove('ativo')); btn.classList.add('ativo'); render(); }
+function filtrar(sim,btn){ filtroAtual=sim; document.querySelectorAll('#filtros .filtro').forEach(b=>b.classList.remove('ativo')); btn.classList.add('ativo'); render(); }
+let filtroCls='todas';
+function filtrarCls(cls,btn){ filtroCls=cls; document.querySelectorAll('#filtrosCls .filtro').forEach(b=>b.classList.remove('ativo')); btn.classList.add('ativo'); render(); }
 function exportar(){
   const blob=new Blob([JSON.stringify(carregar(),null,2)],{type:'application/json'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='ranking_simpesca.json'; a.click(); URL.revokeObjectURL(a.href);
