@@ -418,8 +418,9 @@ const FREIO_MAX_DEF={pirarara:11, tambaqui:10, tucunare:5, dourado:8, trairao:5,
 const PESO_MAX_DEF={pirarara:50, tambaqui:40, tucunare:13, dourado:30, trairao:15, jau:80};   // pesos validados (FishBase/IGFA); trairão = comum (H. lacerdae)   // peso máx (gigante) por espécie — mesma fonte do player
 const PESO_MIN=1;
 function pesoMaxDash(id){ return PESO_MAX_DEF[id]||20; }
+function pesoStep(id){ const mx=pesoMaxDash(id); return mx>0 ? mx/10 : 1; }   // escolha de 10 em 10% do máximo (igual ao player)
 function escalaPeso(id,w){ const mx=pesoMaxDash(id); return mx>0 ? Math.min(1, Math.pow(w/mx, 2/3)) : 1; }   // lei peso^⅔ (IDÊNTICA ao player)
-function pesoSimValor(i){ const el=document.getElementById('pesoSim'+i); const mx=pesoMaxDash(LETRAS[i]); const v=el?parseFloat(el.value):NaN; return isFinite(v)?Math.max(PESO_MIN,Math.min(mx,v)):mx; }
+function pesoSimValor(i){ const el=document.getElementById('pesoSim'+i); const id=LETRAS[i], mx=pesoMaxDash(id), st=pesoStep(id); let v=el?parseFloat(el.value):NaN; if(!isFinite(v)) v=mx; return Math.max(st, Math.min(mx, Math.round(v/st)*st)); }   // GRUDA no degrau de 10%
 function atualizarPesoLbl(i){ const id=LETRAS[i], w=pesoSimValor(i), esc=escalaPeso(id,w); const lbl=document.getElementById('pesoSimLbl'+i); if(!lbl) return; const fEl=document.getElementById('freioMax'+i), fmax=fEl?(parseFloat(fEl.value)||0):0; lbl.textContent = w.toFixed(1)+' kg · '+Math.round(esc*100)+'% · freio ~'+(fmax*esc).toFixed(1)+' kgf'; }
 function ajustarPesoSim(i){ localStorage.setItem('simpesca2_peso_'+LETRAS[i], pesoSimValor(i)); renderCurva(i); }   // MESMA chave do player (sincroniza) · renderCurva redesenha a prévia + rótulo
 // Se o PESO mudar em OUTRA aba (ex.: o player no mesmo PC), reflete no slider + prévia (senão o dash lê o DOM velho e pode sobrescrever)
@@ -447,7 +448,7 @@ function montarBlocosSims(){
   const eixoHtml=[40,30,20,10,0,-10,-20].map(v=>{ const top=(40-v)/60*100, ty=v===40?'0':v===-20?'-100%':'-50%'; return '<span style="position:absolute;left:3px;top:'+top.toFixed(2)+'%;transform:translateY('+ty+');font-size:8.5px;font-family:monospace;color:rgba(200,216,232,0.6);text-shadow:0 0 3px #03070b,0 0 2px #03070b;">'+(v>0?'+':'')+v+'</span>'; }).join('');   // escala lateral (+40..-20)
   ESPECIES.forEach((e,i)=>{
     const cls=['a','b','c'][i%3];
-    const pmx=pesoMaxDash(e.id); const pwv=(function(){ const v=parseFloat(localStorage.getItem('simpesca2_peso_'+e.id)); return isFinite(v)?Math.max(PESO_MIN,Math.min(pmx,v)):pmx; })();
+    const pmx=pesoMaxDash(e.id), pst=pesoStep(e.id); const pwv=(function(){ let v=parseFloat(localStorage.getItem('simpesca2_peso_'+e.id)); if(!isFinite(v)) v=pmx; return Math.max(pst, Math.min(pmx, Math.round(v/pst)*pst)); })();
     const col=localStorage.getItem('simpesca2_colapso_'+e.id)==='1';   // estado recolhido salvo
     const d=document.createElement('div'); d.className='sim-bloco'+(col?' colapsado':'');
     d.innerHTML=
@@ -482,7 +483,7 @@ function montarBlocosSims(){
         '<label title="Freio com VARIAÇÃO: a resistência do peixe SURTA e AFROUXA dentro de cada janela de descanso (mais real). Só vale no modo característico (freio quadrado DESmarcado). Regenere o freio (🎲−) pra aplicar.">〰 <input type="checkbox" id="freioVar'+i+'" onchange="togFreioVar('+i+')" style="width:auto"> freio variado</label>'+
         '<label title="Onde a briga gerada pelo 🎲 começa. Antes desse tempo a curva fica livre pra você desenhar as fisgadas MANUALMENTE." style="border-left:1px solid var(--border);padding-left:8px;margin-left:2px;">🎣 início da briga <input type="number" id="fisFisDur'+i+'" min="0" max="30" step="0.5" value="5" oninput="renderCurva('+i+')">s</label>'+
       '</div>'+
-      '<div class="peso-row" style="display:flex;align-items:center;gap:8px;font-size:0.62rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin:4px 0 2px;">⚖️ peso (prévia) <input type="range" id="pesoSim'+i+'" min="'+PESO_MIN+'" max="'+pmx+'" step="0.5" value="'+pwv+'" oninput="ajustarPesoSim('+i+')" style="flex:1;max-width:260px;accent-color:#ffcc66;"><span id="pesoSimLbl'+i+'" style="font-family:monospace;color:var(--text);min-width:185px;text-transform:none;letter-spacing:0;"></span></div>'+
+      '<div class="peso-row" style="display:flex;align-items:center;gap:8px;font-size:0.62rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin:4px 0 2px;">⚖️ peso (prévia) <input type="range" id="pesoSim'+i+'" min="'+pst+'" max="'+pmx+'" step="'+pst+'" value="'+pwv+'" oninput="ajustarPesoSim('+i+')" style="flex:1;max-width:260px;accent-color:#ffcc66;"><span id="pesoSimLbl'+i+'" style="font-family:monospace;color:var(--text);min-width:185px;text-transform:none;letter-spacing:0;"></span></div>'+
       '<div id="tl'+i+'" class="timeline-wrap"><div class="curve-eixo">'+eixoHtml+'</div><div class="curve-area" id="curva'+i+'"></div><div id="playhead'+i+'" class="tl-playhead"></div></div>'+
       '</div>';
     cont.appendChild(d);
