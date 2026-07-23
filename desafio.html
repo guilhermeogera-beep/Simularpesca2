@@ -72,6 +72,10 @@ input[type="range"]::-webkit-slider-thumb{height:24px;width:24px;border-radius:5
 .jogo-linha-sub{font-size:0.92rem;color:var(--text-dim);margin-top:10px;}
 .jogo-bar{height:26px;background:var(--surface);border:1px solid var(--border);border-radius:13px;overflow:hidden;margin-top:16px;}
 .jogo-bar-fill{height:100%;width:0%;background:#00e676;border-radius:13px;transition:width 0.15s linear,background 0.3s;}
+.jogo-barra2{display:flex;align-items:center;gap:12px;margin-top:18px;width:100%;max-width:660px;}
+.jb-ico{font-size:2.1rem;line-height:1;flex-shrink:0;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.5));}
+.jb-track{position:relative;flex:1;height:26px;border-radius:13px;background:linear-gradient(90deg,#00e676 0%,#ffd600 50%,#ff1744 100%);box-shadow:inset 0 0 0 1px rgba(255,255,255,0.12);}
+.jb-peixe{position:absolute;top:50%;left:0%;transform:translate(-50%,-50%);font-size:2rem;line-height:1;transition:left 0.15s linear;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.7));will-change:left;}
 .jogo-result{display:none;position:absolute;inset:0;background:rgba(5,10,15,0.98);flex-direction:column;align-items:center;justify-content:center;gap:22px;padding:24px;}
 .jogo-result.on{display:flex;}
 .jogo-res-titulo{font-size:3.2rem;font-weight:800;}
@@ -187,7 +191,11 @@ input[type="range"]::-webkit-slider-thumb{height:24px;width:24px;border-radius:5
       <div><div class="jogo-linha-num" id="jogoPlayerReeled" style="color:#00e676">0.0 m</div><div class="jogo-linha-sub">🎣 você recolheu</div></div>
       <div><div class="jogo-linha-num" id="jogoFishPulled" style="color:#ff5f5f">0.0 m</div><div class="jogo-linha-sub">🐟 peixe puxou</div></div>
     </div>
-    <div class="jogo-bar"><div class="jogo-bar-fill" id="jogoBarFill"></div></div>
+    <div class="jogo-barra2">
+      <span class="jb-ico" title="pescador ganha">🎣</span>
+      <div class="jb-track"><span class="jb-peixe" id="jogoPeixeMarker">🐟</span></div>
+      <span class="jb-ico" title="peixe foge">💀</span>
+    </div>
   </div>
   <div style="display:flex;gap:24px;justify-content:center;flex-wrap:wrap;font-size:0.95rem;opacity:0.85;">
     <span>🧵 carretel <b id="jogoCarretel">0.0 m</b></span>
@@ -630,7 +638,7 @@ function fmtT(s){ return Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(
 function atualizarHUDJogo(t, L, lim){
   const te=document.getElementById('jogoTempo'); if(te) te.textContent=fmtT(t);
   const li=document.getElementById('jogoLimite'); if(li) li.textContent=linhaMaxJogo().toFixed(0);   // mostra o valor configurado (com sinal)
-  const bf=document.getElementById('jogoBarFill'); if(bf){ const f=Math.max(0,Math.min(100,(L/lim)*100)); bf.style.width=f+'%'; bf.style.background=f>80?'#ff1744':f>50?'#ffd600':'#00e676'; }
+  const pm=document.getElementById('jogoPeixeMarker'); if(pm){ const f=Math.max(0,Math.min(100,(L/lim)*100)); pm.style.left=f+'%'; pm.style.transform='translate(-50%,-50%) scaleX('+(f>50?-1:1)+')'; }   // 🐟 anda: 0% (esq/🎣 ganha) -> 100% (dir/💀 perde); vira pra encarar o lado
   const fp=document.getElementById('jogoFishPulled'); if(fp) fp.textContent=fishPulled.toFixed(1)+' m';
   const pr=document.getElementById('jogoPlayerReeled'); if(pr) pr.textContent=playerReeled.toFixed(1)+' m';
   const cr=document.getElementById('jogoCarretel'); if(cr) cr.textContent=linhaCarretel().toFixed(1)+' m';
