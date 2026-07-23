@@ -385,7 +385,8 @@ function buildFight(pe, nMin, nMax, teto, fadiga, puxada, fisEstilo, fisDur, fis
   const base=(isFinite(puxada)&&puxada>0)?puxada:45;
   const kDur=DURACAO/90;   // escala vs 90s: dimensiona a briga p/ preencher a duração
   const pullBudget=Math.min(DURACAO-8, base*kDur*rnd(0.9,1.1));
-  const N=Math.max(3, Math.round(pullBudget/rnd(9,13)));                    // nº de trancos vem do BUDGET -> mantém cada tranco ~9-13s (como a sim antiga); não alonga
+  const nMid=(nMin+nMax)/2, densRef=5;   // pirarará (~4-6) = referência; espécie mais "picotada" (Tambacu 7-9) => trancos MAIS CURTOS => mais trancos (como no dash)
+  const N=Math.max(3, Math.round(pullBudget/(rnd(9,13)*(densRef/nMid))));   // nº de trancos: BUDGET (duração) × densidade da ESPÉCIE (nMin/nMax)
   const pdurRun=Math.min(16, Math.max(4, pullBudget*0.22));                 // corrida inicial CURTA (não "corre" demais)
   const pdurOutros=Math.max(1.5,(pullBudget-pdurRun)/Math.max(1,N-1));
   const fill=DURACAO-rnd(3,10);   // enche QUASE toda a duração (deixa só ~3-10s no fim)
