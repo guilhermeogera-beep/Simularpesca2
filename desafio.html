@@ -90,6 +90,9 @@ input[type="range"]::-webkit-slider-thumb{height:24px;width:24px;border-radius:5
 .rank-nome{flex:1;text-align:left;font-weight:700;}
 .rank-score{font-family:monospace;font-weight:800;color:var(--green);}
 .rank-meta{font-size:0.68rem;color:var(--text-dim);font-family:monospace;}
+.rk-filtros2{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-bottom:8px;width:100%;max-width:560px;}
+.rkf{padding:4px 12px;border:1px solid var(--border);border-radius:16px;background:var(--surface);color:var(--text-dim);cursor:pointer;font-size:0.78rem;font-family:inherit;}
+.rkf.ativo{border-color:var(--accent);color:var(--text);background:rgba(0,212,255,0.15);font-weight:700;}
 .tl-row{position:relative;display:flex;align-items:stretch;}
 .curve-eixo-fixo{position:relative;width:26px;height:260px;flex:none;background:#03070b;border:1px solid var(--border);border-right:none;border-radius:8px 0 0 8px;z-index:4;}
 .curve-eixo-fixo .eixo-inner{position:absolute;top:0;left:0;right:0;bottom:20px;}
@@ -234,6 +237,14 @@ input[type="range"]::-webkit-slider-thumb{height:24px;width:24px;border-radius:5
       <button class="btn btn-red" onclick="limparRankDesafio()">🗑 Limpar ranking</button>
     </div>
   </div>
+  <div id="rankFiltrosSim" class="rk-filtros2"></div>
+  <div id="rankFiltrosCls" class="rk-filtros2">
+    <button class="rkf ativo" data-cls="todas" onclick="rankFiltrarCls('todas',this)">Todo peso</button>
+    <button class="rkf" data-cls="leve" onclick="rankFiltrarCls('leve',this)">Leve</button>
+    <button class="rkf" data-cls="medio" onclick="rankFiltrarCls('medio',this)">Médio</button>
+    <button class="rkf" data-cls="pesado" onclick="rankFiltrarCls('pesado',this)">Pesado</button>
+    <button class="rkf" data-cls="trofeu" onclick="rankFiltrarCls('trofeu',this)">Troféu</button>
+  </div>
   <div id="rankLista" class="rank-lista"></div>
   <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;"><button class="btn btn-outline" onclick="fecharRank()">✕ Fechar</button></div>
 </div>
@@ -247,9 +258,10 @@ input[type="range"]::-webkit-slider-thumb{height:24px;width:24px;border-radius:5
 // ══════════════════════════════════════════════════════════════════════════════
 const ESC_POS=40, ESC_NEG=-20, ESC_RANGE=ESC_POS-ESC_NEG, PX_POR_S=10;   // PX_POR_S = px por segundo na timeline ROLÁVEL (~90s por tela na largura do card)
 let DURACAO=1500;   // 25 min (⏱ configurável). Curva ÚNICA; timeline LARGA e rolável na horizontal.
-const FREIO_MAX_DEF={pirarara:11}, PESO_MAX_DEF={pirarara:50}, PESO_MIN=1, MAX_PUXADA_A=30;
-const LETRAS=['pirarara'], NOMES=['Pirarará'], NSIMS=1;
-const SIMS=[{pontos:[]}];
+const FREIO_MAX_DEF={pirarara:11, tambaqui:10}, PESO_MAX_DEF={pirarara:50, tambaqui:40}, PESO_MIN=1, MAX_PUXADA_A=30;
+const LETRAS=['pirarara','tambaqui'], NOMES=['Pirarará','Tambacu'], NSIMS=2;
+const SIMS=[{pontos:[]},{pontos:[]}];
+let simDesafio=0;   // qual simulação está sendo JOGADA (definido pelo ▶ Jogar de cada bloco)
 let simAtiva=0, selPonto=-1, multiSel=[], arrastouPonto=false, simHover=0, clip=null;
 
 // ── Calibração global (read-only) só pra estimativa/gauge ──
@@ -266,6 +278,9 @@ function ampMotor(pct){ const m=Math.abs(pct); return pct>=0 ? m/100*MAX_PUXADA_
 function estimarLinha(pts, esc=1){ if(!pts||!pts.length) return 0; let m=0; for(let i=0;i<pts.length-1;i++){ const a=pts[i], b=pts[i+1], dt=b.t-a.t; if(dt<=0) continue; const steps=Math.max(1,Math.round(dt/0.25)), sdt=dt/steps; for(let s=0;s<steps;s++){ const pot=(a.pot+(b.pot-a.pot)*((s+0.5)/steps))*esc; if(pot>0.5) m+=rpmParaMs(rpmAlvo(pot))*sdt; } } return m; }   // integra por SEGMENTO (rápido; sem varrer os pontos a cada amostra)
 function escalaPeso(id,w){ const mx=pesoMaxDash(id); return mx>0 ? Math.min(1, Math.pow(w/mx, 2/3)) : 1; }
 function pesoMaxDash(id){ return PESO_MAX_DEF[id]||20; }
+const CLASSES_PESO=[{id:'leve',nome:'Leve',cor:'#00e676',max:30},{id:'medio',nome:'Médio',cor:'#ffd600',max:60},{id:'pesado',nome:'Pesado',cor:'#ff8f3c',max:90},{id:'trofeu',nome:'Troféu',cor:'#b388ff',max:100}];   // classe por % do máximo (igual player/ranking)
+function classePesoPct(pct){ for(let i=0;i<CLASSES_PESO.length;i++){ if(pct<=CLASSES_PESO[i].max) return CLASSES_PESO[i]; } return CLASSES_PESO[3]; }
+function classePesoReg(r){ const mx=pesoMaxDash(r.sim); const pct=(mx>0&&isFinite(r.peso))?(r.peso/mx*100):100; return classePesoPct(pct); }
 function pesoStep(id){ const mx=pesoMaxDash(id); return mx>0 ? mx/10 : 1; }   // escolha de 10 em 10% do máximo (igual ao player/dash)
 function pesoSimValor(i){ const el=document.getElementById('pesoSim'+i); const id=LETRAS[i], mx=pesoMaxDash(id), st=pesoStep(id); let v=el?parseFloat(el.value):NaN; if(!isFinite(v)) v=mx; return Math.max(st, Math.min(mx, Math.round(v/st)*st)); }   // GRUDA no degrau de 10%
 
@@ -410,6 +425,18 @@ function pePirarara(pts,t,pdur,fat){
   return t;
 }
 function fightPirarara(teto,fadiga,puxada,fisDur,fisPico,intens,espaco,durFis){ return buildFight(pePirarara, 4, 6, teto, fadiga, puxada, 'forte', fisDur, fisPico, intens, espaco, durFis); }
+function peTambaqui(pts,t,pdur,fat){
+  const end=t+pdur;
+  const sobe=rnd(0.28,0.40), desce=rnd(0.85,1.05);
+  const alto=rnd(82,92), baixo=rnd(32,46);
+  while(t<end-0.4){
+    t+=sobe;  pts.push({t,pot:alto*fat*rnd(0.96,1.04)});
+    t+=desce; pts.push({t,pot:baixo*fat*rnd(0.90,1.10)});
+  }
+  return t;
+}
+function fightTambaqui(teto,fadiga,puxada,fisDur,fisPico,intens,espaco,durFis){ return buildFight(peTambaqui, 7, 9, teto, fadiga, puxada, 'teimosa', fisDur, fisPico, intens, espaco, durFis); }
+const FIGHTS={pirarara:fightPirarara, tambaqui:fightTambaqui};
 
 // ── Ajustes do gerador (lê os inputs da .gen-row, idx=0) ──
 function fisFisDurSeg(idx){ const el=document.getElementById('fisFisDur'+idx); const v=el?parseFloat(el.value):NaN; return isFinite(v)?Math.max(0,v):5; }
@@ -430,7 +457,7 @@ function cfgGerador(idx){
   const freioVar=!!(document.getElementById('freioVar'+idx)||{}).checked;
   return {teto,fadiga,puxada,fisPico,fisDur,intens,espaco,durFis,freioMax,freioQuad,freioVar,corrida,saque,minpux};
 }
-function gerarCurvaEspecie(idx){ const c=cfgGerador(idx); genFreioMax=c.freioMax; genFreioQuad=c.freioQuad; genFreioVar=c.freioVar; genFreioFad=(c.fadiga||0)/100; genMinPux=c.minpux; return fightPirarara(c.teto,c.fadiga,c.puxada,c.fisDur,c.fisPico,c.intens,c.espaco,c.durFis); }
+function gerarCurvaEspecie(idx){ const c=cfgGerador(idx); genFreioMax=c.freioMax; genFreioQuad=c.freioQuad; genFreioVar=c.freioVar; genFreioFad=(c.fadiga||0)/100; genMinPux=c.minpux; return (FIGHTS[LETRAS[idx]]||fightPirarara)(c.teto,c.fadiga,c.puxada,c.fisDur,c.fisPico,c.intens,c.espaco,c.durFis); }
 // 🎲+ : gera a PUXADA (mantém o freio existente)
 function gerarPositivo(idx){
   const c=cfgGerador(idx);
@@ -460,13 +487,14 @@ function atualizarPesoLbl(i){ const id=LETRAS[i], w=pesoSimValor(i), esc=escalaP
 
 // ══ STORAGE ISOLADO ════════════════════════════════════════════════════════════
 const GEN_CAMPOS=['intens','saque','fisDur','corrida','minpux','fadiga','puxada','espaco','freioMax','fisFisDur'];
-function salvarPontos(idx){ try{ localStorage.setItem('simpesca2_aleat_pontos_'+LETRAS[idx], JSON.stringify(SIMS[idx].pontos)); }catch(e){} if(idx===0 && podeSyncCurva) agendarSyncCurva(); }   // ao editar, agenda o push da curva pro curvas.json (7ª sim)
+function curvaKey(idx){ return idx===0 ? 'desafio' : 'desafio_'+LETRAS[idx]; }   // chave no curvas.json: pirarará='desafio' (mantém), demais='desafio_<id>'
+function salvarPontos(idx){ try{ localStorage.setItem('simpesca2_aleat_pontos_'+LETRAS[idx], JSON.stringify(SIMS[idx].pontos)); }catch(e){} if(podeSyncCurva) agendarSyncCurva(); }   // ao editar qualquer sim, agenda o push das curvas pro curvas.json
 function carregarPontosStore(idx){ try{ let r=localStorage.getItem('simpesca2_aleat_pontos_'+LETRAS[idx]); if(!r && idx===0) r=localStorage.getItem('simpesca2_aleat_pontos'); if(r){ const d=JSON.parse(r); if(Array.isArray(d)&&d.length) return d.slice().sort((a,b)=>a.t-b.t); } }catch(e){} return null; }
 function salvarGenCfg(idx){ GEN_CAMPOS.forEach(c=>{ const el=document.getElementById(c+idx); if(el) localStorage.setItem('simpesca2_aleat_gen_'+LETRAS[idx]+'_'+c, el.value); }); const q=document.getElementById('freioQuad'+idx); if(q) localStorage.setItem('simpesca2_aleat_gen_'+LETRAS[idx]+'_freioquad', q.checked?'1':'0'); const fv=document.getElementById('freioVar'+idx); if(fv) localStorage.setItem('simpesca2_aleat_gen_'+LETRAS[idx]+'_freiovar', fv.checked?'1':'0'); }
 function carregarGenCfg(idx){ GEN_CAMPOS.forEach(c=>{ const v=localStorage.getItem('simpesca2_aleat_gen_'+LETRAS[idx]+'_'+c); if(v!==null){ const el=document.getElementById(c+idx); if(el) el.value=v; } }); const q=document.getElementById('freioQuad'+idx); const qv=localStorage.getItem('simpesca2_aleat_gen_'+LETRAS[idx]+'_freioquad'); if(q&&qv!==null) q.checked=(qv==='1'); const fv=document.getElementById('freioVar'+idx); const fvv=localStorage.getItem('simpesca2_aleat_gen_'+LETRAS[idx]+'_freiovar'); if(fv&&fvv!==null) fv.checked=(fvv==='1'); }
 
 // ══ RENDER ═════════════════════════════════════════════════════════════════════
-function salvarDuracaoTotal(){ const el=document.getElementById('duracaoTotalMin'); let m=el?parseFloat(el.value):25; if(!(m>0)) m=25; DURACAO=Math.round(m*60); localStorage.setItem('simpesca2_aleat_duracao', m); renderTicks(0); renderCurva(0); }   // muda a duração da briga (⏱ min), redesenha as marcas + re-larga a timeline; regere (🎲) pra a curva escalar
+function salvarDuracaoTotal(){ const el=document.getElementById('duracaoTotalMin'); let m=el?parseFloat(el.value):25; if(!(m>0)) m=25; DURACAO=Math.round(m*60); localStorage.setItem('simpesca2_aleat_duracao', m); for(let i=0;i<NSIMS;i++){ renderTicks(i); renderCurva(i); } }   // muda a duração da briga (⏱ min), redesenha as marcas + re-larga a timeline; regere (🎲) pra a curva escalar
 function yOf(v){ return ((ESC_POS-v)/ESC_RANGE)*100; }
 function renderTicks(idx){
   const inner=document.getElementById('tlInner'+idx); if(!inner) return;
@@ -477,7 +505,7 @@ function renderTicks(idx){
     const tk=document.createElement('div'); tk.className='time-tick'; tk.style.left=pct+'%'; tk.textContent=(DURACAO>300 ? (Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0')) : sec+'s'); inner.appendChild(tk);
   }
 }
-function renderTodas(){ renderCurva(0); }
+function renderTodas(){ for(let i=0;i<NSIMS;i++) renderCurva(i); }
 // Só os handles VISÍVEIS (janela de rolagem + margem) — senão milhares de pontos numa timeline de 20 min travam.
 function renderHandles(idx){
   const area=document.getElementById('curva'+idx), wrap=document.getElementById('tl'+idx); if(!area||!wrap) return;
@@ -590,7 +618,7 @@ function enviarConfigRPM(frA, fpsA){ if(!configChar) return; const u16=v=>Math.m
 function enviarRepouso(ativo){ if(!configChar) return; const b=new Uint8Array([ativo?1:0]); try{ configChar.writeValueWithoutResponse?configChar.writeValueWithoutResponse(b):configChar.writeValue(b); }catch(e){} }
 function freioRepMin(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_freiorepmin')); return (isFinite(v)&&v>=0)?v:2; }
 function freioRepMax(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_freiorepmax')); return (isFinite(v)&&v>=0)?v:12; }
-function escPeso(){ return escalaPeso(LETRAS[0], pesoSimValor(0)); }
+function escPeso(){ return escalaPeso(LETRAS[simDesafio], pesoSimValor(simDesafio)); }
 function freioRepousoEscalado(){ const e=escPeso(); return freioRepMin()+e*(freioRepMax()-freioRepMin()); }
 function freioPosSimA(){ return freioMaxA()*escPeso(); }
 function freioRepousoForca(){ const r=freioRepousoEscalado(), fm=freioMaxA(); return (r>0&&fm>0)?Math.max(-100,Math.round(-20*r/fm)):0; }   // força negativa que gera o freio de repouso (eixo nunca livre na zona morta)
@@ -598,7 +626,7 @@ function travado(){ return Math.abs(linhaCarretel()) >= Math.abs(limiteLinha());
 function aplicarMotor(pct, estadoRaw){ pct=Math.max(-100,Math.min(100,pct));
   if(travado() && pct>0) pct=0;                    // trava bloqueia só a PUXADA (o freio não gasta linha)
   pct=comOffset(pct); escreverMotorBLE(pct);
-  atualizarSimGauge(0, pct);
+  atualizarSimGauge(simDesafio, pct);
   if(jogoAtivo){ const raw=(estadoRaw===undefined?pct:estadoRaw); const puxando=Math.round(pct)>0.5, freando=Math.round(raw)<-0.5; const es=document.getElementById('jogoEstado'); if(es){ es.textContent=puxando?'🐟 PEIXE PUXANDO — segure!':freando?'🛑 RESISTINDO — force!':'🎣 RECOLHA A LINHA!'; es.style.color=puxando?'#ff5f5f':freando?'#ffaa38':'#33d17a'; } }
 }
 // HOLD pós-jogo (segurança: segura o freio máx do peixe 5s e solta; alimenta o watchdog)
@@ -621,7 +649,7 @@ function iniciarJogoReal(){
 function loopJogo(){
   if(!jogoAtivo) return;
   const t=(performance.now()-jogoT0)/1000;
-  let v = t>=DURACAO ? 0 : interpolarPontos(SIMS[0].pontos, t) * escPeso();
+  let v = t>=DURACAO ? 0 : interpolarPontos(SIMS[simDesafio].pontos, t) * escPeso();
   const raw=v;
   if(Math.abs(v)<0.5) v = freioRepousoForca();      // zona morta -> freio de repouso (eixo nunca livre)
   aplicarMotor(v, raw);
@@ -653,7 +681,7 @@ function terminarJogo(res, t){
   enviarRepouso(false); iniciarHoldPosSim();         // segura o freio 5s (segurança) e solta
   const r=document.getElementById('jogoResult');
   if(res==='ganhou'){
-    const peso=pesoSimValor(0), score=scoreDesafio(peso, t); ultimoJogo={peso, tempo:t, score};
+    const peso=pesoSimValor(simDesafio), score=scoreDesafio(peso, t); ultimoJogo={peso, tempo:t, score};
     r.innerHTML='<div class="jogo-res-titulo" style="color:#00e676">🏆 PEIXE NO BARCO!</div>'+
       '<div class="jogo-res-sub">'+peso.toFixed(0)+' kg em '+fmtT(t)+' · <b style="color:#00e676">'+score+' pts</b></div>'+
       '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;"><input id="jogoNome" placeholder="seu nome" maxlength="16" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:inherit;font-size:1rem;padding:8px 10px;text-align:center;outline:none;"><button class="btn btn-green" onclick="salvarPontuacao()">💾 Salvar</button></div>'+
@@ -680,7 +708,8 @@ function linhaMaxJogo(){ const v=parseFloat(localStorage.getItem('simpesca2_alea
 function salvarLinhaMax(){ const el=document.getElementById('linhaMaxIn'); if(el) localStorage.setItem('simpesca2_aleat_linhamax', el.value); agendarSyncCal(); }
 function beep(freq, dur){ try{ const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return; const ac=new AC(); const o=ac.createOscillator(), g=ac.createGain(); o.frequency.value=freq||880; o.connect(g); g.connect(ac.destination); g.gain.value=0.18; o.start(); setTimeout(()=>{ try{o.stop();ac.close();}catch(e){} }, dur||120); }catch(e){} }
 function contagemRegressiva(n, onEnd){ const cd=document.getElementById('jogoContagem'); if(!cd){ if(onEnd) onEnd(); return; } cd.classList.add('on'); let k=n; const tick=()=>{ if(k<=0){ cd.classList.remove('on'); cd.textContent=''; if(onEnd) onEnd(); return; } cd.textContent=k; beep(880,120); k--; contTimer=setTimeout(tick,1000); }; tick(); }
-function abrirPreJogo(){
+function abrirPreJogo(idx){
+  if(idx!=null && idx>=0 && idx<NSIMS) simDesafio=idx;   // qual peixe vai jogar (▶ Jogar do bloco); "Jogar de novo" mantém o atual
   if(jogoAtivo) return; if(simRodando) stopSim(0);
   const fl=document.getElementById('faixaLbl'); if(fl) fl.textContent=Math.min(faixaMin(),faixaMax())+' a '+Math.max(faixaMin(),faixaMax());
   recolherFase=0; fecharHUDJogo(); fecharRank();
@@ -715,13 +744,20 @@ function escHtml(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;
 function salvarPontuacao(){
   if(!ultimoJogo) return; const el=document.getElementById('jogoNome'); let nome=(el?el.value:'').trim(); if(!nome) nome='Jogador';
   localStorage.setItem('simpesca2_ultimo_nome', nome);
-  const rk=lerRankDesafio(); rk.push({nome, peso:ultimoJogo.peso, tempo:ultimoJogo.tempo, score:ultimoJogo.score, data:new Date().toISOString()}); localStorage.setItem('simpesca2_aleat_ranking', JSON.stringify(rk));
+  const rk=lerRankDesafio(); rk.push({nome, peso:ultimoJogo.peso, tempo:ultimoJogo.tempo, score:ultimoJogo.score, sim:LETRAS[simDesafio], data:new Date().toISOString()}); localStorage.setItem('simpesca2_aleat_ranking', JSON.stringify(rk));
   ultimoJogo=null; fecharHUDJogo(); abrirRank();
 }
+let rankFiltroSim='todas', rankFiltroCls='todas';
+function montarFiltrosSimRank(){ const box=document.getElementById('rankFiltrosSim'); if(!box) return; box.innerHTML=''; const add=(id,nome,ativo)=>{ const b=document.createElement('button'); b.className='rkf'+(ativo?' ativo':''); b.textContent=nome; b.onclick=()=>rankFiltrarSim(id,b); box.appendChild(b); }; add('todas','Todos os peixes',true); for(let i=0;i<NSIMS;i++) add(LETRAS[i],NOMES[i],false); }
+function rankFiltrarSim(s,btn){ rankFiltroSim=s; document.querySelectorAll('#rankFiltrosSim .rkf').forEach(b=>b.classList.remove('ativo')); btn.classList.add('ativo'); renderRank(); }
+function rankFiltrarCls(c,btn){ rankFiltroCls=c; document.querySelectorAll('#rankFiltrosCls .rkf').forEach(b=>b.classList.remove('ativo')); btn.classList.add('ativo'); renderRank(); }
 function renderRank(){
-  const rk=lerRankDesafio().slice().sort((a,b)=>(b.score||0)-(a.score||0)); const cont=document.getElementById('rankLista'); if(!cont) return;
+  let rk=lerRankDesafio().slice();
+  if(rankFiltroSim!=='todas') rk=rk.filter(r=>r.sim===rankFiltroSim);
+  if(rankFiltroCls!=='todas') rk=rk.filter(r=>classePesoReg(r).id===rankFiltroCls);
+  rk.sort((a,b)=>(b.score||0)-(a.score||0)); const cont=document.getElementById('rankLista'); if(!cont) return;
   if(!rk.length){ cont.innerHTML='<div style="color:var(--text-dim);padding:24px;">sem jogadas ainda — vença um desafio!</div>'; return; }
-  cont.innerHTML=rk.slice(0,50).map((r,i)=>'<div class="rank-item"><span class="rank-pos">'+(i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1))+'</span><span class="rank-nome">'+escHtml(r.nome)+'</span><span class="rank-score">'+(r.score||0)+' pts</span><span class="rank-meta">'+(r.peso||0).toFixed(0)+'kg · '+fmtT(r.tempo||0)+'</span></div>').join('');
+  cont.innerHTML=rk.slice(0,50).map((r,i)=>{ const pi=LETRAS.indexOf(r.sim), pn=pi>=0?NOMES[pi]:''; const cp=classePesoReg(r); return '<div class="rank-item"><span class="rank-pos">'+(i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1))+'</span><span class="rank-nome">'+escHtml(r.nome)+'</span><span class="rank-score">'+(r.score||0)+' pts</span><span class="rank-meta">'+(pn?'🐟 '+pn+' · ':'')+(r.peso||0).toFixed(0)+'kg <b style="color:'+cp.cor+'">'+cp.nome+'</b> · '+fmtT(r.tempo||0)+'</span></div>'; }).join('');
 }
 function abrirRank(){ renderRank(); const kp=document.getElementById('scoreKp'), kv=document.getElementById('scoreKv'); if(kp) kp.value=scoreKp(); if(kv) kv.value=scoreKv(); const cfg=document.getElementById('rankCfg'); if(cfg) cfg.style.display='none'; document.getElementById('rankHUD').classList.add('on'); }
 function fecharRank(){ const el=document.getElementById('rankHUD'); if(el) el.classList.remove('on'); }
@@ -750,7 +786,7 @@ function montarBloco(i){
         '<button class="btn" style="background:#c1121f;color:#fff" onclick="gerarNegativo('+i+')" title="🎲 Gerar o FREIO (vermelho, −) nas janelas. Mantém a puxada que já existe.">🎲−</button>'+
         '<button class="btn btn-outline" onclick="limparPositivo('+i+')" title="Apagar só a PUXADA (parte +)">🧹+</button>'+
         '<button class="btn btn-outline" onclick="limparNegativo('+i+')" title="Apagar só o FREIO (parte −)">🧹−</button>'+
-        '<button class="btn btn-green" onclick="abrirPreJogo()" title="🎮 Jogar: coloca a linha e começa o desafio">▶ Jogar</button>'+
+        '<button class="btn btn-green" onclick="abrirPreJogo('+i+')" title="🎮 Jogar: coloca a linha e começa o desafio">▶ Jogar</button>'+
         '<button class="btn btn-outline" onclick="copiarCurva('+i+')" title="Copiar curva">📄</button>'+
         '<button class="btn btn-accent btnColar" id="colar'+i+'" onclick="colarCurva('+i+')" disabled title="Colar curva copiada">📋</button>'+
         '<div id="tsDisplay'+i+'" class="ts-badge">0:00 / 1:30</div>'+
@@ -863,8 +899,9 @@ async function enviarSyncCurva(){
   }catch(e){ return; }
   // PROTEÇÃO: se o arquivo existe mas não deu pra ler as curvas -> ABORTA (nunca sobrescreve as 6 espécies com vazio)
   if(!cfg || !cfg.curvas || typeof cfg.curvas!=='object'){ setCurvaBadge('err'); return; }
-  cfg.curvas.desafio=SIMS[0].pontos; cfg.criado=new Date().toISOString();
-  const body={message:'auto: curva desafio (20min)', content:btoa(unescape(encodeURIComponent(JSON.stringify(cfg,null,2))))}; if(sha) body.sha=sha;
+  for(let i=0;i<NSIMS;i++) cfg.curvas[curvaKey(i)]=SIMS[i].pontos;   // 'desafio' (pirarará) + 'desafio_tambaqui'...
+  cfg.criado=new Date().toISOString();
+  const body={message:'auto: curvas desafio', content:btoa(unescape(encodeURIComponent(JSON.stringify(cfg,null,2))))}; if(sha) body.sha=sha;
   let r=null; try{ r=await fetch(url,{method:'PUT',headers,body:JSON.stringify(body)}); }catch(e){}
   setCurvaBadge(r&&r.ok?'ok':'err');
 }
@@ -881,7 +918,8 @@ window.addEventListener('storage', e=>{ if(!e.key) return;
   if(ghTokenA() && navigator.onLine && localStorage.getItem('simpesca2_sync_pend')) enviarSyncCal(); })();
 
 // ══ INIT ══════════════════════════════════════════════════════════════════════
-for(let i=0;i<NSIMS;i++) montarBloco(i);   // 1 bloco (pirarará, 20 min)
+for(let i=0;i<NSIMS;i++) montarBloco(i);   // blocos das simulações (pirarará + tambacu)
+montarFiltrosSimRank();   // chips de filtro por peixe no ranking
 // Carretel no TOPO da página (antes da curva)
 { const carr=document.querySelector('[data-cardkey="linha"]'); const cardCarr=carr?carr.closest('.card'):null; const sc=document.getElementById('simsContainer'); const cardCurva=sc?sc.closest('.card'):null; if(cardCarr&&cardCurva&&cardCurva.parentNode) cardCurva.parentNode.insertBefore(cardCarr, cardCurva); }
 { const dm=parseFloat(localStorage.getItem('simpesca2_aleat_duracao')); if(isFinite(dm)&&dm>0){ DURACAO=Math.round(dm*60); const el=document.getElementById('duracaoTotalMin'); if(el) el.value=dm; } }   // duração salva -> seta DURACAO antes de gerar/render
@@ -892,7 +930,10 @@ aplicarMostrarTeste();   // aplica o toggle dos botões de teste (chave comparti
 for(let i=0;i<NSIMS;i++){ carregarGenCfg(i); setupArea(i); SIMS[i].pontos = carregarPontosStore(i) || gerarCurvaEspecie(i); salvarPontos(i); renderTicks(i); renderCurva(i); }   // 1ª vez: gera/carrega a curva
 document.querySelectorAll('.gen-row input').forEach(el=>el.addEventListener('change',()=>salvarGenCfg(+el.id.slice(-1)||0)));   // persiste ajustes ao editar (idx pelo sufixo do id)
 // ── Ao abrir: puxa a curva do DESAFIO do GitHub (curvas.json -> desafio), fonte de verdade. Ajusta a duração pelo último ponto. Depois libera o push (podeSyncCurva). ──
-(async()=>{ try{ const r=await fetch('curvas.json',{cache:'no-store'}); if(r&&r.ok){ const d=await r.json(); const cv=(d&&d.curvas)||{}; if(Array.isArray(cv.desafio)&&cv.desafio.length){ SIMS[0].pontos=cv.desafio.slice().sort((a,b)=>a.t-b.t); const last=SIMS[0].pontos[SIMS[0].pontos.length-1]; if(last&&last.t>1){ DURACAO=Math.round(last.t); const el=document.getElementById('duracaoTotalMin'); if(el) el.value=Math.max(1,Math.round(DURACAO/60)); } salvarPontos(0); renderTicks(0); renderCurva(0); } } }catch(e){} podeSyncCurva=true; })();
+(async()=>{ try{ const r=await fetch('curvas.json',{cache:'no-store'}); if(r&&r.ok){ const d=await r.json(); const cv=(d&&d.curvas)||{};
+  for(let i=0;i<NSIMS;i++){ const arr=cv[curvaKey(i)]; if(Array.isArray(arr)&&arr.length){ SIMS[i].pontos=arr.slice().sort((a,b)=>a.t-b.t);
+    if(i===0){ const last=SIMS[0].pontos[SIMS[0].pontos.length-1]; if(last&&last.t>1){ DURACAO=Math.round(last.t); const el=document.getElementById('duracaoTotalMin'); if(el) el.value=Math.max(1,Math.round(DURACAO/60)); } }
+    salvarPontos(i); renderTicks(i); renderCurva(i); } } } }catch(e){} podeSyncCurva=true; })();
 </script>
 </body>
 </html>

@@ -255,7 +255,7 @@ select{background:var(--surface);border:1px solid var(--border);color:var(--text
 <div class="card">
   <div class="secao-titulo recolhivel" data-cardkey="export" onclick="toggleCard(this)"><span class="card-chevron">▾</span><span>💾</span> Exportar / Importar</div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;">
-    <select id="selSimAcao"><option value="0">Pirarara</option><option value="1">Tambacu</option><option value="2">Tucunaré</option><option value="3">Dourado</option><option value="4">Trairão</option><option value="5">Jaú</option><option value="desafio">🎯 Desafio</option></select>
+    <select id="selSimAcao"><option value="0">Pirarara</option><option value="1">Tambacu</option><option value="2">Tucunaré</option><option value="3">Dourado</option><option value="4">Trairão</option><option value="5">Jaú</option><option value="desafio">🎯 Desafio Pirarará</option><option value="desafio_tambaqui">🎯 Desafio Tambacu</option></select>
     <button class="btn btn-green" onclick="exportarJSON()">⬇ Exportar</button>
     <label class="btn btn-outline" style="cursor:pointer;">⬆ Importar<input type="file" accept=".json" onchange="importarJSON(event)" style="display:none"></label>
     <button class="btn btn-red" onclick="limparSim()">🗑 Limpar</button>
@@ -749,10 +749,10 @@ function atualizarInterfaceTempo(){ for(let i=0;i<NSIMS;i++){ const el=document.
 
 // ══ AÇÕES (padrão / limpar / export / import) ─────────────────
 function limparSim(){ const val=document.getElementById('selSimAcao').value;
-  if(val==='desafio'){ if(!confirm('Apagar a curva do Desafio (local)?')) return; localStorage.removeItem('simpesca2_aleat_pontos_pirarara'); log('Desafio (local) apagado','err'); return; }
+  { const ds=desafioSel(val); if(ds){ if(!confirm('Apagar a curva do Desafio '+ds.nome+' (local)?')) return; localStorage.removeItem('simpesca2_aleat_pontos_'+ds.id); log('Desafio '+ds.nome+' (local) apagado','err'); return; } }
   const idx=parseInt(val); if(!confirm('Apagar todos os pontos do '+NOMES[idx]+'?')) return; SIMS[idx].pontos=[]; salvarPontos(idx); fecharEditorPonto(); renderCurva(idx); log(NOMES[idx]+' apagado','err'); }
 function exportarJSON(){ const val=document.getElementById('selSimAcao').value;
-  if(val==='desafio'){ const cd=curvaDesafio()||[]; const last=cd.length?cd[cd.length-1].t:1200; const payload={versao:2,tipo:'pontos',especie:'desafio',duracao:Math.round(last),criado:new Date().toISOString(),pontos:cd}; const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='curva_desafio.json'; a.click(); URL.revokeObjectURL(a.href); log('Desafio exportado','ok'); return; }
+  { const ds=desafioSel(val); if(ds){ const cd=curvaDesafio(ds.id,ds.gh)||[]; const last=cd.length?cd[cd.length-1].t:1200; const payload={versao:2,tipo:'pontos',especie:ds.gh,duracao:Math.round(last),criado:new Date().toISOString(),pontos:cd}; const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='curva_'+ds.gh+'.json'; a.click(); URL.revokeObjectURL(a.href); log('Desafio '+ds.nome+' exportado','ok'); return; } }
   const idx=parseInt(val); const payload={versao:2,tipo:'pontos',especie:LETRAS[idx],duracao:DURACAO,criado:new Date().toISOString(),pontos:SIMS[idx].pontos}; const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='curva_'+LETRAS[idx]+'.json'; a.click(); URL.revokeObjectURL(a.href); log(NOMES[idx]+' exportado','ok'); }
 function exportarConfig(){
   const cal={
@@ -779,8 +779,10 @@ const GH_PATH={curvas:'curvas.json', config:'config.json'};   // caminho NO REPO
 let ghDirty={curvas:false,config:false}, ghTimer=null, ghEnviando=false;
 function ghToken(){ return (localStorage.getItem('simpesca2_github_token')||'').trim(); }
 function salvarToken(v){ localStorage.setItem('simpesca2_github_token',(v||'').trim()); setSyncBadge(ghToken()?'idle':'notoken'); }
-function curvaDesafio(){ try{ const r=localStorage.getItem('simpesca2_aleat_pontos_pirarara'); if(r){ const d=JSON.parse(r); if(Array.isArray(d)&&d.length) return d; } }catch(e){} return (curvasGitHub&&curvasGitHub.desafio)||null; }   // curva do Modo Desafio (7ª): local do desafio, senão a do GitHub
-function montarCurvasObj(){ const curvas={}; LETRAS.forEach((id,i)=>{ curvas[id]=SIMS[i].pontos; }); const cd=curvaDesafio(); if(cd) curvas.desafio=cd; return {versao:1,tipo:'curvas_todas',criado:new Date().toISOString(),curvas}; }   // inclui a 7ª sim (desafio)
+function curvaDesafio(id,ghKey){ id=id||'pirarara'; ghKey=ghKey||'desafio'; try{ const r=localStorage.getItem('simpesca2_aleat_pontos_'+id); if(r){ const d=JSON.parse(r); if(Array.isArray(d)&&d.length) return d; } }catch(e){} return (curvasGitHub&&curvasGitHub[ghKey])||null; }   // curva do Modo Desafio: local do desafio, senão a do GitHub
+const DESAFIOS=[{val:'desafio',id:'pirarara',gh:'desafio',nome:'Pirarará'},{val:'desafio_tambaqui',id:'tambaqui',gh:'desafio_tambaqui',nome:'Tambacu'}];   // curvas do Modo Desafio (1 por peixe) no curvas.json
+function desafioSel(val){ return DESAFIOS.find(d=>d.val===val)||null; }
+function montarCurvasObj(){ const curvas={}; LETRAS.forEach((id,i)=>{ curvas[id]=SIMS[i].pontos; }); DESAFIOS.forEach(d=>{ const cv=curvaDesafio(d.id,d.gh); if(cv) curvas[d.gh]=cv; }); return {versao:1,tipo:'curvas_todas',criado:new Date().toISOString(),curvas}; }   // inclui as curvas do Modo Desafio
 function montarConfigObj(){
   const cal={mpv:metrosPorVolta(),limite:limiteLinha(),rpmmin:rpmMin(),rpmmax:rpmMax(),freioa:freioMaxA(),freiorepmin:freioRepMin(),freiorepmax:freioRepMax(),pesoexp:rankPesoExp(),inv:localStorage.getItem('simpesca2_cal_inv')||'1'};
   const gen={}; LETRAS.forEach((id,i)=>{ gen[id]={}; GEN_CAMPOS.forEach(([inp,key])=>{ const el=document.getElementById(inp+i); if(el) gen[id][key]=el.value; }); });
@@ -854,7 +856,7 @@ function aplicarConfig(d){
   }
 }
 function exportarTodasCurvas(){
-  const curvas={}; LETRAS.forEach((id,i)=>{ curvas[id]=SIMS[i].pontos; }); const cd=curvaDesafio(); if(cd) curvas.desafio=cd;   // inclui a 7ª sim (desafio)
+  const curvas={}; LETRAS.forEach((id,i)=>{ curvas[id]=SIMS[i].pontos; }); DESAFIOS.forEach(d=>{ const cv=curvaDesafio(d.id,d.gh); if(cv) curvas[d.gh]=cv; });   // inclui as curvas do Modo Desafio
   const payload={versao:1,tipo:'curvas_todas',criado:new Date().toISOString(),curvas};
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='curvas.json'; a.click(); URL.revokeObjectURL(a.href);
@@ -877,8 +879,8 @@ function importarTodasCurvas(ev){
           SIMS[i].pontos=sanearCurva(curvas[id].slice().sort((a,b)=>a.t-b.t)); salvarPontos(i); renderCurva(i); ok++;
         }
       });
-      if(curvas.desafio&&Array.isArray(curvas.desafio)&&curvas.desafio.length){ try{ localStorage.setItem('simpesca2_aleat_pontos_pirarara', JSON.stringify(sanearCurva(curvas.desafio.slice().sort((a,b)=>a.t-b.t)))); ok++; }catch(ex){} }   // 7ª sim (desafio) -> storage do Modo Desafio
-      log(ok+' curvas importadas do curvas.json'+(curvas.desafio?' (incl. desafio)':''),'ok');
+      DESAFIOS.forEach(d=>{ const cv=curvas[d.gh]; if(Array.isArray(cv)&&cv.length){ try{ localStorage.setItem('simpesca2_aleat_pontos_'+d.id, JSON.stringify(sanearCurva(cv.slice().sort((a,b)=>a.t-b.t)))); ok++; }catch(ex){} } });   // curvas do Modo Desafio -> storage local
+      log(ok+' curvas importadas do curvas.json'+((curvas.desafio||curvas.desafio_tambaqui)?' (incl. desafio)':''),'ok');
     }catch(ex){ log('Erro ao ler curvas.json: '+ex,'err'); }
   }; r.readAsText(f);
 }
@@ -892,7 +894,8 @@ function importarJSON(ev){
       else if(Array.isArray(d)){ pts=(d.length && (d[0].sub!==undefined||d[0].pico!==undefined||d[0].potIni!==undefined)) ? gatilhosParaPontos(d) : d; }
       if(!Array.isArray(pts)) throw 0;
       const san=sanearCurva(pts.slice().sort((a,b)=>a.t-b.t));
-      if(val==='desafio'){ localStorage.setItem('simpesca2_aleat_pontos_pirarara', JSON.stringify(san)); agendarSync('curvas'); log('Desafio: '+san.length+' pontos importados — subindo pro curvas.json','ok'); }
+      const dsi=desafioSel(val);
+      if(dsi){ localStorage.setItem('simpesca2_aleat_pontos_'+dsi.id, JSON.stringify(san)); agendarSync('curvas'); log('Desafio '+dsi.nome+': '+san.length+' pontos importados — subindo pro curvas.json','ok'); }
       else { const idx=parseInt(val); SIMS[idx].pontos=san; salvarPontos(idx); fecharEditorPonto(); renderCurva(idx); log(NOMES[idx]+': '+san.length+' pontos importados','ok'); }
     }catch(err){ log('JSON inválido','err'); } ev.target.value=''; };
   r.readAsText(f);
