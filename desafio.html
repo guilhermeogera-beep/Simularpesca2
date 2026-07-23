@@ -68,7 +68,7 @@ input[type="range"]::-webkit-slider-thumb{height:24px;width:24px;border-radius:5
 .jogo-topo{font-size:1.8rem;font-family:monospace;color:var(--text-dim);}
 .jogo-estado{font-size:2.4rem;font-weight:800;letter-spacing:1px;}
 .jogo-linha{width:100%;max-width:660px;}
-.jogo-linha-num{font-size:5.2rem;font-weight:800;font-family:monospace;color:var(--accent);line-height:1;}
+.jogo-linha-num{font-size:5.2rem;font-weight:800;font-family:monospace;color:var(--accent);line-height:1;white-space:nowrap;}
 .jogo-linha-sub{font-size:0.92rem;color:var(--text-dim);margin-top:10px;}
 .jogo-bar{height:26px;background:var(--surface);border:1px solid var(--border);border-radius:13px;overflow:hidden;margin-top:16px;}
 .jogo-bar-fill{height:100%;width:0%;background:#00e676;border-radius:13px;transition:width 0.15s linear,background 0.3s;}
@@ -187,9 +187,9 @@ input[type="range"]::-webkit-slider-thumb{height:24px;width:24px;border-radius:5
   <div class="jogo-topo">⏱ <span id="jogoTempo">0:00</span></div>
   <div class="jogo-estado" id="jogoEstado">🎣 RECOLHA A LINHA!</div>
   <div class="jogo-linha">
-    <div style="display:flex;gap:40px;justify-content:center;flex-wrap:wrap;">
-      <div><div class="jogo-linha-num" id="jogoPlayerReeled" style="color:#00e676">0.0 m</div><div class="jogo-linha-sub">🎣 você recolheu</div></div>
-      <div><div class="jogo-linha-num" id="jogoFishPulled" style="color:#ff5f5f">0.0 m</div><div class="jogo-linha-sub">🐟 peixe puxou</div></div>
+    <div style="display:flex;gap:26px;justify-content:center;flex-wrap:nowrap;">
+      <div><div class="jogo-linha-num" id="jogoPlayerReeled" style="color:#00e676">0.0m</div><div class="jogo-linha-sub">🎣 você recolheu</div></div>
+      <div><div class="jogo-linha-num" id="jogoFishPulled" style="color:#ff5f5f">0.0m</div><div class="jogo-linha-sub">🐟 peixe puxou</div></div>
     </div>
     <div class="jogo-barra2">
       <span class="jb-ico" title="pescador ganha">🎣</span>
@@ -639,8 +639,8 @@ function atualizarHUDJogo(t, L, lim){
   const te=document.getElementById('jogoTempo'); if(te) te.textContent=fmtT(t);
   const li=document.getElementById('jogoLimite'); if(li) li.textContent=linhaMaxJogo().toFixed(0);   // mostra o valor configurado (com sinal)
   const pm=document.getElementById('jogoPeixeMarker'); if(pm){ const f=Math.max(0,Math.min(100,(L/lim)*100)); pm.style.left=f+'%'; pm.style.transform='translate(-50%,-50%) scaleX('+(f>50?-1:1)+')'; }   // 🐟 anda: 0% (esq/🎣 ganha) -> 100% (dir/💀 perde); vira pra encarar o lado
-  const fp=document.getElementById('jogoFishPulled'); if(fp) fp.textContent=fishPulled.toFixed(1)+' m';
-  const pr=document.getElementById('jogoPlayerReeled'); if(pr) pr.textContent=playerReeled.toFixed(1)+' m';
+  const fp=document.getElementById('jogoFishPulled'); if(fp) fp.textContent=fishPulled.toFixed(1)+'m';
+  const pr=document.getElementById('jogoPlayerReeled'); if(pr) pr.textContent=playerReeled.toFixed(1)+'m';
   const cr=document.getElementById('jogoCarretel'); if(cr) cr.textContent=linhaCarretel().toFixed(1)+' m';
 }
 function terminarJogo(res, t){
