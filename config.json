@@ -1,12 +1,12 @@
 {
   "versao": 2,
   "tipo": "config",
-  "criado": "2026-07-23T14:29:34.814Z",
+  "criado": "2026-07-23T16:39:46.998Z",
   "cal": {
     "mpv": 34,
     "limite": -70,
     "rpmmin": 1100,
-    "rpmmax": 2000,
+    "rpmmax": 2200,
     "freioa": 12,
     "freiorepmin": 2,
     "freiorepmax": 12,
@@ -94,13 +94,5 @@
     "dourado": "0",
     "trairao": "0",
     "jau": "0"
-  },
-  "desafio": {
-    "faixaMin": -5,
-    "faixaMax": -6,
-    "tempoMin": 20,
-    "linhaMax": -60,
-    "scoreKp": 50,
-    "scoreKv": 2
   }
 }
