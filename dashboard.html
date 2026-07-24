@@ -380,7 +380,7 @@ function salvarCal(){ const mpv=parseFloat(document.getElementById('calMpv').val
   const frx=parseFloat(document.getElementById('calFreioRepMax').value); if(isFinite(frx)&&frx>=0) localStorage.setItem('simpesca2_cal_freiorepmax',frx);
   enviarConfigRPM();   // manda RPM mín/máx + freio máx + freio repouso (máx, baseline) pro ESP na hora (se conectado)
   atualizarCalLive(); atualizarEstimativas(); agendarSync('config'); log('Calibração salva: '+mpv+' m/volta · RPM '+rmin+'–'+rmax+' · freio '+fa+'A · repouso '+frn+'–'+frx+'A','ok'); }
-function salvarLimite(){ const lim=parseFloat(document.getElementById('calLimite').value); if(isFinite(lim)&&lim!==0){ localStorage.setItem('simpesca2_cal_limite',lim); travaAtiva=false; atualizarContadores(); agendarSync('config'); log('Limite de linha (trava) salvo: '+lim+' m','ok'); } else log('Limite inválido (não pode ser 0/vazio)','err'); }
+function salvarLimite(){ const lim=parseFloat(document.getElementById('calLimite').value); if(isFinite(lim)&&lim!==0){ localStorage.setItem('simpesca2_cal_limite',lim); travaAtiva=false; atualizarContadores(); log('Limite de linha (trava) salvo LOCAL: '+lim+' m','ok'); } else log('Limite inválido (não pode ser 0/vazio)','err'); }   // limite é LOCAL: não sobe pro config.json
 function calcularMpv(){ const real=parseFloat(document.getElementById('calReal').value); const voltas=Math.abs(contagemEncoder)/4096; if(!(real>0)){ log('Digite os metros reais recolhidos','err'); return; } if(voltas<0.01){ log('Recolha a linha antes de calcular','err'); return; } const mpv=real/voltas; document.getElementById('calMpv').value=mpv.toFixed(4); localStorage.setItem('simpesca2_cal_mpv',mpv); atualizarCalLive(); agendarSync('config'); log('Calibrado: '+mpv.toFixed(4)+' m/volta','ok'); }
 
 // ══ GAUGES / LOG ──────────────────────────────────────────────
@@ -756,10 +756,10 @@ function exportarJSON(){ const val=document.getElementById('selSimAcao').value;
   const idx=parseInt(val); const payload={versao:2,tipo:'pontos',especie:LETRAS[idx],duracao:DURACAO,criado:new Date().toISOString(),pontos:SIMS[idx].pontos}; const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='curva_'+LETRAS[idx]+'.json'; a.click(); URL.revokeObjectURL(a.href); log(NOMES[idx]+' exportado','ok'); }
 function exportarConfig(){
   const cal={
-    mpv: metrosPorVolta(), limite: limiteLinha(),
+    mpv: metrosPorVolta(),
     rpmmin: rpmMin(), rpmmax: rpmMax(), freioa: freioMaxA(), freiorepmin: freioRepMin(), freiorepmax: freioRepMax(), pesoexp: rankPesoExp(),
     inv: localStorage.getItem('simpesca2_cal_inv')||'1'
-  };
+  };   // limite NÃO entra: é LOCAL por dispositivo
   const gen={};
   LETRAS.forEach((id,i)=>{
     gen[id]={};
@@ -784,7 +784,7 @@ const DESAFIOS=[{val:'desafio',id:'pirarara',gh:'desafio',nome:'Pirarará'},{val
 function desafioSel(val){ return DESAFIOS.find(d=>d.val===val)||null; }
 function montarCurvasObj(){ const curvas={}; LETRAS.forEach((id,i)=>{ curvas[id]=SIMS[i].pontos; }); DESAFIOS.forEach(d=>{ const cv=curvaDesafio(d.id,d.gh); if(cv) curvas[d.gh]=cv; }); return {versao:1,tipo:'curvas_todas',criado:new Date().toISOString(),curvas}; }   // inclui as curvas do Modo Desafio
 function montarConfigObj(){
-  const cal={mpv:metrosPorVolta(),limite:limiteLinha(),rpmmin:rpmMin(),rpmmax:rpmMax(),freioa:freioMaxA(),freiorepmin:freioRepMin(),freiorepmax:freioRepMax(),pesoexp:rankPesoExp(),inv:localStorage.getItem('simpesca2_cal_inv')||'1'};
+  const cal={mpv:metrosPorVolta(),rpmmin:rpmMin(),rpmmax:rpmMax(),freioa:freioMaxA(),freiorepmin:freioRepMin(),freiorepmax:freioRepMax(),pesoexp:rankPesoExp(),inv:localStorage.getItem('simpesca2_cal_inv')||'1'};   // SEM limite (local por dispositivo)
   const gen={}; LETRAS.forEach((id,i)=>{ gen[id]={}; GEN_CAMPOS.forEach(([inp,key])=>{ const el=document.getElementById(inp+i); if(el) gen[id][key]=el.value; }); });
   const sync={}; LETRAS.forEach(id=>{ sync[id]=localStorage.getItem('simpesca2_sync_'+id)||'0'; });
   return {versao:2,tipo:'config',criado:new Date().toISOString(),cal,gen,sync};
@@ -831,7 +831,7 @@ function aplicarConfig(d){
   if(!d) return;
   if(d.cal){
     if(d.cal.mpv)    { localStorage.setItem('simpesca2_cal_mpv',    d.cal.mpv);    document.getElementById('calMpv').value=d.cal.mpv; }
-    if(d.cal.limite) { localStorage.setItem('simpesca2_cal_limite', d.cal.limite); document.getElementById('calLimite').value=d.cal.limite; }
+    // limite de linha é LOCAL por dispositivo (NÃO vem do config.json)
     // velmax removido no v2 (linha derivada de RPM+mpv) — ignora o campo se vier de um config.json antigo
     if(d.cal.rpmmin!=null){ localStorage.setItem('simpesca2_cal_rpmmin',d.cal.rpmmin); const e=document.getElementById('calRpmMin'); if(e) e.value=d.cal.rpmmin; }
     if(d.cal.rpmmax!=null){ localStorage.setItem('simpesca2_cal_rpmmax',d.cal.rpmmax); const e=document.getElementById('calRpmMax'); if(e) e.value=d.cal.rpmmax; }

@@ -841,7 +841,7 @@ function simEncoder(dM){ let novoM=linhaCarretel()+dM; if(jogoAtivo){ const out=
   contagemEncoder=Math.round((novoM/metrosPorVolta())*4096*(inverterDir()?-1:1)); salvarContagem(); atualizarContadores(); }   // TESTE sem hardware: soma dM AO valor COM SINAL (−1 deixa o carretel mais negativo)
 window.addEventListener('keydown', e=>{ if(e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return; if(e.key==='ArrowUp'){ simEncoder(1); e.preventDefault(); } else if(e.key==='ArrowDown'){ simEncoder(-1); e.preventDefault(); } });   // ↑ peixe puxa 1m · ↓ recolhe 1m (teste sem hardware)
 function inverterLado(){ const novo=!(localStorage.getItem('simpesca2_cal_inv')==='1'); localStorage.setItem('simpesca2_cal_inv', novo?'1':'0'); const tmp=metrosGanhos; metrosGanhos=metrosPerdidos; metrosPerdidos=tmp; travaAtiva=false; atualizarContadores(); agendarSyncCal(); }
-function salvarLimite(){ const lim=parseFloat(document.getElementById('calLimite').value); if(isFinite(lim)&&lim!==0){ localStorage.setItem('simpesca2_cal_limite',lim); travaAtiva=false; atualizarContadores(); agendarSyncCal(); } else { alert('Limite inválido (não pode ser 0/vazio)'); } }
+function salvarLimite(){ const lim=parseFloat(document.getElementById('calLimite').value); if(isFinite(lim)&&lim!==0){ localStorage.setItem('simpesca2_cal_limite',lim); travaAtiva=false; atualizarContadores(); } else { alert('Limite inválido (não pode ser 0/vazio)'); } }   // limite é LOCAL por dispositivo: não sobe pro config.json
 function toggleCarretelBtns(){ const el=document.getElementById('carretelCtrls'); if(!el) return; const ocultar=el.style.display!=='none'; el.style.display=ocultar?'none':''; localStorage.setItem('simpesca2_carretel_btns', ocultar?'0':'1'); }
 function toggleCard(el){ const card=el.closest('.card'); if(!card) return; const rec=!card.classList.contains('card-colapsado'); card.classList.toggle('card-colapsado',rec); const k=el.dataset.cardkey; if(k) localStorage.setItem('simpesca2_cardcol_'+k, rec?'1':'0'); }
 function toggleConfigRow(){ const el=document.getElementById('configRow'), btn=document.getElementById('cfgColBtn'); if(!el) return; const oc=el.style.display!=='none'; el.style.display=oc?'none':''; if(btn) btn.textContent=oc?'▸':'▾'; localStorage.setItem('simpesca2_aleat_cfgrow', oc?'0':'1'); }   // oculta/mostra a linha de ajustes (Duração/Faixa/Tempo/Teste)
@@ -879,7 +879,7 @@ async function enviarSyncCal(){
     else { setSyncBadge('err'); return; }
   }catch(e){ return; }
   if(!cfg || typeof cfg!=='object'){ setSyncBadge('err'); return; }   // existe mas não deu pra ler -> ABORTA (não apaga gen/sync)
-  cfg.cal=cfg.cal||{}; cfg.cal.limite=limiteLinha(); cfg.cal.inv=localStorage.getItem('simpesca2_cal_inv')||'1';
+  cfg.cal=cfg.cal||{}; cfg.cal.inv=localStorage.getItem('simpesca2_cal_inv')||'1';   // limite NÃO entra: é LOCAL por dispositivo
   cfg.desafio=cfg.desafio||{}; cfg.desafio.faixaMin=faixaMin(); cfg.desafio.faixaMax=faixaMax(); cfg.desafio.tempoMin=tempoMinVit(); cfg.desafio.linhaMax=linhaMaxJogo(); cfg.desafio.scoreKp=scoreKp(); cfg.desafio.scoreKv=scoreKv();   // bloco separado do Desafio
   cfg.criado=new Date().toISOString();
   const body={message:'auto: carretel + desafio', content:btoa(unescape(encodeURIComponent(JSON.stringify(cfg,null,2))))}; if(sha) body.sha=sha;
@@ -921,7 +921,7 @@ window.addEventListener('storage', e=>{ if(!e.key) return;
   if(e.key==='simpesca2_cal_limite' || e.key==='simpesca2_cal_inv' || e.key==='simpesca2_cal_mpv'){ const li=document.getElementById('calLimite'); if(li) li.value=limiteLinha(); atualizarContadores(); } });
 // ── Ao abrir: aplica o cal do config.json (limite/inv/mpv global, read-only) e mostra ──
 { const li=document.getElementById('calLimite'); if(li) li.value=limiteLinha(); atualizarContadores(); }
-(async()=>{ if(navigator.onLine){ try{ const r=await fetch('config.json',{cache:'no-store'}); if(r&&r.ok){ const d=await r.json(); const c=(d&&d.cal)||{}; if(c.limite!=null) localStorage.setItem('simpesca2_cal_limite',c.limite); if(c.inv!=null) localStorage.setItem('simpesca2_cal_inv',c.inv); if(c.mpv) localStorage.setItem('simpesca2_cal_mpv',c.mpv); aplicarConfigDesafio((d&&d.desafio)||null); } }catch(e){} }
+(async()=>{ if(navigator.onLine){ try{ const r=await fetch('config.json',{cache:'no-store'}); if(r&&r.ok){ const d=await r.json(); const c=(d&&d.cal)||{}; if(c.inv!=null) localStorage.setItem('simpesca2_cal_inv',c.inv); if(c.mpv) localStorage.setItem('simpesca2_cal_mpv',c.mpv); aplicarConfigDesafio((d&&d.desafio)||null);   // limite NÃO vem do config.json (é local) } }catch(e){} }
   const li=document.getElementById('calLimite'); if(li) li.value=limiteLinha(); atualizarContadores();
   if(ghTokenA() && navigator.onLine && localStorage.getItem('simpesca2_sync_pend')) enviarSyncCal(); })();
 

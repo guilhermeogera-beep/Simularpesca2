@@ -425,7 +425,7 @@ function aplicarConfigPlayer(d){
   if(!d) return;
   const c=d.cal||{};
   if(c.mpv)          localStorage.setItem('simpesca2_cal_mpv', c.mpv);
-  if(c.limite)       localStorage.setItem('simpesca2_cal_limite', c.limite);
+  // limite de linha é LOCAL por dispositivo (NÃO vem do config.json) — cada aparelho ajusta o seu
   // velmax não é mais usado no v2 (linha derivada de RPM+mpv); offset é vestigial (RPM/corrente sem zona morta) — não importa do config
   if(c.rpmmin!=null) localStorage.setItem('simpesca2_cal_rpmmin', c.rpmmin);
   if(c.rpmmax!=null) localStorage.setItem('simpesca2_cal_rpmmax', c.rpmmax);
@@ -436,7 +436,7 @@ function aplicarConfigPlayer(d){
   enviarConfigRPM();   // reenvia RPM + freio máx + freio repouso pro ESP (caso já esteja conectado quando o config do GitHub chega)
   if(c.inv!=null)    localStorage.setItem('simpesca2_cal_inv', c.inv);
   const s=d.sync||{};
-  ESPECIES.forEach(e=>{ if(s[e.id]!=null) localStorage.setItem('simpesca2_sync_'+e.id, s[e.id]); });
+  ESPECIES.forEach(e=>{ if(s[e.id]!=null){ localStorage.setItem('simpesca2_sync_'+e.id, s[e.id]); const el=document.getElementById('sync_'+e.id); if(el) el.value=s[e.id]; } });   // reflete no campo ⏱ do card (antes só ia pro localStorage e o campo ficava desatualizado)
   const g=(d.versao||0)>=2 ? (d.gen||{}) : {};   // o player usa só gen.fisfisdur (faixa de fisgada da barra); só do esquema NOVO (v2)
   ESPECIES.forEach(e=>{ if(g[e.id]&&g[e.id].fisfisdur!=null) localStorage.setItem('simpesca2_gen_'+e.id+'_fisfisdur', g[e.id].fisfisdur); });
   invalidarLinhaNecessaria();   // mudou limite/mpv/rpm -> a linha disponível e a necessária mudam -> recalcula a cor da barra

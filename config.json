@@ -1,22 +1,20 @@
 {
   "versao": 2,
   "tipo": "config",
-  "criado": "2026-07-24T19:31:40.475Z",
+  "criado": "2026-07-10T00:00:00.000Z",
   "cal": {
     "mpv": 34,
-    "limite": -100,
     "rpmmin": 1100,
-    "rpmmax": 2200,
+    "rpmmax": 2000,
     "freioa": 12,
     "freiorepmin": 2,
     "freiorepmax": 12,
-    "pesoexp": 1,
+    "pesoexp": 2.4,
     "inv": "1"
   },
   "gen": {
     "pirarara": {
       "corrida": "20",
-      "minpux": "7",
       "fadiga": "50",
       "puxada": "55",
       "saque": "24",
@@ -24,11 +22,10 @@
       "intens": "50",
       "espaco": "40",
       "freiomax": "11",
-      "fisfisdur": "0"
+      "fisfisdur": "5"
     },
     "tambaqui": {
       "corrida": "18",
-      "minpux": "7",
       "fadiga": "50",
       "puxada": "55",
       "saque": "22",
@@ -40,7 +37,6 @@
     },
     "tucunare": {
       "corrida": "9",
-      "minpux": "6",
       "fadiga": "50",
       "puxada": "55",
       "saque": "11",
@@ -52,7 +48,6 @@
     },
     "dourado": {
       "corrida": "14",
-      "minpux": "7",
       "fadiga": "50",
       "puxada": "55",
       "saque": "18",
@@ -64,7 +59,6 @@
     },
     "trairao": {
       "corrida": "9",
-      "minpux": "7",
       "fadiga": "50",
       "puxada": "55",
       "saque": "11",
@@ -76,7 +70,6 @@
     },
     "jau": {
       "corrida": "29",
-      "minpux": "7",
       "fadiga": "50",
       "puxada": "55",
       "saque": "35",
@@ -88,18 +81,18 @@
     }
   },
   "sync": {
-    "pirarara": "1",
-    "tambaqui": "1",
+    "pirarara": "0",
+    "tambaqui": "0",
     "tucunare": "0",
     "dourado": "0",
     "trairao": "0",
     "jau": "0"
   },
   "desafio": {
-    "faixaMin": -5,
-    "faixaMax": -6,
+    "faixaMin": -10,
+    "faixaMax": -12,
     "tempoMin": 20,
-    "linhaMax": -50,
+    "linhaMax": -30,
     "scoreKp": 50,
     "scoreKv": 2
   }
