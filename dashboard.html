@@ -262,6 +262,7 @@ select{background:var(--surface);border:1px solid var(--border);color:var(--text
   </div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px solid #1a2736;">
     <button class="btn btn-green" onclick="exportarTodasCurvas()" title="Baixa curvas.json com todos os peixes para subir no GitHub">⬇ Exportar curvas.json</button>
+    <label class="btn btn-outline" style="cursor:pointer;" title="Importa o curvas.json completo (6 espécies + 2 do desafio)">⬆ Importar curvas.json<input type="file" accept=".json" onchange="importarTodasCurvas(event)" style="display:none"></label>
     <span id="ghSyncStatus" style="font-size:11px;align-self:center;color:#7b8d9e;"></span>
   </div>
 </div>
@@ -879,7 +880,7 @@ function importarTodasCurvas(ev){
           SIMS[i].pontos=sanearCurva(curvas[id].slice().sort((a,b)=>a.t-b.t)); salvarPontos(i); renderCurva(i); ok++;
         }
       });
-      DESAFIOS.forEach(d=>{ const cv=curvas[d.gh]; if(Array.isArray(cv)&&cv.length){ try{ localStorage.setItem('simpesca2_aleat_pontos_'+d.id, JSON.stringify(sanearCurva(cv.slice().sort((a,b)=>a.t-b.t)))); ok++; }catch(ex){} } });   // curvas do Modo Desafio -> storage local
+      DESAFIOS.forEach(ds=>{ const cv=curvas[ds.gh]; if(Array.isArray(cv)&&cv.length){ try{ localStorage.setItem('simpesca2_aleat_pontos_'+ds.id, JSON.stringify(sanearCurva(cv.slice().sort((a,b)=>a.t-b.t)))); ok++; }catch(ex){} } });   // curvas do Modo Desafio -> storage local
       log(ok+' curvas importadas do curvas.json'+((curvas.desafio||curvas.desafio_tambaqui)?' (incl. desafio)':''),'ok');
     }catch(ex){ log('Erro ao ler curvas.json: '+ex,'err'); }
   }; r.readAsText(f);
@@ -889,6 +890,7 @@ function importarJSON(ev){
   const r=new FileReader();
   r.onload=e=>{ try{
       const d=JSON.parse(e.target.result); let pts=null;
+      if(d.curvas && typeof d.curvas==='object'){ log('Esse é o curvas.json COMPLETO — use o botão "⬆ Importar curvas.json" (abaixo)','err'); ev.target.value=''; return; }   // não é 1 curva só
       if(d.pontos && Array.isArray(d.pontos)) pts=d.pontos;
       else if(d.gatilhos && Array.isArray(d.gatilhos)) pts=gatilhosParaPontos(d.gatilhos);
       else if(Array.isArray(d)){ pts=(d.length && (d[0].sub!==undefined||d[0].pico!==undefined||d[0].potIni!==undefined)) ? gatilhosParaPontos(d) : d; }
