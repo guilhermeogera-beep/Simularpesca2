@@ -387,23 +387,24 @@ function buildFight(pe, nMin, nMax, teto, fadiga, puxada, fisEstilo, fisDur, fis
   const kDur=DURACAO/90;   // escala vs 90s: dimensiona a briga p/ preencher a duração
   const pullBudget=Math.min(DURACAO-8, base*kDur*rnd(0.9,1.1));
   const nMid=(nMin+nMax)/2, densRef=5;   // pirarará (~4-6) = referência; espécie mais "picotada" (Tambacu 7-9) => trancos MAIS CURTOS => mais trancos (como no dash)
-  const N=Math.max(3, Math.round(pullBudget/(rnd(9,13)*(densRef/nMid))));   // nº de trancos: BUDGET (duração) × densidade da ESPÉCIE (nMin/nMax)
+  let N=Math.max(3, Math.round(pullBudget/(rnd(9,13)*(densRef/nMid))));   // nº de trancos: BUDGET (duração) × densidade da ESPÉCIE (nMin/nMax)
+  N=Math.max(4, Math.round(N*(1-0.55*cf)));   // CAOS reduz o nº de blocos -> blocos maiores, mais espaçados e distinguíveis (cf=0 => inalterado)
   const pdurRun=Math.min(16, Math.max(4, pullBudget*0.22));                 // corrida inicial CURTA (não "corre" demais)
   const pdurOutros=Math.max(1.5,(pullBudget-pdurRun)/Math.max(1,N-1));
   const fill=DURACAO-rnd(3,10);   // enche QUASE toda a duração (deixa só ~3-10s no fim)
   const restTotal=Math.max(N*3, (fill-t0)-pullBudget);
   const w=[]; let wsum=0;
-  for(let k=0;k<N;k++){ const x=(N>1)?k/(N-1):0; const wk=(1+(6.0*F)*x)*rnd(1-0.5*cf,1+0.9*cf); w.push(wk); wsum+=wk; }   // tendência de fadiga (cresce) + RUÍDO por caos (não-linear)
+  for(let k=0;k<N;k++){ const x=(N>1)?k/(N-1):0; const wk=(1+(6.0*F)*x)*rnd(1-0.7*cf,1+1.2*cf); w.push(wk); wsum+=wk; }   // tendência de fadiga (cresce) + RUÍDO por caos (não-linear)
   let t=t0;
   for(let k=0;k<N;k++){
     const fat=arcoEnv(t/DURACAO,F);
     if(k===0){ t=fisgadaStrike(pts, t, fisEstilo, fisDur, fisPico); }
     else if(k===1){ t=corridaInicial(pts, t, pdurRun, fat); }   // corrida inicial forte (sem jitter)
-    else { let f2=fat*rnd(1-0.45*cf,1+0.2*cf), pdur=pdurOutros*rnd(0.8-0.3*cf,1.2+0.5*cf);   // caos: força/duração variam por bloco (cf=0 -> antigo)
+    else { let f2=fat*rnd(1-0.7*cf,1+0.25*cf), pdur=pdurOutros*rnd(0.8-0.5*cf,1.2+0.9*cf);   // caos: força/duração variam MUITO por bloco (cf=0 -> antigo)
            if(cf>0 && rnd(0,1)<0.2*cf){ f2=fat*rnd(1.1,1.4); pdur=pdurOutros*rnd(0.35,0.75); }   // SURTO: pânico curto e forte
            t=pe(pts, t, pdur, f2); }
     t+=rnd(0.4,0.8); pts.push({t,pot:0});
-    let wdur=restTotal*(w[k]/wsum)*rnd(0.85-0.45*cf,1.15+0.75*cf);   // caos: descansos mais variados (cf=0 -> antigo)
+    let wdur=restTotal*(w[k]/wsum)*rnd(0.85-0.7*cf,1.15+1.3*cf);   // caos: descansos MUITO variados (às vezes respiro longo) (cf=0 -> antigo)
     wdur=Math.max(2.0, Math.min(Math.max(16,DURACAO*0.06), wdur));
     wdur=Math.min(wdur, Math.max(1.5, (DURACAO-2)-t));
     t+=wdur; pts.push({t,pot:0});
