@@ -376,10 +376,11 @@ function preencherFreioJanelas(pts, t0){
   }
   return out;
 }
-function buildFight(pe, nMin, nMax, teto, fadiga, puxada, fisEstilo, fisDur, fisPico, intens, espaco, durFis){
+function buildFight(pe, nMin, nMax, teto, fadiga, puxada, fisEstilo, fisDur, fisPico, intens, espaco, durFis, caos){
   const F=(isFinite(fadiga)?Math.max(0,Math.min(100,fadiga)):50)/100;
   const tf=(isFinite(teto)&&teto>0?Math.min(teto,100):100)/100;
   const t0=isFinite(durFis)?Math.max(0,durFis):5;
+  const cf=(isFinite(caos)?Math.max(0,Math.min(100,caos)):0)/100;   // ALEATORIEDADE 0-100: cf=0 => comportamento ANTIGO idêntico
   const pts=[{t:0,pot:0}];
   if(t0>0) pts.push({t:t0,pot:0});
   const base=(isFinite(puxada)&&puxada>0)?puxada:45;
@@ -392,15 +393,17 @@ function buildFight(pe, nMin, nMax, teto, fadiga, puxada, fisEstilo, fisDur, fis
   const fill=DURACAO-rnd(3,10);   // enche QUASE toda a duração (deixa só ~3-10s no fim)
   const restTotal=Math.max(N*3, (fill-t0)-pullBudget);
   const w=[]; let wsum=0;
-  for(let k=0;k<N;k++){ const x=(N>1)?k/(N-1):0; const wk=1+(6.0*F)*x; w.push(wk); wsum+=wk; }
+  for(let k=0;k<N;k++){ const x=(N>1)?k/(N-1):0; const wk=(1+(6.0*F)*x)*rnd(1-0.5*cf,1+0.9*cf); w.push(wk); wsum+=wk; }   // tendência de fadiga (cresce) + RUÍDO por caos (não-linear)
   let t=t0;
   for(let k=0;k<N;k++){
     const fat=arcoEnv(t/DURACAO,F);
     if(k===0){ t=fisgadaStrike(pts, t, fisEstilo, fisDur, fisPico); }
-    else if(k===1){ t=corridaInicial(pts, t, pdurRun, fat); }
-    else { const pdur=pdurOutros*rnd(0.8,1.2); t=pe(pts, t, pdur, fat); }
+    else if(k===1){ t=corridaInicial(pts, t, pdurRun, fat); }   // corrida inicial forte (sem jitter)
+    else { let f2=fat*rnd(1-0.45*cf,1+0.2*cf), pdur=pdurOutros*rnd(0.8-0.3*cf,1.2+0.5*cf);   // caos: força/duração variam por bloco (cf=0 -> antigo)
+           if(cf>0 && rnd(0,1)<0.2*cf){ f2=fat*rnd(1.1,1.4); pdur=pdurOutros*rnd(0.35,0.75); }   // SURTO: pânico curto e forte
+           t=pe(pts, t, pdur, f2); }
     t+=rnd(0.4,0.8); pts.push({t,pot:0});
-    let wdur=restTotal*(w[k]/wsum)*rnd(0.85,1.15);
+    let wdur=restTotal*(w[k]/wsum)*rnd(0.85-0.45*cf,1.15+0.75*cf);   // caos: descansos mais variados (cf=0 -> antigo)
     wdur=Math.max(2.0, Math.min(Math.max(16,DURACAO*0.06), wdur));
     wdur=Math.min(wdur, Math.max(1.5, (DURACAO-2)-t));
     t+=wdur; pts.push({t,pot:0});
@@ -425,7 +428,7 @@ function pePirarara(pts,t,pdur,fat){
   }
   return t;
 }
-function fightPirarara(teto,fadiga,puxada,fisDur,fisPico,intens,espaco,durFis){ return buildFight(pePirarara, 4, 6, teto, fadiga, puxada, 'forte', fisDur, fisPico, intens, espaco, durFis); }
+function fightPirarara(teto,fadiga,puxada,fisDur,fisPico,intens,espaco,durFis,caos){ return buildFight(pePirarara, 4, 6, teto, fadiga, puxada, 'forte', fisDur, fisPico, intens, espaco, durFis, caos); }
 function peTambaqui(pts,t,pdur,fat){
   const end=t+pdur;
   const sobe=rnd(0.28,0.40), desce=rnd(0.85,1.05);
@@ -456,9 +459,10 @@ function cfgGerador(idx){
   const teto=Math.max(1,corrida), fisPico=Math.max(1,saque);
   const freioQuad=!!(document.getElementById('freioQuad'+idx)||{}).checked;
   const freioVar=!!(document.getElementById('freioVar'+idx)||{}).checked;
-  return {teto,fadiga,puxada,fisPico,fisDur,intens,espaco,durFis,freioMax,freioQuad,freioVar,corrida,saque,minpux};
+  let caos=Math.max(0,Math.min(100,g('caos', LETRAS[idx]==='pirarara'?60:0)));   // aleatoriedade dos blocos (por enquanto só a pirarará usa)
+  return {teto,fadiga,puxada,fisPico,fisDur,intens,espaco,durFis,freioMax,freioQuad,freioVar,corrida,saque,minpux,caos};
 }
-function gerarCurvaEspecie(idx){ const c=cfgGerador(idx); genFreioMax=c.freioMax; genFreioQuad=c.freioQuad; genFreioVar=c.freioVar; genFreioFad=(c.fadiga||0)/100; genMinPux=c.minpux; return (FIGHTS[LETRAS[idx]]||fightPirarara)(c.teto,c.fadiga,c.puxada,c.fisDur,c.fisPico,c.intens,c.espaco,c.durFis); }
+function gerarCurvaEspecie(idx){ const c=cfgGerador(idx); genFreioMax=c.freioMax; genFreioQuad=c.freioQuad; genFreioVar=c.freioVar; genFreioFad=(c.fadiga||0)/100; genMinPux=c.minpux; const caos=(LETRAS[idx]==='pirarara')?c.caos:0; return (FIGHTS[LETRAS[idx]]||fightPirarara)(c.teto,c.fadiga,c.puxada,c.fisDur,c.fisPico,c.intens,c.espaco,c.durFis, caos); }   // caos SÓ na pirarará; as outras passam 0 (idênticas)
 // 🎲+ : gera a PUXADA (mantém o freio existente)
 function gerarPositivo(idx){
   const c=cfgGerador(idx);
@@ -487,7 +491,7 @@ function ajustarPesoSim(i){ localStorage.setItem('simpesca2_aleat_peso_'+LETRAS[
 function atualizarPesoLbl(i){ const id=LETRAS[i], w=pesoSimValor(i), esc=escalaPeso(id,w); const lbl=document.getElementById('pesoSimLbl'+i); if(!lbl) return; const fEl=document.getElementById('freioMax'+i), fmax=fEl?(parseFloat(fEl.value)||0):0; lbl.textContent = w.toFixed(1)+' kg · '+Math.round(esc*100)+'% · freio ~'+(fmax*esc).toFixed(1)+' kgf'; }
 
 // ══ STORAGE ISOLADO ════════════════════════════════════════════════════════════
-const GEN_CAMPOS=['intens','saque','fisDur','corrida','minpux','fadiga','puxada','espaco','freioMax','fisFisDur'];
+const GEN_CAMPOS=['intens','saque','fisDur','corrida','minpux','fadiga','puxada','espaco','freioMax','fisFisDur','caos'];
 function curvaKey(idx){ return idx===0 ? 'desafio' : 'desafio_'+LETRAS[idx]; }   // chave no curvas.json: pirarará='desafio' (mantém), demais='desafio_<id>'
 function salvarPontos(idx){ try{ localStorage.setItem('simpesca2_aleat_pontos_'+LETRAS[idx], JSON.stringify(SIMS[idx].pontos)); }catch(e){} if(podeSyncCurva) agendarSyncCurva(); }   // ao editar qualquer sim, agenda o push das curvas pro curvas.json
 function carregarPontosStore(idx){ try{ let r=localStorage.getItem('simpesca2_aleat_pontos_'+LETRAS[idx]); if(!r && idx===0) r=localStorage.getItem('simpesca2_aleat_pontos'); if(r){ const d=JSON.parse(r); if(Array.isArray(d)&&d.length) return d.slice().sort((a,b)=>a.t-b.t); } }catch(e){} return null; }
@@ -803,6 +807,7 @@ function montarBloco(i){
     '<div class="sim-corpo" id="corpo'+i+'">'+
     '<div class="gen-row">'+
       '<label title="Intensidade da ASSINATURA do peixe: 50% = padrão · abaixo de 50 = briga mais plana/genérica · acima de 50 = caráter exagerado (vales mais fundos)">assinatura <input type="number" id="intens'+i+'" min="0" max="100" value="50">%</label>'+
+      (LETRAS[i]==='pirarara' ? '<label title="ALEATORIEDADE dos blocos: 0 = padrão regular (antigo) · 100 = bem imprevisível — força, duração e descanso variam por bloco + surtos, MANTENDO a fadiga. Regenere (🎲) pra aplicar." style="border:1px solid #b388ff;border-radius:5px;padding:1px 6px;">🎲 aleatório <input type="number" id="caos'+i+'" min="0" max="100" value="60">%</label>' : '')+
       '<label title="Pico do SAQUE (fisgada), na escala do gráfico (0 a +40). O peso do peixe escala isso. Padrão sugerido = força × 2,2.">🎣 saque <input type="number" id="saque'+i+'" min="0" max="40" step="1" value="'+Math.round((FREIO_MAX_DEF[LETRAS[i]]||10)*2.2)+'"></label>'+
       '<label title="Alonga (>1) ou encurta (<1) a duração da fisgada">dur <input type="number" id="fisDur'+i+'" min="0.2" max="4" step="0.1" value="2">×</label>'+
       '<label title="Pico da PUXADA (quando o peixe dispara), na escala do gráfico (0 a +40). O peso do peixe escala isso. Padrão sugerido = força × 1,8.">🏃 corrida <input type="number" id="corrida'+i+'" min="0" max="40" step="1" value="'+Math.round((FREIO_MAX_DEF[LETRAS[i]]||10)*1.8)+'"></label>'+
