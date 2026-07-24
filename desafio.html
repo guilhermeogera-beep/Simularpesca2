@@ -921,7 +921,7 @@ window.addEventListener('storage', e=>{ if(!e.key) return;
   if(e.key==='simpesca2_cal_limite' || e.key==='simpesca2_cal_inv' || e.key==='simpesca2_cal_mpv'){ const li=document.getElementById('calLimite'); if(li) li.value=limiteLinha(); atualizarContadores(); } });
 // ── Ao abrir: aplica o cal do config.json (limite/inv/mpv global, read-only) e mostra ──
 { const li=document.getElementById('calLimite'); if(li) li.value=limiteLinha(); atualizarContadores(); }
-(async()=>{ if(navigator.onLine){ try{ const r=await fetch('config.json',{cache:'no-store'}); if(r&&r.ok){ const d=await r.json(); const c=(d&&d.cal)||{}; if(c.inv!=null) localStorage.setItem('simpesca2_cal_inv',c.inv); if(c.mpv) localStorage.setItem('simpesca2_cal_mpv',c.mpv); aplicarConfigDesafio((d&&d.desafio)||null);   // limite NÃO vem do config.json (é local) } }catch(e){} }
+(async()=>{ if(navigator.onLine){ try{ const r=await fetch('config.json',{cache:'no-store'}); if(r&&r.ok){ const d=await r.json(); const c=(d&&d.cal)||{}; if(c.inv!=null) localStorage.setItem('simpesca2_cal_inv',c.inv); if(c.mpv) localStorage.setItem('simpesca2_cal_mpv',c.mpv); aplicarConfigDesafio((d&&d.desafio)||null); } }catch(e){} }   /* limite NÃO vem do config.json (é local) */
   const li=document.getElementById('calLimite'); if(li) li.value=limiteLinha(); atualizarContadores();
   if(ghTokenA() && navigator.onLine && localStorage.getItem('simpesca2_sync_pend')) enviarSyncCal(); })();
 
