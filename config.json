@@ -1,7 +1,7 @@
 {
   "versao": 2,
   "tipo": "config",
-  "criado": "2026-07-24T19:26:24.376Z",
+  "criado": "2026-07-24T19:31:40.475Z",
   "cal": {
     "mpv": 34,
     "limite": -100,
@@ -88,8 +88,8 @@
     }
   },
   "sync": {
-    "pirarara": "0",
-    "tambaqui": "0",
+    "pirarara": "1",
+    "tambaqui": "1",
     "tucunare": "0",
     "dourado": "0",
     "trairao": "0",
