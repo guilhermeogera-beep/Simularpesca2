@@ -469,7 +469,8 @@ function gerarPositivo(idx){
   const c=cfgGerador(idx);
   const negExist = SIMS[idx].pontos.filter(p=>p.pot<0);
   genFreioMax = 0; genMinPux = c.minpux;
-  const novo = fightPirarara(c.teto,c.fadiga,c.puxada,c.fisDur,c.fisPico,c.intens,c.espaco,c.durFis);
+  const caos=(LETRAS[idx]==='pirarara')?c.caos:0;   // caos SÓ na pirarará
+  const novo = (FIGHTS[LETRAS[idx]]||fightPirarara)(c.teto,c.fadiga,c.puxada,c.fisDur,c.fisPico,c.intens,c.espaco,c.durFis, caos);   // usa a espécie certa + passa o caos
   SIMS[idx].pontos = finalizarFight(novo.concat(negExist));
   salvarPontos(idx); simAtiva=idx; selPonto=-1; multiSel=[]; fecharEditorPonto(); renderCurva(idx); salvarGenCfg(idx);
 }
