@@ -723,14 +723,21 @@ function preJogoLoop(){
   const ln=document.getElementById('preLinhaNum'); if(ln) ln.textContent=cur.toFixed(1)+' m';
   const bf=document.getElementById('preBarFill'); if(bf){ const span=Math.max(hi-lo,1)*3, base=(lo+hi)/2-span/2; const f=Math.max(0,Math.min(100,((cur-base)/span)*100)); bf.style.width=f+'%'; bf.style.background=(cur>=lo&&cur<=hi)?'#00e676':'#ffd600'; }
   const st=document.getElementById('preStatus'), btn=document.getElementById('btnIniciarJogo');
-  if(cur>=lo && cur<=hi){ recolherFase=0; aplicarMotor(0); if(st) st.textContent='✅ linha na faixa — pode iniciar'; if(btn) btn.disabled=false; return; }
+  const margem=Math.max(0.5,(hi-lo)*0.15);
+  const alvoStop=out<0?(lo+margem):(hi-margem);   // motor puxa até perto do valor MENOR da faixa (mais linha fora) — sobra margem pro pescador puxar sem sair
+  const demais = out<0 ? (cur<lo) : (cur>hi);     // passou do far edge -> linha demais (só o pescador enrola)
+  if(demais){ recolherFase=0; aplicarMotor(0); if(btn) btn.disabled=true; if(st) st.textContent='⚠️ linha demais — ENROLE a linha na mão até a faixa ('+lo.toFixed(0)+' a '+hi.toFixed(0)+' m) · eixo liberado'; return; }
+  if(recolherFase===2){   // MOTOR puxando pra fora ATÉ o far edge (não para na borda de cima)
+    aplicarMotor(2); if(btn) btn.disabled=true;
+    const chegou = out<0 ? (cur<=alvoStop) : (cur>=alvoStop);
+    if(chegou){ recolherFase=0; aplicarMotor(0); }
+    else if(st){ st.textContent='⟲ puxando linha (motor)… '+cur.toFixed(1)+' → '+alvoStop.toFixed(0)+' m'; if(performance.now()-autoRefT>2500){ if(Math.abs(cur-autoRefL)<1){ recolherFase=0; aplicarMotor(0); st.textContent='⚠️ não puxou — confira o motor/sentido'; } else { autoRefL=cur; autoRefT=performance.now(); } } }
+    return;
+  }
+  if(cur>=lo && cur<=hi){ recolherFase=0; aplicarMotor(0); if(st) st.textContent='✅ linha na faixa — pode iniciar'; if(btn) btn.disabled=false; return; }   // NA FAIXA (histerese): o motor NÃO volta a puxar enquanto estiver dentro
   if(btn) btn.disabled=true;
-  const demais = out<0 ? (cur<lo) : (cur>hi);   // linha FORA demais: precisa ficar MAIS POSITIVO -> só o pescador enrola (o motor NÃO recolhe linha)
-  if(demais){ recolherFase=0; aplicarMotor(0); if(st) st.textContent='⚠️ linha demais — ENROLE a linha na mão até a faixa ('+lo.toFixed(0)+' a '+hi.toFixed(0)+' m) · eixo liberado'; return; }
-  // pouca linha fora: o MOTOR puxa linha PRA FORA (deixa mais negativo) até a faixa, com contagem 3s+bip ANTES
-  const alvo = out<0 ? hi : lo;
+  // fora da faixa no lado de POUCA linha fora -> motor puxa até o far edge, com contagem 3s+bip ANTES
   if(recolherFase===0){ recolherFase=1; if(st) st.textContent='⚙️ puxando linha em…'; contagemRegressiva(3, ()=>{ if(recolherFase===1){ recolherFase=2; autoRefL=linhaCarretel(); autoRefT=performance.now(); } }); }
-  else if(recolherFase===2){ aplicarMotor(2); if(st) st.textContent='⟲ puxando linha (motor)… '+cur.toFixed(1)+' → '+alvo.toFixed(0)+' m'; if(performance.now()-autoRefT>2500){ if(Math.abs(cur-autoRefL)<1){ recolherFase=0; aplicarMotor(0); if(st) st.textContent='⚠️ não puxou — confira o motor/sentido'; } else { autoRefL=cur; autoRefT=performance.now(); } } }
 }
 function iniciarComContagem(){ const btn=document.getElementById('btnIniciarJogo'); if(btn&&btn.disabled) return; clearInterval(preTimer); preTimer=null; recolherFase=0; aplicarMotor(0); contagemRegressiva(3, ()=>{ beep(1320,220); iniciarJogoReal(); }); }
 function fecharPreJogo(){ clearInterval(preTimer); preTimer=null; clearTimeout(contTimer); recolherFase=0; const cd=document.getElementById('jogoContagem'); if(cd) cd.classList.remove('on'); const pj=document.getElementById('preJogo'); if(pj) pj.classList.remove('on'); if(!jogoAtivo && motorChar) aplicarMotor(0); }
