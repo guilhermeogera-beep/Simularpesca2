@@ -1,7 +1,7 @@
 {
   "versao": 2,
   "tipo": "config",
-  "criado": "2026-07-24T22:35:54.072Z",
+  "criado": "2026-07-25T06:37:44.466Z",
   "cal": {
     "mpv": 34,
     "rpmmin": 1100,
@@ -93,5 +93,13 @@
     "dourado": "0",
     "trairao": "0",
     "jau": "0"
+  },
+  "desafio": {
+    "faixaMin": -5,
+    "faixaMax": -7,
+    "tempoMin": 20,
+    "linhaMax": -50,
+    "scoreKp": 50,
+    "scoreKv": 2
   }
 }
