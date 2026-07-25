@@ -314,11 +314,11 @@ function pararFisgadaFisica(){}   // obsoleto no v2 (não há fisgada física); 
 // ── CONFIG do motor (RPM mín/máx) enviada ao ESP ──────────────
 // O valor da curva (0..40) vira ROTAÇÃO no ESP: valor baixo→RPM mín, valor 40→RPM máx. RPM máx "capa" os metros.
 function rpmMin(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_rpmmin')); return (isFinite(v)&&v>=0)?v:1100; }
-function rpmMax(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_rpmmax')); return (isFinite(v)&&v>0)?v:2000; }
+function rpmMax(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_rpmmax')); return (isFinite(v)&&v>0)?v:2200; }
 function freioMaxA(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_freioa')); return (isFinite(v)&&v>0)?v:12; }   // corrente (A) do FREIO máximo = base do gráfico (-20). Calibrável; vai pro ESP.
 function freioRepMin(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_freiorepmin')); return (isFinite(v)&&v>=0)?v:2; }   // freio de repouso do peixe MENOR (escalaPeso≈0)
 function freioRepMax(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_freiorepmax')); return (isFinite(v)&&v>=0)?v:12; }   // freio de repouso do peixe MAIOR (escalaPeso=1)
-function rankPesoExp(){ const v=parseFloat(localStorage.getItem('simpesca2_rank_pesoexp')); return (isFinite(v)&&v>=0)?v:2.4; }   // expoente do peso na PONTUAÇÃO do ranking (configurado na aba ranking; vai/vem no config.json)
+function rankPesoExp(){ const v=parseFloat(localStorage.getItem('simpesca2_rank_pesoexp')); return (isFinite(v)&&v>=0)?v:1; }   // expoente do peso na PONTUAÇÃO do ranking (configurado na aba ranking; vai/vem no config.json)
 function freioRepousoEscalado(idx){ const e=escalaPeso(LETRAS[idx], pesoSimValor(idx)); return freioRepMin() + e*(freioRepMax()-freioRepMin()); }   // varia com o PESO: peixe menor→mín, maior→máx
 function freioPosSimA(idx){ return freioMaxA()*escalaPeso(LETRAS[idx], pesoSimValor(idx)); }   // FREIO do hold pós-sim = a MAIOR corrente do peixe (freio máx × peso)
 // FORÇA (negativa) que gera o freio de repouso pela via do freio manual (mesma conta do player): setBrakeCurrent=(|f|/20)·freioMax => f=-20·R/freioMax. Segura o eixo na zona morta sem depender do repousoAtivo do firmware.
