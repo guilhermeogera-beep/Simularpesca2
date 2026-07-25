@@ -386,8 +386,7 @@ function buildFight(pe, nMin, nMax, teto, fadiga, puxada, fisEstilo, fisDur, fis
   const base=(isFinite(puxada)&&puxada>0)?puxada:45;
   const kDur=DURACAO/90;   // escala vs 90s: dimensiona a briga p/ preencher a duração
   const pullBudget=Math.min(DURACAO-8, base*kDur*rnd(0.9,1.1));
-  const nMid=(nMin+nMax)/2, densRef=5;   // pirarará (~4-6) = referência; espécie mais "picotada" (Tambacu 7-9) => trancos MAIS CURTOS => mais trancos (como no dash)
-  let N=Math.max(3, Math.round(pullBudget/(rnd(9,13)*(densRef/nMid))));   // nº de trancos: BUDGET (duração) × densidade da ESPÉCIE (nMin/nMax)
+  let N=Math.max(3, Math.round(pullBudget/rnd(9,13)));   // nº de trancos pelo BUDGET (densidade base IGUAL p/ todas — a "cara" da espécie vem do formato do bloco, não do nº)
   N=Math.max(4, Math.round(N*(1-0.55*cf)));   // CAOS reduz o nº de blocos -> blocos maiores, mais espaçados e distinguíveis (cf=0 => inalterado)
   const pdurRun=Math.min(16, Math.max(4, pullBudget*0.22));                 // corrida inicial CURTA (não "corre" demais)
   const pdurOutros=Math.max(1.5,(pullBudget-pdurRun)/Math.max(1,N-1));
@@ -432,7 +431,7 @@ function pePirarara(pts,t,pdur,fat){
 function fightPirarara(teto,fadiga,puxada,fisDur,fisPico,intens,espaco,durFis,caos){ return buildFight(pePirarara, 4, 6, teto, fadiga, puxada, 'forte', fisDur, fisPico, intens, espaco, durFis, caos); }
 function peTambaqui(pts,t,pdur,fat){
   const end=t+pdur;
-  const sobe=rnd(0.28,0.40), desce=rnd(0.85,1.05);
+  const sobe=rnd(1.0,1.6), desce=rnd(2.5,3.8);   // BOMBEIO mais lento (pancadas distinguíveis no jogo, não zigue-zague)
   const alto=rnd(82,92), baixo=rnd(32,46);
   while(t<end-0.4){
     t+=sobe;  pts.push({t,pot:alto*fat*rnd(0.96,1.04)});
@@ -463,14 +462,14 @@ function cfgGerador(idx){
   let caos=Math.max(0,Math.min(100,g('caos', 60)));   // aleatoriedade dos blocos (pirarará + tambacu)
   return {teto,fadiga,puxada,fisPico,fisDur,intens,espaco,durFis,freioMax,freioQuad,freioVar,corrida,saque,minpux,caos};
 }
-function gerarCurvaEspecie(idx){ const c=cfgGerador(idx); genFreioMax=c.freioMax; genFreioQuad=c.freioQuad; genFreioVar=c.freioVar; genFreioFad=(c.fadiga||0)/100; genMinPux=c.minpux; const caos=c.caos; return (FIGHTS[LETRAS[idx]]||fightPirarara)(c.teto,c.fadiga,c.puxada,c.fisDur,c.fisPico,c.intens,c.espaco,c.durFis, caos); }   // caos SÓ na pirarará; as outras passam 0 (idênticas)
+function gerarCurvaEspecie(idx){ const c=cfgGerador(idx); genFreioMax=c.freioMax; genFreioQuad=c.freioQuad; genFreioVar=c.freioVar; genFreioFad=(c.fadiga||0)/100; genMinPux=c.minpux; const caos=c.caos; return (FIGHTS[LETRAS[idx]]||fightPirarara)(c.teto,c.fadiga,c.puxada,c.fisDur,c.fisPico,c.intens,c.espaco,c.durFis, caos); }   // cada espécie usa o SEU gerador + o seu caos
 // 🎲+ : gera a PUXADA (mantém o freio existente)
 function gerarPositivo(idx){
   const c=cfgGerador(idx);
   const negExist = SIMS[idx].pontos.filter(p=>p.pot<0);
   genFreioMax = 0; genMinPux = c.minpux;
-  const caos=c.caos;   // caos SÓ na pirarará
-  const novo = (FIGHTS[LETRAS[idx]]||fightPirarara)(c.teto,c.fadiga,c.puxada,c.fisDur,c.fisPico,c.intens,c.espaco,c.durFis, caos);   // usa a espécie certa + passa o caos
+  const caos=c.caos;
+  const novo = (FIGHTS[LETRAS[idx]]||fightPirarara)(c.teto,c.fadiga,c.puxada,c.fisDur,c.fisPico,c.intens,c.espaco,c.durFis, caos);   // cada espécie usa o SEU gerador + o seu caos
   SIMS[idx].pontos = finalizarFight(novo.concat(negExist));
   salvarPontos(idx); simAtiva=idx; selPonto=-1; multiSel=[]; fecharEditorPonto(); renderCurva(idx); salvarGenCfg(idx);
 }
