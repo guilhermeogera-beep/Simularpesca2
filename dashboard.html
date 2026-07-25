@@ -794,9 +794,10 @@ async function ghPut(path,obj){
   const tk=ghToken(); if(!tk) return false;
   const headers={'Authorization':'token '+tk,'Accept':'application/vnd.github+json'};
   const url='https://api.github.com/repos/'+GH_REPO+'/contents/'+path;
-  let sha=null;
-  try{ const g=await fetch(url,{headers,cache:'no-store'}); if(g.ok) sha=(await g.json()).sha; else if(g.status!==404) return false; }catch(e){ return false; }
-  const content=btoa(unescape(encodeURIComponent(JSON.stringify(obj,null,2))));
+  let sha=null, existente=null;
+  try{ const g=await fetch(url,{headers,cache:'no-store'}); if(g.ok){ const j=await g.json(); sha=j.sha; try{ existente=JSON.parse(decodeURIComponent(escape(atob((j.content||'').replace(/\s/g,''))))); }catch(e){ existente=null; } } else if(g.status!==404) return false; }catch(e){ return false; }
+  const merged=(existente&&typeof existente==='object')?Object.assign({},existente,obj):obj;   // MESCLA: preserva chaves que o dash não conhece (ex.: config.desafio) — não apaga o bloco do Desafio
+  const content=btoa(unescape(encodeURIComponent(JSON.stringify(merged,null,2))));
   const body={message:'auto: atualiza '+path,content}; if(sha) body.sha=sha;
   let r; try{ r=await fetch(url,{method:'PUT',headers,body:JSON.stringify(body)}); }catch(e){ return false; }
   if(r&&(r.status===409||r.status===422)){            // sha desatualizado -> rebusca e tenta 1x

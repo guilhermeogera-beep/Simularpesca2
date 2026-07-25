@@ -300,7 +300,7 @@ function finalizarFight(pts){
   const piso=genMinPux;
   return pts.filter(p=>p.t<=DURACAO).map(p=>{
     let pot=Math.max(ESC_NEG,Math.min(ESC_POS,Math.round(p.pot)));
-    if(pot>0 && pot<piso) pot=piso;
+    if(p.pot>0 && pot<piso) pot=piso;   // usa o valor ORIGINAL: puxada baixa que arredonda pra 0 também sobe pro piso (não fica 0 no meio do bloco)
     return {t:Math.round(p.t*100)/100, pot};
   }).sort((a,b)=>a.t-b.t);
 }

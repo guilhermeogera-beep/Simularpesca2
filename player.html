@@ -113,8 +113,6 @@ input[type=text]:focus{border-color:var(--accent);}
 <header>
   <h1>🎣 SimPesca</h1>
   <div class="header-right">
-    <div id="linhaBadge" class="badge">LINHA 0.0 m</div>
-    <div id="motorBadge" class="badge">MOTOR 0%</div>
     <button id="btnBT" onclick="conectarBLE()">🔵 Conectar</button>
     <button class="btn-dash" onclick="abrirRanking()">🏆 RANKING</button>
     <button class="btn-dash" id="btnLinha" onclick="resetarLinha()" title="Linha no carretel / limite — clique pra zerar (após re-enrolar)">⟲ LINHA</button>
@@ -285,7 +283,7 @@ function limiteLinha(){ const v=parseFloat(localStorage.getItem('simpesca2_cal_l
 function inverterDir(){ return (localStorage.getItem('simpesca2_cal_inv')||'1')==='1'; }   // PADRÃO = invertido (hardware v2); só desmarca se salvar '0'
 function contagemParaMetros(c){ let m=(c/4096)*metrosPorVolta(); if(inverterDir()) m=-m; return m; }
 function metrosAtuais(){ return Math.max(0, metrosGanhos); }   // só os metros recolhidos (ganhos)
-function atualizarLinha(){ const m=metrosAtuais(); document.getElementById('linhaBadge').textContent='LINHA '+m.toFixed(1)+' m'; document.getElementById('hudLinha').textContent='🎣 Enrolada: '+m.toFixed(1)+' m';
+function atualizarLinha(){ const m=metrosAtuais(); document.getElementById('hudLinha').textContent='🎣 Enrolada: '+m.toFixed(1)+' m';
   const car=linhaCarretel(), L=limiteLinha(), travadoLin=Math.abs(car)>=Math.abs(L);
   const hc=document.getElementById('hudCarretel');
   hc.textContent='📍 Carretel: '+car.toFixed(1)+' / '+L.toFixed(0)+' m';
@@ -550,7 +548,7 @@ function comOffset(pct){ const m=Math.abs(pct); return m<0.5?0 : Math.max(-100,M
 function aplicarMotor(pct, estadoRaw){ pct=Math.max(-100,Math.min(100,pct));
   if(travado() && pct>0){ if(Date.now()-ultimoToastTrava>2500){ ultimoToastTrava=Date.now(); mostrarToast('🛑 Motor travado pelo limite de linha'); } pct=0; }   // trava bloqueia só a PUXADA; o freio (−) não gasta linha
   pct=comOffset(pct);
-  escreverMotorBLE(pct); const mag=Math.abs(pct); const b=document.getElementById('motorBadge'); b.textContent=(pct<0?'FREIO ':'MOTOR ')+mag.toFixed(0)+'%'; b.className='badge '+(mag>70?'alto':mag>0?'ativo':'');
+  escreverMotorBLE(pct); const mag=Math.abs(pct); const b=document.getElementById('motorBadge'); if(b){ b.textContent=(pct<0?'FREIO ':'MOTOR ')+mag.toFixed(0)+'%'; b.className='badge '+(mag>70?'alto':mag>0?'ativo':''); }
   const est=document.getElementById('hudEstado'); const raw=(estadoRaw===undefined?pct:estadoRaw); const puxando=Math.round(pct)>0.5, freando=Math.round(raw)<-0.5;   // puxando = motor REALMENTE puxando (pós-trava, pós-offset); resistindo = FREIO DA CURVA (raw<-0.5). Freio de repouso na zona morta e puxada travada caem em "recolha".
   est.classList.toggle('puxando',puxando); est.classList.toggle('freando',freando); est.classList.toggle('recolher',!puxando&&!freando);
   est.textContent=puxando?'🐟 PEIXE PUXANDO — segure!':freando?'🛑 RESISTINDO — force a recolhida!':'🎣 RECOLHA A LINHA!'; }
