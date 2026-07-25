@@ -440,7 +440,7 @@ function peTambaqui(pts,t,pdur,fat){
   }
   return t;
 }
-function fightTambaqui(teto,fadiga,puxada,fisDur,fisPico,intens,espaco,durFis){ return buildFight(peTambaqui, 7, 9, teto, fadiga, puxada, 'teimosa', fisDur, fisPico, intens, espaco, durFis); }
+function fightTambaqui(teto,fadiga,puxada,fisDur,fisPico,intens,espaco,durFis,caos){ return buildFight(peTambaqui, 7, 9, teto, fadiga, puxada, 'teimosa', fisDur, fisPico, intens, espaco, durFis, caos); }
 const FIGHTS={pirarara:fightPirarara, tambaqui:fightTambaqui};
 
 // ── Ajustes do gerador (lê os inputs da .gen-row, idx=0) ──
@@ -460,16 +460,16 @@ function cfgGerador(idx){
   const teto=Math.max(1,corrida), fisPico=Math.max(1,saque);
   const freioQuad=!!(document.getElementById('freioQuad'+idx)||{}).checked;
   const freioVar=!!(document.getElementById('freioVar'+idx)||{}).checked;
-  let caos=Math.max(0,Math.min(100,g('caos', LETRAS[idx]==='pirarara'?60:0)));   // aleatoriedade dos blocos (por enquanto só a pirarará usa)
+  let caos=Math.max(0,Math.min(100,g('caos', 60)));   // aleatoriedade dos blocos (pirarará + tambacu)
   return {teto,fadiga,puxada,fisPico,fisDur,intens,espaco,durFis,freioMax,freioQuad,freioVar,corrida,saque,minpux,caos};
 }
-function gerarCurvaEspecie(idx){ const c=cfgGerador(idx); genFreioMax=c.freioMax; genFreioQuad=c.freioQuad; genFreioVar=c.freioVar; genFreioFad=(c.fadiga||0)/100; genMinPux=c.minpux; const caos=(LETRAS[idx]==='pirarara')?c.caos:0; return (FIGHTS[LETRAS[idx]]||fightPirarara)(c.teto,c.fadiga,c.puxada,c.fisDur,c.fisPico,c.intens,c.espaco,c.durFis, caos); }   // caos SÓ na pirarará; as outras passam 0 (idênticas)
+function gerarCurvaEspecie(idx){ const c=cfgGerador(idx); genFreioMax=c.freioMax; genFreioQuad=c.freioQuad; genFreioVar=c.freioVar; genFreioFad=(c.fadiga||0)/100; genMinPux=c.minpux; const caos=c.caos; return (FIGHTS[LETRAS[idx]]||fightPirarara)(c.teto,c.fadiga,c.puxada,c.fisDur,c.fisPico,c.intens,c.espaco,c.durFis, caos); }   // caos SÓ na pirarará; as outras passam 0 (idênticas)
 // 🎲+ : gera a PUXADA (mantém o freio existente)
 function gerarPositivo(idx){
   const c=cfgGerador(idx);
   const negExist = SIMS[idx].pontos.filter(p=>p.pot<0);
   genFreioMax = 0; genMinPux = c.minpux;
-  const caos=(LETRAS[idx]==='pirarara')?c.caos:0;   // caos SÓ na pirarará
+  const caos=c.caos;   // caos SÓ na pirarará
   const novo = (FIGHTS[LETRAS[idx]]||fightPirarara)(c.teto,c.fadiga,c.puxada,c.fisDur,c.fisPico,c.intens,c.espaco,c.durFis, caos);   // usa a espécie certa + passa o caos
   SIMS[idx].pontos = finalizarFight(novo.concat(negExist));
   salvarPontos(idx); simAtiva=idx; selPonto=-1; multiSel=[]; fecharEditorPonto(); renderCurva(idx); salvarGenCfg(idx);
@@ -809,7 +809,7 @@ function montarBloco(i){
     '<div class="sim-corpo" id="corpo'+i+'">'+
     '<div class="gen-row">'+
       '<label title="Intensidade da ASSINATURA do peixe: 50% = padrão · abaixo de 50 = briga mais plana/genérica · acima de 50 = caráter exagerado (vales mais fundos)">assinatura <input type="number" id="intens'+i+'" min="0" max="100" value="50">%</label>'+
-      (LETRAS[i]==='pirarara' ? '<label title="ALEATORIEDADE dos blocos: 0 = padrão regular (antigo) · 100 = bem imprevisível — força, duração e descanso variam por bloco + surtos, MANTENDO a fadiga. Regenere (🎲) pra aplicar." style="border:1px solid #b388ff;border-radius:5px;padding:1px 6px;">🎲 aleatório <input type="number" id="caos'+i+'" min="0" max="100" value="60">%</label>' : '')+
+      '<label title="ALEATORIEDADE dos blocos: 0 = padrão regular (antigo) · 100 = bem imprevisível — força, duração e descanso variam por bloco + surtos, MANTENDO a fadiga. Regenere (🎲+) pra aplicar." style="border:1px solid #b388ff;border-radius:5px;padding:1px 6px;">🎲 aleatório <input type="number" id="caos'+i+'" min="0" max="100" value="60">%</label>'+
       '<label title="Pico do SAQUE (fisgada), na escala do gráfico (0 a +40). O peso do peixe escala isso. Padrão sugerido = força × 2,2.">🎣 saque <input type="number" id="saque'+i+'" min="0" max="40" step="1" value="'+Math.round((FREIO_MAX_DEF[LETRAS[i]]||10)*2.2)+'"></label>'+
       '<label title="Alonga (>1) ou encurta (<1) a duração da fisgada">dur <input type="number" id="fisDur'+i+'" min="0.2" max="4" step="0.1" value="2">×</label>'+
       '<label title="Pico da PUXADA (quando o peixe dispara), na escala do gráfico (0 a +40). O peso do peixe escala isso. Padrão sugerido = força × 1,8.">🏃 corrida <input type="number" id="corrida'+i+'" min="0" max="40" step="1" value="'+Math.round((FREIO_MAX_DEF[LETRAS[i]]||10)*1.8)+'"></label>'+
