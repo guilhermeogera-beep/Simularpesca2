@@ -1,7 +1,7 @@
 {
   "versao": 1,
   "tipo": "curvas_todas",
-  "criado": "2026-07-25T06:00:27.204Z",
+  "criado": "2026-07-25T06:00:36.414Z",
   "curvas": {
     "pirarara": [
       {
@@ -4757,12 +4757,8 @@
         "pot": -7
       },
       {
-        "t": 1497.55,
-        "pot": -5
-      },
-      {
         "t": 1500,
-        "pot": 0
+        "pot": -7
       }
     ],
     "desafio_tambaqui": [
