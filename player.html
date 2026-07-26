@@ -278,7 +278,7 @@ function zerarEncoder(){ contagemEncoder=0; contAnt=0; primeiraLeitura=true; met
 // TESTE sem hardware: simula o encoder mexendo dM metros (+1 = recolhe/enrola · −1 = solta linha). Conta ganhos/perdidos e checa a trava, igual ao encoder real.
 function simEncoder(dM){ const dCount=Math.round((dM/metrosPorVolta())*4096*(inverterDir()?-1:1)); const dMet=contagemParaMetros(dCount); if(contando){ if(dMet>0) metrosGanhos+=dMet; else metrosPerdidos+=-dMet; } contagemEncoder+=dCount; salvarContagem(); if(contando) checarLimiteSeguranca(); atualizarLinha(); }
 // Novo jogador: zera só a contagem DESTE jogo (HUD/ranking); a linha do carretel continua acumulada
-function novoJogoContadores(){ metrosGanhos=0; metrosPerdidos=0; contAnt=contagemEncoder; atualizarLinha(); }
+function novoJogoContadores(){ metrosGanhos=0; metrosPerdidos=0; atualizarLinha(); }   // zera SÓ os metros do jogo; NÃO mexe em contAnt (ele acompanha a leitura CRUA do ESP p/ calcular o delta) — colar contagemEncoder aqui gerava um delta gigante na 1ª leitura
 function resetarLinha(){ if(confirm('Zerar a linha acumulada do carretel?\nFaça isso só DEPOIS de re-enrolar a linha na carretilha/molinete.')){ zerarEncoder(); mostrarToast('Linha do carretel zerada'); } }
 
 // ══ CALIBRAÇÃO / LINHA ────────────────────────────────────────
