@@ -1,7 +1,7 @@
 {
   "versao": 2,
   "tipo": "config",
-  "criado": "2026-07-25T06:37:44.466Z",
+  "criado": "2026-07-26T17:56:53.503Z",
   "cal": {
     "mpv": 34,
     "rpmmin": 1100,
@@ -13,16 +13,82 @@
     "inv": "1"
   },
   "gen": {
-    "pirarara": { "corrida": "20", "minpux": "7", "fadiga": "50", "puxada": "55", "saque": "24", "fisdur": "2", "intens": "50", "espaco": "40", "freiomax": "11", "fisfisdur": "0" },
-    "tambaqui": { "corrida": "18", "minpux": "7", "fadiga": "50", "puxada": "55", "saque": "22", "fisdur": "2", "intens": "50", "espaco": "40", "freiomax": "10", "fisfisdur": "5" },
-    "tucunare": { "corrida": "9", "minpux": "6", "fadiga": "50", "puxada": "55", "saque": "11", "fisdur": "2", "intens": "50", "espaco": "40", "freiomax": "5", "fisfisdur": "4" },
-    "dourado": { "corrida": "14", "minpux": "7", "fadiga": "50", "puxada": "55", "saque": "18", "fisdur": "2", "intens": "50", "espaco": "40", "freiomax": "8", "fisfisdur": "0" },
-    "trairao": { "corrida": "9", "minpux": "7", "fadiga": "50", "puxada": "55", "saque": "11", "fisdur": "2", "intens": "50", "espaco": "40", "freiomax": "5", "fisfisdur": "0" },
-    "jau": { "corrida": "29", "minpux": "7", "fadiga": "50", "puxada": "55", "saque": "35", "fisdur": "2", "intens": "50", "espaco": "40", "freiomax": "16", "fisfisdur": "5" }
+    "pirarara": {
+      "corrida": "20",
+      "minpux": "7",
+      "fadiga": "50",
+      "puxada": "55",
+      "saque": "24",
+      "fisdur": "2",
+      "intens": "50",
+      "espaco": "40",
+      "freiomax": "11",
+      "fisfisdur": "0"
+    },
+    "tambaqui": {
+      "corrida": "18",
+      "minpux": "7",
+      "fadiga": "50",
+      "puxada": "55",
+      "saque": "22",
+      "fisdur": "2",
+      "intens": "50",
+      "espaco": "40",
+      "freiomax": "10",
+      "fisfisdur": "5"
+    },
+    "tucunare": {
+      "corrida": "9",
+      "minpux": "6",
+      "fadiga": "50",
+      "puxada": "55",
+      "saque": "11",
+      "fisdur": "2",
+      "intens": "50",
+      "espaco": "40",
+      "freiomax": "5",
+      "fisfisdur": "4"
+    },
+    "dourado": {
+      "corrida": "14",
+      "minpux": "7",
+      "fadiga": "50",
+      "puxada": "55",
+      "saque": "18",
+      "fisdur": "2",
+      "intens": "50",
+      "espaco": "40",
+      "freiomax": "8",
+      "fisfisdur": "0"
+    },
+    "trairao": {
+      "corrida": "9",
+      "minpux": "7",
+      "fadiga": "50",
+      "puxada": "55",
+      "saque": "11",
+      "fisdur": "2",
+      "intens": "50",
+      "espaco": "40",
+      "freiomax": "5",
+      "fisfisdur": "0"
+    },
+    "jau": {
+      "corrida": "29",
+      "minpux": "7",
+      "fadiga": "50",
+      "puxada": "55",
+      "saque": "35",
+      "fisdur": "2",
+      "intens": "50",
+      "espaco": "40",
+      "freiomax": "16",
+      "fisfisdur": "5"
+    }
   },
   "sync": {
-    "pirarara": "1",
-    "tambaqui": "1",
+    "pirarara": "-1",
+    "tambaqui": "-1",
     "tucunare": "0",
     "dourado": "0",
     "trairao": "0",
