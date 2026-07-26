@@ -165,12 +165,14 @@ input[type=text]:focus{border-color:var(--accent);}
 <div class="fs-overlay" id="pauseOverlay"><div class="titulo-grande">⏸ Pausado</div><div class="fs-btns"><button class="btn-fs btn-ok" onclick="continuarSim()">▶ Continuar</button><button class="btn-fs btn-red" onclick="reiniciarSim()">↺ Reiniciar</button></div></div>
 <div class="fs-overlay" id="resultadoOverlay">
   <div class="recorde" id="resultadoRecorde">🏆 Novo recorde!</div>
-  <div class="lbl">Linha recolhida</div>
+  <div class="lbl">Metros de linha</div>
   <div class="metros-grande" id="resultadoMetros">0.0 m</div>
-  <div class="lbl" style="margin-top:6px;">🏅 Pontuação (linha × peso)</div>
+  <div class="lbl" style="margin-top:6px;">Pontuação</div>
   <div id="resultadoScore" style="font-size:3.6rem;font-weight:900;color:#ffd700;text-shadow:0 0 30px rgba(255,215,0,0.45);line-height:1.05;">0 pts</div>
+  <div class="lbl" id="lblGeral" style="margin-top:8px;">Ranking geral</div>
   <div class="posicao-grande" id="resultadoPos">—</div>
-  <div id="resultadoCat" style="font-size:1.5rem;font-weight:700;margin-top:2px;">—</div>
+  <div class="lbl" id="lblClasse" style="margin-top:4px;">Ranking por classe</div>
+  <div id="resultadoCat" style="font-size:1.7rem;font-weight:800;">—</div>
   <div class="lbl" id="resultadoNome">—</div>
   <div class="fs-btns"><button class="btn-fs btn-ok" onclick="fecharResultado();abrirRanking()">🏆 Ver ranking</button><button class="btn-fs btn-sec" onclick="fecharResultado()">Fechar</button></div>
 </div>
@@ -775,23 +777,24 @@ function mostrarResultado(nome, metros, sim, salvou){
   const meuScore=Math.round(metros*Math.pow(peso>0?peso:1, pesoExp()));      // PONTUAÇÃO = metros × peso^expoente (configurável na aba ranking)
   document.getElementById('resultadoScore').textContent=meuScore+' pts';
   const posEl=document.getElementById('resultadoPos'), nomeEl=document.getElementById('resultadoNome'), rec=document.getElementById('resultadoRecorde');
-  const catEl=document.getElementById('resultadoCat');
+  const catEl=document.getElementById('resultadoCat'), lblG=document.getElementById('lblGeral'), lblC=document.getElementById('lblClasse');
   if(salvou===false){                                    // jogada sem nome: mostra os metros, mas não salva nem posiciona
     nomeEl.textContent='Jogada de teste';
     posEl.textContent='Não salvo no ranking (sem nome)';
-    catEl.style.display='none'; rec.style.display='none';
+    catEl.style.display='none'; lblG.style.display='none'; lblC.style.display='none'; rec.style.display='none';
     document.getElementById('resultadoOverlay').classList.add('visivel');
     return;
   }
+  lblG.style.display='block'; lblC.style.display='block'; catEl.style.display='block';
   let lista=[]; try{ lista=JSON.parse(localStorage.getItem('simpesca2_ranking'))||[]; }catch(e){}
   const med = p => p===1?'🥇':p===2?'🥈':p===3?'🥉':'';
-  const totalG=lista.length, posG=lista.filter(r=>scoreRank(r)>meuScore).length + 1;                 // GERAL (todos os peixes, pela pontuação)
-  posEl.textContent=(med(posG)?med(posG)+' ':'')+'Geral: '+posG+'º de '+totalG;
+  const posG=lista.filter(r=>scoreRank(r)>meuScore).length + 1;                                       // GERAL (todos os peixes, pela pontuação)
+  const totalG=lista.length;
+  posEl.textContent=(med(posG)?med(posG)+' ':'')+posG+'º';
   const cls=classePesoReg({sim, peso});                                                               // CATEGORIA = classe de peso
-  const naCat=lista.filter(r=>classePesoReg(r).id===cls.id), totalC=naCat.length;
+  const naCat=lista.filter(r=>classePesoReg(r).id===cls.id);
   const posC=naCat.filter(r=>scoreRank(r)>meuScore).length + 1;
-  catEl.innerHTML=(med(posC)?med(posC)+' ':'')+'<b style="color:'+cls.cor+'">'+cls.nome+'</b>: '+posC+'º de '+totalC;
-  catEl.style.display='block';
+  catEl.innerHTML=(med(posC)?med(posC)+' ':'')+posC+'º · <b style="color:'+cls.cor+'">'+cls.nome+'</b>';
   nomeEl.textContent=nome;
   if(totalG===1){ rec.textContent='🎣 Primeira jogada!'; rec.style.display='block'; }
   else if(posG===1){ rec.textContent='🏆 Novo recorde GERAL!'; rec.style.display='block'; }

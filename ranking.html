@@ -124,6 +124,7 @@ function render(){
       <div class="pos">${medalha}</div>
       <div class="info"><div class="nome">${escapeHtml(r.nome)}</div><div class="meta">🐟 ${nomePeixe(r.sim)} · ${isFinite(r.peso)?'⚖️ '+r.peso.toFixed(1)+' kg <b style="color:'+classePesoReg(r).cor+'">'+classePesoReg(r).nome+'</b> · ':''}🎣 ${r.metros.toFixed(1)} m · ${fmtData(r.data)}</div></div>
       <div class="metros">${scoreRank(r)} pts</div>
+      <button onclick="deletarUm('${r.data}')" title="Apagar este resultado" aria-label="apagar resultado" style="background:none;border:none;color:#ff5a7d;cursor:pointer;font-size:1.15rem;padding:0 6px;align-self:center;line-height:1;">🗑</button>
     </div>`;
   }).join('');
 }
@@ -150,6 +151,7 @@ function importar(ev){
   r.readAsText(f);
 }
 function limpar(){ if(confirm('Apagar TODO o ranking? Não dá para desfazer.')){ localStorage.removeItem('simpesca2_ranking'); render(); } }
+function deletarUm(data){ if(!confirm('Apagar este resultado do ranking?')) return; let atual=carregar(); const i=atual.findIndex(r=>String(r.data)===String(data)); if(i>=0){ atual.splice(i,1); localStorage.setItem('simpesca2_ranking', JSON.stringify(atual)); render(); } else { alert('Não achei esse resultado (registro antigo sem data?).'); } }   // apaga UM resultado (match pelo timestamp)
 window.addEventListener('load',()=>{
   const f=document.getElementById('filtros');
   ESPECIES.forEach(e=>{ const b=document.createElement('button'); b.className='filtro'; b.dataset.sim=e.id; b.textContent=e.nome; b.onclick=()=>filtrar(e.id,b); f.appendChild(b); });
