@@ -1,7 +1,7 @@
 {
   "versao": 2,
   "tipo": "config",
-  "criado": "2026-07-26T17:56:53.503Z",
+  "criado": "2026-07-26T19:08:31.161Z",
   "cal": {
     "mpv": 34,
     "rpmmin": 1100,
@@ -91,7 +91,7 @@
     "tambaqui": "-1",
     "tucunare": "0",
     "dourado": "0",
-    "trairao": "0",
+    "trairao": "-1",
     "jau": "0"
   },
   "desafio": {
