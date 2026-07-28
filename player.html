@@ -776,7 +776,8 @@ function mostrarResultado(nome, metros, sim, salvou){
   let lista=[]; try{ lista=JSON.parse(localStorage.getItem('simpesca2_ranking'))||[]; }catch(e){}
   const daSim=lista.filter(r=>r.sim===sim && nomeValido(r.nome));                       // só jogadas válidas do MESMO vídeo
   const med = p => p===1?'🥇':p===2?'🥈':p===3?'🥉':'';
-  const pos=daSim.filter(r=>(r.metros||0)>metros).length + 1;                           // colocação por METROS recolhidos, dentro do vídeo
+  const meus=Math.round(metros*10)/10;                                                  // MESMO arredondamento do que foi salvo (senão o próprio registro conta contra ele)
+  const pos=daSim.filter(r=>(r.metros||0)>meus).length + 1;                             // colocação por METROS recolhidos, dentro do vídeo
   const total=daSim.length;
   posEl.textContent=(med(pos)?med(pos)+' ':'')+pos+'º';
   nomeEl.textContent=nome;
