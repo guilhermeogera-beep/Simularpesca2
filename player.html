@@ -166,14 +166,10 @@ input[type=text]:focus{border-color:var(--accent);}
 <div class="fs-overlay" id="pauseOverlay"><div class="titulo-grande">⏸ Pausado</div><div class="fs-btns"><button class="btn-fs btn-ok" onclick="continuarSim()">▶ Continuar</button><button class="btn-fs btn-red" onclick="reiniciarSim()">↺ Reiniciar</button></div></div>
 <div class="fs-overlay" id="resultadoOverlay">
   <div class="recorde" id="resultadoRecorde">🏆 Novo recorde!</div>
-  <div class="lbl">Metros de linha</div>
+  <div class="lbl">Metros de linha recolhidos</div>
   <div class="metros-grande" id="resultadoMetros">0.0 m</div>
-  <div class="lbl" style="margin-top:6px;">Pontuação</div>
-  <div id="resultadoScore" style="font-size:3.6rem;font-weight:900;color:#ffd700;text-shadow:0 0 30px rgba(255,215,0,0.45);line-height:1.05;">0 pts</div>
-  <div class="lbl" id="lblGeral" style="margin-top:8px;">Ranking geral</div>
+  <div class="lbl" id="lblGeral" style="margin-top:10px;">Colocação</div>
   <div class="posicao-grande" id="resultadoPos">—</div>
-  <div class="lbl" id="lblClasse" style="margin-top:4px;">Ranking por classe</div>
-  <div id="resultadoCat" style="font-size:1.7rem;font-weight:800;">—</div>
   <div class="lbl" id="resultadoNome">—</div>
   <div class="fs-btns"><button class="btn-fs btn-ok" onclick="fecharResultado();abrirRanking()">🏆 Ver ranking</button><button class="btn-fs btn-sec" onclick="fecharResultado()">Fechar</button></div>
 </div>
@@ -182,13 +178,6 @@ input[type=text]:focus{border-color:var(--accent);}
   <div class="titulo-grande">🏆 Ranking</div>
   <div class="rk-filtros" id="rkFiltros">
     <button class="rk-filtro ativo" data-sim="todos" onclick="filtrarRanking('todos',this)">Todas</button>
-  </div>
-  <div class="rk-filtros" id="rkFiltrosCls">
-    <button class="rk-filtro ativo" data-cls="todas" onclick="filtrarRankingCls('todas',this)">Todo peso</button>
-    <button class="rk-filtro" data-cls="leve" onclick="filtrarRankingCls('leve',this)">Leve</button>
-    <button class="rk-filtro" data-cls="medio" onclick="filtrarRankingCls('medio',this)">Médio</button>
-    <button class="rk-filtro" data-cls="pesado" onclick="filtrarRankingCls('pesado',this)">Pesado</button>
-    <button class="rk-filtro" data-cls="trofeu" onclick="filtrarRankingCls('trofeu',this)">Troféu</button>
   </div>
   <div class="rk-lista" id="rkLista"></div>
   <div class="fs-btns"><button class="btn-fs btn-sec" onclick="fecharRanking()">Fechar</button></div>
@@ -774,32 +763,25 @@ function scoreRank(r){ const p=(isFinite(r.peso)&&r.peso>0)?r.peso:1; return Mat
 function salvarRanking(nome, metros, sim){ let lista=[]; try{ lista=JSON.parse(localStorage.getItem('simpesca2_ranking'))||[]; }catch(e){} const peso=Math.round(pesoEsp(sim)*10)/10; const score=Math.round(metros*Math.pow(peso, pesoExp())); lista.push({nome, metros:Math.round(metros*10)/10, sim, peso, score, data:new Date().toISOString()}); localStorage.setItem('simpesca2_ranking', JSON.stringify(lista)); }
 function mostrarResultado(nome, metros, sim, salvou){
   document.getElementById('resultadoMetros').textContent=metros.toFixed(1)+' m';
-  const peso=isFinite(pesoEsp(sim))?Math.round(pesoEsp(sim)*10)/10:1;
-  const meuScore=Math.round(metros*Math.pow(peso>0?peso:1, pesoExp()));      // PONTUAÇÃO = metros × peso^expoente (configurável na aba ranking)
-  document.getElementById('resultadoScore').textContent=meuScore+' pts';
   const posEl=document.getElementById('resultadoPos'), nomeEl=document.getElementById('resultadoNome'), rec=document.getElementById('resultadoRecorde');
-  const catEl=document.getElementById('resultadoCat'), lblG=document.getElementById('lblGeral'), lblC=document.getElementById('lblClasse');
+  const lblG=document.getElementById('lblGeral');
   if(salvou===false){                                    // jogada sem nome: mostra os metros, mas não salva nem posiciona
     nomeEl.textContent='Jogada de teste';
-    posEl.textContent='Não salvo no ranking (sem nome)';
-    catEl.style.display='none'; lblG.style.display='none'; lblC.style.display='none'; rec.style.display='none';
+    lblG.textContent='Não salvo no ranking (sem nome)';
+    posEl.textContent='—'; rec.style.display='none';
     document.getElementById('resultadoOverlay').classList.add('visivel');
     return;
   }
-  lblG.style.display='block'; lblC.style.display='block'; catEl.style.display='block';
+  lblG.textContent='Colocação — '+nomePeixe(sim);                                      // ranking SÓ deste vídeo/peixe
   let lista=[]; try{ lista=JSON.parse(localStorage.getItem('simpesca2_ranking'))||[]; }catch(e){}
+  const daSim=lista.filter(r=>r.sim===sim && nomeValido(r.nome));                       // só jogadas válidas do MESMO vídeo
   const med = p => p===1?'🥇':p===2?'🥈':p===3?'🥉':'';
-  const posG=lista.filter(r=>scoreRank(r)>meuScore).length + 1;                                       // GERAL (todos os peixes, pela pontuação)
-  const totalG=lista.length;
-  posEl.textContent=(med(posG)?med(posG)+' ':'')+posG+'º';
-  const cls=classePesoReg({sim, peso});                                                               // CATEGORIA = classe de peso
-  const naCat=lista.filter(r=>classePesoReg(r).id===cls.id);
-  const posC=naCat.filter(r=>scoreRank(r)>meuScore).length + 1;
-  catEl.innerHTML=(med(posC)?med(posC)+' ':'')+posC+'º · <b style="color:'+cls.cor+'">'+cls.nome+'</b>';
+  const pos=daSim.filter(r=>(r.metros||0)>metros).length + 1;                           // colocação por METROS recolhidos, dentro do vídeo
+  const total=daSim.length;
+  posEl.textContent=(med(pos)?med(pos)+' ':'')+pos+'º';
   nomeEl.textContent=nome;
-  if(totalG===1){ rec.textContent='🎣 Primeira jogada!'; rec.style.display='block'; }
-  else if(posG===1){ rec.textContent='🏆 Novo recorde GERAL!'; rec.style.display='block'; }
-  else if(posC===1){ rec.textContent='🏆 1º na categoria '+cls.nome+'!'; rec.style.display='block'; }
+  if(total<=1){ rec.textContent='🎣 Primeira jogada!'; rec.style.display='block'; }
+  else if(pos===1){ rec.textContent='🏆 Novo recorde!'; rec.style.display='block'; }
   else rec.style.display='none';
   document.getElementById('resultadoOverlay').classList.add('visivel');
 }
@@ -819,15 +801,14 @@ function renderRanking(){
   if(rkFiltro!=='todos') lista=lista.filter(r=>r.sim===rkFiltro);
   else lista=lista.filter(r=>peixeVisivel(r.sim));   // "Todas" esconde os peixes desmarcados no EXIBIR
   if(rkFiltroCls!=='todas') lista=lista.filter(r=>classePesoReg(r).id===rkFiltroCls);   // filtro por classe de peso
-  lista.sort((a,b)=>scoreRank(b)-scoreRank(a));   // ordena pela PONTUAÇÃO (metros × peso)
+  lista.sort((a,b)=>(b.metros||0)-(a.metros||0));   // ordena por METROS de linha recolhidos
   const el=document.getElementById('rkLista');
   if(!lista.length){ el.innerHTML='<div class="rk-vazio">Nenhuma jogada registrada ainda. 🎣</div>'; return; }
   el.innerHTML=lista.map((r,i)=>{
     const cls=i===0?'top1':i===1?'top2':i===2?'top3':'';
     const medalha=i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'º';
     const d=new Date(r.data); const data=d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-    const cp=classePesoReg(r);
-    return `<div class="rk-linha ${cls}"><div class="rk-pos">${medalha}</div><div class="rk-info"><div class="rk-nome">${escHtml(r.nome)}</div><div class="rk-meta">🐟 ${nomePeixe(r.sim)} · ${isFinite(r.peso)?'⚖️ '+r.peso.toFixed(1)+' kg <b style="color:'+cp.cor+'">'+cp.nome+'</b> · ':''}🎣 ${r.metros.toFixed(1)} m · ${data}</div></div><div class="rk-metros">${scoreRank(r)} pts</div></div>`;
+    return `<div class="rk-linha ${cls}"><div class="rk-pos">${medalha}</div><div class="rk-info"><div class="rk-nome">${escHtml(r.nome)}</div><div class="rk-meta">🐟 ${nomePeixe(r.sim)} · ${data}</div></div><div class="rk-metros">${r.metros.toFixed(1)} m</div></div>`;
   }).join('');
 }
 

@@ -31,6 +31,8 @@ header h1{font-size:1.4rem;font-weight:800;color:var(--gold);letter-spacing:1px;
 .acoes{display:flex;gap:8px;margin-top:20px;flex-wrap:wrap;}
 .btn{padding:10px 18px;border:1px solid;border-radius:8px;font-family:inherit;font-size:0.8rem;font-weight:600;cursor:pointer;text-transform:uppercase;letter-spacing:1px;background:transparent;}
 .btn-green{border-color:var(--green);color:var(--green);} .btn-red{border-color:var(--red);color:var(--red);}
+.rk-del{display:none;background:none;border:none;color:#ff5a7d;cursor:pointer;font-size:1.15rem;padding:0 6px;align-self:center;line-height:1;}
+body.editando .rk-del{display:inline-block;}
 </style>
 </head>
 <body>
@@ -58,25 +60,18 @@ header h1{font-size:1.4rem;font-weight:800;color:var(--gold);letter-spacing:1px;
 <div class="filtros" id="filtros">
   <button class="filtro ativo" data-sim="todos" onclick="filtrar('todos',this)">Todas</button>
 </div>
-<div class="filtros" id="filtrosCls">
-  <button class="filtro ativo" data-cls="todas" onclick="filtrarCls('todas',this)">Todo peso</button>
-  <button class="filtro" data-cls="leve" onclick="filtrarCls('leve',this)">Leve</button>
-  <button class="filtro" data-cls="medio" onclick="filtrarCls('medio',this)">Médio</button>
-  <button class="filtro" data-cls="pesado" onclick="filtrarCls('pesado',this)">Pesado</button>
-  <button class="filtro" data-cls="trofeu" onclick="filtrarCls('trofeu',this)">Troféu</button>
-</div>
 
 <div class="lista" id="lista"></div>
 
 <script>
 let filtroAtual='todos';
-function toggleConfig(){ const p=document.getElementById('configPanel'); p.style.display = (p.style.display==='none'||!p.style.display) ? 'block' : 'none'; }
+function toggleConfig(){ const p=document.getElementById('configPanel'); const abrir=(p.style.display==='none'||!p.style.display); p.style.display = abrir ? 'block' : 'none'; document.body.classList.toggle('editando', abrir); }   // config aberta -> mostra o 🗑 de cada linha
 const ESPECIES=[
   {id:'pirarara', nome:'Pirarara'},
   {id:'tambaqui', nome:'Tambacu'},
   {id:'tucunare', nome:'Tucunaré'},
   {id:'dourado',  nome:'Dourado'},
-  {id:'trairao',  nome:'Trairão'},
+  {id:'trairao',  nome:'Pirarara kids'},   // só label; id continua 'trairao'
   {id:'jau',      nome:'Jaú'}
 ];
 function nomePeixe(id){ const e=ESPECIES.find(x=>x.id===id); return e?e.nome:('Sim '+id); }
@@ -114,7 +109,7 @@ function render(){
   const todos=carregar().filter(r=>nomeValido(r.nome));   // esconde jogadas sem nome / "Jogador"
   let lista = filtroAtual==='todos' ? todos : todos.filter(r=>r.sim===filtroAtual);
   if(filtroCls!=='todas') lista=lista.filter(r=>classePesoReg(r).id===filtroCls);   // filtro por classe de peso
-  lista.sort((a,b)=>scoreRank(b)-scoreRank(a));   // ordena pela PONTUAÇÃO
+  lista.sort((a,b)=>(b.metros||0)-(a.metros||0));   // ordena por METROS de linha recolhidos
   const el=document.getElementById('lista');
   if(!lista.length){ el.innerHTML='<div class="vazio">Nenhuma jogada registrada ainda.<br>Jogue uma simulação para aparecer aqui! 🎣</div>'; return; }
   el.innerHTML = lista.map((r,i)=>{
@@ -122,9 +117,9 @@ function render(){
     const medalha = i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'º';
     return `<div class="linha-rank ${cls}">
       <div class="pos">${medalha}</div>
-      <div class="info"><div class="nome">${escapeHtml(r.nome)}</div><div class="meta">🐟 ${nomePeixe(r.sim)} · ${isFinite(r.peso)?'⚖️ '+r.peso.toFixed(1)+' kg <b style="color:'+classePesoReg(r).cor+'">'+classePesoReg(r).nome+'</b> · ':''}🎣 ${r.metros.toFixed(1)} m · ${fmtData(r.data)}</div></div>
-      <div class="metros">${scoreRank(r)} pts</div>
-      <button onclick="deletarUm('${r.data}')" title="Apagar este resultado" aria-label="apagar resultado" style="background:none;border:none;color:#ff5a7d;cursor:pointer;font-size:1.15rem;padding:0 6px;align-self:center;line-height:1;">🗑</button>
+      <div class="info"><div class="nome">${escapeHtml(r.nome)}</div><div class="meta">🐟 ${nomePeixe(r.sim)} · ${fmtData(r.data)}</div></div>
+      <div class="metros">${(r.metros||0).toFixed(1)} m</div>
+      <button class="rk-del" onclick="deletarUm('${r.data}')" title="Apagar este resultado" aria-label="apagar resultado">🗑</button>
     </div>`;
   }).join('');
 }
