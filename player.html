@@ -662,13 +662,13 @@ function pedirNome(id){
   // valida se o carretel tem linha suficiente pra ESTA simulação (estimativa de quanto o peixe puxa)
   const precisa=estimarLinhaPts(carregarPontos(id), escalaPeso(id));   // peso entra DENTRO do mapa de RPM (não multiplica o total) — peixe menor puxa menos linha, igual ao motor
   if(linhaDisponivel() < precisa){ abrirLinhaOverlay(id, precisa); return; }
-  simEmContagem=id; document.getElementById('nomeOverlay').classList.add('visivel'); setTimeout(()=>document.getElementById('inputNome').focus(),100);
+  simEmContagem=id; document.getElementById('inputNome').value=''; document.getElementById('nomeOverlay').classList.add('visivel'); setTimeout(()=>document.getElementById('inputNome').focus(),100);
 }
 // ── Overlay "pouca linha": pede pra enrolar até liberar; contador ao vivo ──
 let linhaOvlSim=null, linhaOvlPrecisa=0;
 function abrirLinhaOverlay(id, precisa){ linhaOvlSim=id; linhaOvlPrecisa=precisa; atualizarLinhaOverlay(); document.getElementById('linhaOverlay').classList.add('visivel'); }
 function fecharLinhaOverlay(){ linhaOvlSim=null; document.getElementById('linhaOverlay').classList.remove('visivel'); }
-function linhaOvlContinuar(){ const id=linhaOvlSim; fecharLinhaOverlay(); if(id){ simEmContagem=id; document.getElementById('nomeOverlay').classList.add('visivel'); setTimeout(()=>document.getElementById('inputNome').focus(),100); } }
+function linhaOvlContinuar(){ const id=linhaOvlSim; fecharLinhaOverlay(); if(id){ simEmContagem=id; document.getElementById('inputNome').value=''; document.getElementById('nomeOverlay').classList.add('visivel'); setTimeout(()=>document.getElementById('inputNome').focus(),100); } }
 function atualizarLinhaOverlay(){
   if(linhaOvlSim===null) return;
   const disp=Math.max(0,linhaDisponivel());
