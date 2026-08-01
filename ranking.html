@@ -47,6 +47,8 @@ body.editando .rk-del{display:inline-block;}
   <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
     <span style="font-size:0.85rem;color:var(--text);white-space:nowrap;">⚙️ Peso na pontuação (multiplicador = peso <sup>expoente</sup>):</span>
     <input type="number" id="cfgPesoExp" min="0" max="5" step="0.05" value="1" onchange="salvarPesoExp()" style="width:84px;background:#0d151d;border:1px solid var(--accent);border-radius:6px;color:var(--text);font-family:monospace;font-size:1rem;padding:6px 8px;text-align:center;outline:none;">
+    <span style="font-size:0.85rem;color:var(--text);white-space:nowrap;margin-left:6px;">📏 Média de linha puxada (todas as jogadas):</span>
+    <span id="cfgMediaLinha" style="font-family:monospace;font-size:1.05rem;color:var(--green);font-weight:800;">—</span>
   </div>
   <div id="cfgPesoHint" style="font-size:0.72rem;color:var(--dim);margin-top:7px;line-height:1.5;"></div>
   <div class="acoes" style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
@@ -105,7 +107,15 @@ async function syncPesoExp(){
   const body={message:'auto: peso na pontuacao', content:btoa(unescape(encodeURIComponent(JSON.stringify(cfg,null,2))))}; if(sha) body.sha=sha;
   try{ await fetch(url,{method:'PUT',headers,body:JSON.stringify(body)}); }catch(e){}
 }
+function atualizarMediaLinha(){   // média de METROS puxados em TODAS as jogadas válidas
+  const el=document.getElementById('cfgMediaLinha'); if(!el) return;
+  const val=carregar().filter(r=>nomeValido(r.nome));
+  if(!val.length){ el.textContent='— (sem jogadas)'; return; }
+  const soma=val.reduce((s,r)=>s+(r.metros||0),0);
+  el.textContent=(soma/val.length).toFixed(1)+' m · '+val.length+' jogada'+(val.length>1?'s':'');
+}
 function render(){
+  atualizarMediaLinha();
   const todos=carregar().filter(r=>nomeValido(r.nome));   // esconde jogadas sem nome / "Jogador"
   let lista = filtroAtual==='todos' ? todos : todos.filter(r=>r.sim===filtroAtual);
   if(filtroCls!=='todas') lista=lista.filter(r=>classePesoReg(r).id===filtroCls);   // filtro por classe de peso
