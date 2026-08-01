@@ -1,7 +1,7 @@
 {
   "versao": 2,
   "tipo": "config",
-  "criado": "2026-07-30T20:17:58.863Z",
+  "criado": "2026-08-01T02:37:01.993Z",
   "cal": {
     "mpv": 34,
     "rpmmin": 1100,
@@ -87,7 +87,7 @@
     }
   },
   "sync": {
-    "pirarara": "-1",
+    "pirarara": "0",
     "tambaqui": "-1",
     "tucunare": "0",
     "dourado": "0",
