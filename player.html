@@ -142,7 +142,7 @@ input[type=text]:focus{border-color:var(--accent);}
   <div class="hc-tit" style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);">🎁 Prêmios no final</div>
   <label><input type="checkbox" id="cfgPremioBone" checked> 🧢 "Ganhou boné" acima de
     <input type="number" id="premioBoneMin" min="0" step="1" style="width:58px;height:26px;background:#0d151d;border:1px solid var(--accent);border-radius:5px;color:var(--text);font-family:monospace;font-size:0.85rem;padding:2px 4px;text-align:center;"> m</label>
-  <label><input type="checkbox" id="cfgPremioBoia" checked> 🛟 "Ganhou boia" acima de
+  <label><input type="checkbox" id="cfgPremioBoia" checked> <svg width="0.95em" height="0.95em" viewBox="0 0 24 24" style="vertical-align:-0.14em;flex-shrink:0"><line x1="12" y1="1.5" x2="12" y2="7" stroke="#b00020" stroke-width="2" stroke-linecap="round"/><path d="M4.5 13a7.5 7.5 0 0 1 15 0z" fill="#e11d2a"/><path d="M4.5 13a7.5 7.5 0 0 0 15 0z" fill="#f7f7f7"/><circle cx="12" cy="13" r="7.5" fill="none" stroke="#b00020" stroke-width="1.2"/><circle cx="12" cy="13" r="1.6" fill="#b00020"/></svg> "Ganhou boia" acima de
     <input type="number" id="premioBoiaMin" min="0" step="1" style="width:58px;height:26px;background:#0d151d;border:1px solid var(--accent);border-radius:5px;color:var(--text);font-family:monospace;font-size:0.85rem;padding:2px 4px;text-align:center;"> m</label>
   <div class="hc-tit" style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);">🐟 Peixes na tela</div>
   <div id="cfgPeixes"></div>
@@ -777,13 +777,15 @@ function nomeValido(n){ n=(n||'').trim().toLowerCase(); return n!=='' && n!=='jo
 function pesoExp(){ const v=parseFloat(localStorage.getItem('simpesca2_rank_pesoexp')); return (isFinite(v)&&v>=0)?v:1; }
 function scoreRank(r){ const p=(isFinite(r.peso)&&r.peso>0)?r.peso:1; return Math.round((r.metros||0)*Math.pow(p, pesoExp())); }   // RECALCULA sempre (registro antigo re-ordena consistente; ignora o score salvo)
 function salvarRanking(nome, metros, sim){ let lista=[]; try{ lista=JSON.parse(localStorage.getItem('simpesca2_ranking'))||[]; }catch(e){} const peso=Math.round(pesoEsp(sim)*10)/10; const score=Math.round(metros*Math.pow(peso, pesoExp())); lista.push({nome, metros:Math.round(metros*10)/10, sim, peso, score, data:new Date().toISOString()}); localStorage.setItem('simpesca2_ranking', JSON.stringify(lista)); }
+// boia de PESCA (não existe emoji): topo vermelho / base branca + anteninha
+const BOIA_SVG='<svg width="0.95em" height="0.95em" viewBox="0 0 24 24" style="vertical-align:-0.14em"><line x1="12" y1="1.5" x2="12" y2="7" stroke="#b00020" stroke-width="2" stroke-linecap="round"/><path d="M4.5 13a7.5 7.5 0 0 1 15 0z" fill="#e11d2a"/><path d="M4.5 13a7.5 7.5 0 0 0 15 0z" fill="#f7f7f7"/><circle cx="12" cy="13" r="7.5" fill="none" stroke="#b00020" stroke-width="1.2"/><circle cx="12" cy="13" r="1.6" fill="#b00020"/></svg>';
 function mostrarPremio(metros, salvou){   // 🎁 mostra SÓ o maior prêmio conquistado (boné > boia); respeita os toggles do EXIBIR
   const prem=document.getElementById('resultadoPremio'); let msg='';
   if(salvou!==false){
     if(hudCfg.premioBone && metros>=premioBoneMinVal()) msg='🧢 Ganhou boné!';          // prêmio MAIOR tem prioridade — boia NÃO aparece
-    else if(hudCfg.premioBoia && metros>=premioBoiaMinVal()) msg='🛟 Ganhou boia!';
+    else if(hudCfg.premioBoia && metros>=premioBoiaMinVal()) msg=BOIA_SVG+' Ganhou boia!';
   }
-  if(msg){ prem.textContent=msg; prem.style.display='block'; } else prem.style.display='none';
+  if(msg){ prem.innerHTML=msg; prem.style.display='block'; } else prem.style.display='none';
 }
 function mostrarResultado(nome, metros, sim, salvou){
   document.getElementById('resultadoMetros').textContent=metros.toFixed(1)+' m';
