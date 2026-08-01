@@ -115,7 +115,11 @@ function atualizarMediaLinha(){   // média de METROS em TODAS as jogadas válid
   const abaixo=val.filter(r=>(r.metros||0)<media).length, acima=val.length-abaixo;   // acima = na média ou acima (soma sempre bate com o total)
   const ord=val.map(r=>r.metros||0).sort((a,b)=>a-b), n=ord.length;                   // mediana = valor do meio (50% abaixo / 50% acima)
   const mediana=(n%2)?ord[(n-1)/2]:(ord[n/2-1]+ord[n/2])/2;
-  el.textContent=media.toFixed(1)+' m · '+val.length+' jogada'+(val.length>1?'s':'')+'  (↑ '+acima+' na média ou acima · ↓ '+abaixo+' abaixo) · mediana '+mediana.toFixed(1)+' m';
+  const mediana125=mediana*1.25;                                                       // mediana + 25%
+  const perc=q=>{ const r=(n-1)*q, lo=Math.floor(r), f=r-lo; return lo+1<n?ord[lo]+f*(ord[lo+1]-ord[lo]):ord[lo]; };
+  const p75=perc(0.75);                                                                // P75 = corte do top 25% (75% abaixo, 25% acima)
+  const noTop25=val.filter(r=>(r.metros||0)>=p75).length;
+  el.textContent=media.toFixed(1)+' m · '+val.length+' jogada'+(val.length>1?'s':'')+'  (↑ '+acima+' na média ou acima · ↓ '+abaixo+' abaixo) · mediana '+mediana.toFixed(1)+' m · mediana+25% '+mediana125.toFixed(1)+' m · P75 (top 25%) '+p75.toFixed(1)+' m ('+noTop25+' passa'+(noTop25===1?'':'m')+')';
 }
 function render(){
   atualizarMediaLinha();
